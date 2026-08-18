@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-dev --no-progress --prefer-dist --no-interaction
+
+      - name: Create plugin artifact
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: zip -r "dmbc-tools-${VERSION#v}.zip" . -x '.git/*' '.github/*' 'tests/*' 'vendor/*/.git/*'
+
+      - name: Upload plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dmbc-tools-${{ github.ref_name }}
+          path: dmbc-tools-*.zip
