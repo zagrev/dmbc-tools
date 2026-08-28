@@ -1,4 +1,12 @@
 <?php
+declare(strict_types=1);
+namespace DmbcTools;
+
+if ( ! \defined( 'ABSPATH' ) ) {
+	print 'ABSPATH is not defined. This file (' . __FILE__ . ') should not be accessed directly.' . PHP_EOL;
+	exit;
+}
+
 /**
  * Plugin Name: DMBC Tools
  * Plugin URI: https://github.com/zagrev/dmbc-tools
@@ -13,11 +21,6 @@
  * License URI: https://creativecommons.org/licenses/by-nc-nd/4.0/
  */
 
-namespace DmbcTools;
-
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
 
 define( 'DMBC_TOOLS_PLUGIN_FILE', __FILE__ );
 
@@ -25,6 +28,5 @@ if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 	require_once __DIR__ . '/vendor/autoload.php';
 }
 
-require_once __DIR__ . '/includes/class-plugin.php';
-
+require_once __DIR__ . '/src/plugin.php';
 Plugin::instance()->run();

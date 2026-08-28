@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<ruleset name="WordPress Project Rules">
+    <description>Apply WordPress Coding Standards to this project.</description>
+    
+    <!-- Use the official WordPress standard -->
+    <rule ref="WordPress" />
+
+    <!-- Check PHP files -->
+    <arg name="extensions" value="php" />
+    <arg name="colors" />
+    
+    <!-- Exclude third-party vendor directories -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+</ruleset>
