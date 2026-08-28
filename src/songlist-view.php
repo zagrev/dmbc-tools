@@ -43,7 +43,7 @@ class SongListView {
 	}
 
 	/**
-	 * Renders the admin page for configuring the DMBC TOOLS plugin settings.
+	 * Renders the admin page for configuring the DMBC Tools plugin settings.
 	 *
 	 * @return void
 	 */
@@ -51,8 +51,8 @@ class SongListView {
 		\error_log( 'DMBC Plugin: dmbc_render_settings_page method called.' );
 		?>
 	<div class="wrap">
-		<h1><?php esc_html_e( 'DMBC TOOLS Settings', 'dmbc-tools' ); ?></h1>
-		<p><?php esc_html_e( 'Here you can configure the settings for the DMBC TOOLS plugin.', 'dmbc-tools' ); ?></p>
+		<h1><?php esc_html_e( 'DMBC Tools Settings', 'dmbc-tools' ); ?></h1>
+		<p><?php esc_html_e( 'Here you can configure the settings for the DMBC Tools plugin.', 'dmbc-tools' ); ?></p>
 	</div>
 		<?php
 	}

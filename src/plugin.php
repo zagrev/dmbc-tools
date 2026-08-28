@@ -26,7 +26,7 @@ final class Plugin {
 	private const string NOTES_META_KEY            = '_dmbc_notes';
 
 	public const string CAP_EDIT_SONGLIST  = 'dmbc_edit_songlist';
-	public const string CAP_VIEW_SONGLISTS = 'dmbc_view_songlists';
+	public const string CAP_VIEW_SONGLISTS = 'dmbc_view_songlist';
 
 
 
@@ -47,7 +47,7 @@ final class Plugin {
 		\register_deactivation_hook( __FILE__, array( $this, 'deactivate' ) );
 
 		\add_action( 'init', array( $this, 'register_songlist_type' ) );
-		\add_action( 'admin_init', array( $this, 'add_admin_menu' ) );
+		\add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		\add_action( 'wp_dashboard_setup', array( $this, 'wp_register_user_capabilities_dashboard_widget' ) );
 	}
 
@@ -57,16 +57,16 @@ final class Plugin {
 	public function wp_register_user_capabilities_dashboard_widget() {
 		\error_log( 'DMBC Extras: registering user capabilities dashboard widget.' );
 		wp_add_dashboard_widget(
-			'wp_user_capabilities_widget',         // Widget slug
-			'Your Current Capabilities',           // Widget title
-			array( $this, 'wp_display_user_capabilities_widget' )  // Callback display function
+			'wp_user_capabilities_widget',
+			'Your Current Capabilities',
+			array( $this, 'render_user_capabilities_widget' )
 		);
 	}
 
 	/**
 	 * Display the current user's capabilities inside the widget.
 	 */
-	public function wp_display_user_capabilities_widget() {
+	public function render_user_capabilities_widget() {
 		\error_log( 'DMBC Extras: displaying user capabilities widget.' );
 		// Get the current user data object.
 		$current_user = wp_get_current_user();
@@ -234,9 +234,9 @@ final class Plugin {
 				array(
 					'labels'       => array(
 						'name'          => __( 'Song Lists', 'dmbc-tools' ),
-						'singular_name' => __( 'Song list', 'dmbc-tools' ),
-						'add_new_item'  => __( 'Add new Song() list', 'dmbc-tools' ),
-						'edit_item'     => __( 'Edit Song list', 'dmbc-tools' ),
+						'singular_name' => __( 'Song List', 'dmbc-tools' ),
+						'add_new_item'  => __( 'Add new Song List', 'dmbc-tools' ),
+						'edit_item'     => __( 'Edit Song List', 'dmbc-tools' ),
 					),
 					'public '      => false,
 					'show_in_rest' => true,
@@ -345,7 +345,7 @@ final class Plugin {
 		add_menu_page(
 			__( 'Rehearsal Song Lists', 'dmbc-tools' ),
 			__( 'Rehearsal Songs', 'dmbc-tools' ),
-			'read',
+			self::CAP_VIEW_SONGLISTS,
 			'dmbc-rehearsal-songlists',
 			array( SongListView::class, 'dmbc_render_songlist_table_page' ),
 			'dashicons-playlist-audio',
@@ -356,7 +356,7 @@ final class Plugin {
 			'dmbc-rehearsal-songlists',
 			__( 'All Rehearsal Songs', 'dmbc-tools' ),
 			__( 'All', 'dmbc-tools' ),
-			'read',
+			self::CAP_VIEW_SONGLISTS,
 			'dmbc-songlist-view',
 			array( SongListView::class, 'dmbc_render_songlist_table_page' ),
 		);
