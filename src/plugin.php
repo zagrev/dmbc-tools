@@ -2,11 +2,13 @@
 declare(strict_types=1);
 namespace DmbcTools;
 
+require_once __DIR__ . '/admin/render-settings.php';
 require_once __DIR__ . '/admin/menu.php';
 require_once __DIR__ . '/songlist-view.php';
 require_once __DIR__ . '/songlist.php';
 
 use DmbcTools\SongListView;
+use DmbcTools\DmbcSettings;
 
 if ( ! \defined( 'ABSPATH' ) ) {
 	print 'ABSPATH is not defined . This file( ' . __FILE__ . ' ) should not be accessed directly . ' . PHP_EOL;
@@ -28,7 +30,12 @@ final class Plugin {
 	public const string CAP_EDIT_SONGLIST  = 'dmbc_edit_songlist';
 	public const string CAP_VIEW_SONGLISTS = 'dmbc_view_songlist';
 
-
+	/**
+	 *  The settings used by the plugin.
+	 *
+	 * @var DmbcSettings
+	 */
+	private DmbcSettings $settings;
 
 	/**
 	 * The singleton instance of this plugin
@@ -49,13 +56,17 @@ final class Plugin {
 		\add_action( 'init', array( $this, 'register_songlist_type' ) );
 		\add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		\add_action( 'wp_dashboard_setup', array( $this, 'wp_register_user_capabilities_dashboard_widget' ) );
+
+		$this->settings = new DmbcSettings();
+		\add_action( 'admin_menu', array( $this->settings, 'register_settings' ) );
+		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
 	}
 
 	/**
 	 * Register the custom dashboard widget.
 	 */
 	public function wp_register_user_capabilities_dashboard_widget() {
-		\error_log( 'DMBC Extras: registering user capabilities dashboard widget.' );
+		\error_log( 'DMBC Tools: registering user capabilities dashboard widget.' );
 		wp_add_dashboard_widget(
 			'wp_user_capabilities_widget',
 			'Your Current Capabilities',
@@ -67,7 +78,7 @@ final class Plugin {
 	 * Display the current user's capabilities inside the widget.
 	 */
 	public function render_user_capabilities_widget() {
-		\error_log( 'DMBC Extras: displaying user capabilities widget.' );
+		\error_log( 'DMBC Tools: displaying user capabilities widget.' );
 		// Get the current user data object.
 		$current_user = wp_get_current_user();
 
@@ -373,11 +384,11 @@ final class Plugin {
 		// add options page separately.
 		add_submenu_page(
 			'options-general.php',
-			__( 'DMBC Extras', 'dmbc-tools' ),
-			__( 'DMBC Extras', 'dmbc-tools' ),
+			__( 'DMBC Tools', 'dmbc-tools' ),
+			__( 'DMBC Tools', 'dmbc-tools' ),
 			'manage_options',
 			'dmbc-tools-settings',
-			array( SongListView::class, 'dmbc_render_settings_page' )
+			array( $this->settings, 'dmbc_render_settings_page' )
 		);
 	}
 }
