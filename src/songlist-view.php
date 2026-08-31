@@ -13,7 +13,7 @@ if ( ! \defined( 'ABSPATH' ) ) {
 class SongListView {
 	/**
 	 *
-	 * render the list of song lists admin page
+	 * Render the list of song lists page.
 	 *
 	 * @return void
 	 */
@@ -38,21 +38,6 @@ class SongListView {
 	<div class="wrap">
 		<h1><?php esc_html_e( 'Rehearsal Song Lists', 'dmbc-tools' ); ?></h1>
 		<p><?php esc_html_e( 'Here you can view and manage all rehearsal song lists.', 'dmbc-tools' ); ?></p>
-	</div>
-		<?php
-	}
-
-	/**
-	 * Renders the admin page for configuring the DMBC Tools plugin settings.
-	 *
-	 * @return void
-	 */
-	public static function dmbc_render_settings_page(): void {
-		\error_log( 'DMBC Plugin: dmbc_render_settings_page method called.' );
-		?>
-	<div class="wrap">
-		<h1><?php esc_html_e( 'DMBC Tools Settings', 'dmbc-tools' ); ?></h1>
-		<p><?php esc_html_e( 'Here you can configure the settings for the DMBC Tools plugin.', 'dmbc-tools' ); ?></p>
 	</div>
 		<?php
 	}

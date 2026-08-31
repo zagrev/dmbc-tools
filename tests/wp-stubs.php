@@ -6,14 +6,49 @@
  */
 
 $GLOBALS['dmbc_test_state'] = array(
-	'options'             => array(),
-	'current_user_can'    => true,
-	'wp_roles'            => array(),
-	'nonce_valid'         => true,
-	'registered_settings' => array(),
-	'settings_sections'   => array(),
-	'settings_fields'     => array(),
+	'options'                 => array(),
+	'current_user_can'       => true,
+	'wp_roles'                => array(),
+	'nonce_valid'             => true,
+	'registered_settings'     => array(),
+	'settings_sections'       => array(),
+	'settings_fields'         => array(),
+	'actions'                 => array(),
+	'post_meta'               => array(),
+	'roles'                   => array(),
+	'registered_post_types'   => array(),
+	'existing_post_types'     => array(),
+	'menu_pages'              => array(),
+	'submenu_pages'           => array(),
+	'wp_verify_nonce_result'  => true,
+	'flush_rewrite_rules_calls' => 0,
 );
+
+/** Simple stand-in for a WP_Role object, backed by the shared test state. */
+class Dmbc_Test_Wp_Role {
+	public function __construct( private string $role_name ) {}
+
+	public function has_cap( string $cap ): bool {
+		return ! empty( $GLOBALS['dmbc_test_state']['roles'][ $this->role_name ][ $cap ] );
+	}
+
+	public function add_cap( string $cap ): void {
+		$GLOBALS['dmbc_test_state']['roles'][ $this->role_name ][ $cap ] = true;
+	}
+}
+
+if ( ! class_exists( 'WP_Post' ) ) {
+	/** Minimal stand-in for WP_Post, enough to satisfy the type hints used by the plugin. */
+	class WP_Post {
+		public int $ID;
+
+		public function __construct( int $id ) {
+			$this->ID = $id;
+		}
+	}
+}
+
+
 
 /** Thrown by the wp_die() stub so tests can assert a fatal-abort occurred. */
 class Dmbc_Test_Wp_Die_Exception extends \RuntimeException {}
@@ -58,6 +93,14 @@ if ( ! function_exists( 'sanitize_email' ) ) {
 	function sanitize_email( string $email ): string {
 		$email = trim( $email );
 		return false !== filter_var( $email, FILTER_VALIDATE_EMAIL ) ? $email : '';
+	}
+}
+
+if ( ! function_exists( 'sanitize_file_name' ) ) {
+	function sanitize_file_name( string $filename ): string {
+		$filename = trim( $filename );
+		$filename = preg_replace( '/[^a-z0-9_\-\.]/', '', strtolower( $filename ) );
+		return $filename;
 	}
 }
 
@@ -240,4 +283,125 @@ if ( ! function_exists( 'do_settings_sections' ) ) {
 
 if ( ! function_exists( 'submit_button' ) ) {
 	function submit_button(): void {}
+}
+
+if ( ! function_exists( 'add_action' ) ) {
+	function add_action( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {
+		$GLOBALS['dmbc_test_state']['actions'][ $hook ][] = $callback;
+	}
+}
+
+if ( ! function_exists( 'register_activation_hook' ) ) {
+	function register_activation_hook( string $file, $callback ): void {}
+}
+
+if ( ! function_exists( 'register_deactivation_hook' ) ) {
+	function register_deactivation_hook( string $file, $callback ): void {}
+}
+
+if ( ! function_exists( 'post_type_exists' ) ) {
+	function post_type_exists( string $post_type ): bool {
+		return in_array( $post_type, $GLOBALS['dmbc_test_state']['existing_post_types'], true )
+			|| array_key_exists( $post_type, $GLOBALS['dmbc_test_state']['registered_post_types'] );
+	}
+}
+
+if ( ! function_exists( 'register_post_type' ) ) {
+	function register_post_type( string $post_type, array $args = array() ) {
+		$GLOBALS['dmbc_test_state']['registered_post_types'][ $post_type ] = $args;
+	}
+}
+
+if ( ! function_exists( 'add_meta_box' ) ) {
+	function add_meta_box( string $id, string $title, $callback, $screen = null, string $context = 'advanced', string $priority = 'default' ): void {
+		$GLOBALS['dmbc_test_state']['meta_boxes'][ $id ] = compact( 'title', 'callback', 'screen', 'context', 'priority' );
+	}
+}
+
+if ( ! function_exists( 'wp_nonce_field' ) ) {
+	function wp_nonce_field( $action = -1, string $name = '_wpnonce', bool $referer = true, bool $echo = true ): string {
+		$field = '<input type="hidden" name="' . esc_attr( $name ) . '" value="test-nonce-field" />';
+		if ( $echo ) {
+			echo $field;
+		}
+		return $field;
+	}
+}
+
+if ( ! function_exists( 'get_post_meta' ) ) {
+	function get_post_meta( int $post_id, string $key = '', bool $single = false ) {
+		$value = $GLOBALS['dmbc_test_state']['post_meta'][ $post_id ][ $key ] ?? '';
+		return $single ? $value : array( $value );
+	}
+}
+
+if ( ! function_exists( 'update_post_meta' ) ) {
+	function update_post_meta( int $post_id, string $key, $value ): bool {
+		$GLOBALS['dmbc_test_state']['post_meta'][ $post_id ][ $key ] = $value;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'sanitize_text_field' ) ) {
+	function sanitize_text_field( string $value ): string {
+		return trim( strip_tags( $value ) );
+	}
+}
+
+if ( ! function_exists( 'sanitize_textarea_field' ) ) {
+	function sanitize_textarea_field( string $value ): string {
+		return trim( strip_tags( $value ) );
+	}
+}
+
+if ( ! function_exists( 'wp_verify_nonce' ) ) {
+	function wp_verify_nonce( string $nonce, $action = -1 ) {
+		return $GLOBALS['dmbc_test_state']['wp_verify_nonce_result'];
+	}
+}
+
+if ( ! function_exists( 'get_role' ) ) {
+	function get_role( string $role_name ) {
+		if ( ! array_key_exists( $role_name, $GLOBALS['dmbc_test_state']['roles'] ) ) {
+			return null;
+		}
+		return new Dmbc_Test_Wp_Role( $role_name );
+	}
+}
+
+if ( ! function_exists( 'flush_rewrite_rules' ) ) {
+	function flush_rewrite_rules(): void {
+		++$GLOBALS['dmbc_test_state']['flush_rewrite_rules_calls'];
+	}
+}
+
+if ( ! function_exists( 'add_option' ) ) {
+	function add_option( string $name, $value ): bool {
+		if ( array_key_exists( $name, $GLOBALS['dmbc_test_state']['options'] ) ) {
+			return false;
+		}
+		$GLOBALS['dmbc_test_state']['options'][ $name ] = $value;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'delete_option' ) ) {
+	function delete_option( string $name ): bool {
+		unset( $GLOBALS['dmbc_test_state']['options'][ $name ] );
+		return true;
+	}
+}
+
+if ( ! function_exists( 'add_menu_page' ) ) {
+	function add_menu_page( string $page_title, string $menu_title, string $capability, string $menu_slug, $callback = '', string $icon_url = '', $position = null ): string {
+		$GLOBALS['dmbc_test_state']['menu_pages'][ $menu_slug ] = compact( 'page_title', 'menu_title', 'capability', 'callback', 'icon_url', 'position' );
+		return $menu_slug;
+	}
+}
+
+if ( ! function_exists( 'add_submenu_page' ) ) {
+	function add_submenu_page( string $parent_slug, string $page_title, string $menu_title, string $capability, string $menu_slug, $callback = '' ) {
+		$GLOBALS['dmbc_test_state']['submenu_pages'][ $menu_slug ] = compact( 'parent_slug', 'page_title', 'menu_title', 'capability', 'callback' );
+		return $menu_slug;
+	}
 }

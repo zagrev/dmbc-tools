@@ -16,6 +16,7 @@ class DmbcSettings {
 	 * Registers the settings for this plugin.
 	 */
 	public function register_settings(): void {
+		\error_log( 'DMBC Settings: register_settings method called.' );
 
 		register_setting(
 			'settings_group',
@@ -207,7 +208,7 @@ class DmbcSettings {
 			\wp_send_json_error( array( 'message' => \__( 'You do not have permission to browse the server filesystem.', 'dmbc-tools' ) ), 403 );
 		}
 
-		$requested_path = isset( $_POST['path'] ) ? (string) \wp_unslash( $_POST['path'] ) : '';
+		$requested_path = isset( $_POST['path'] ) ? (string) \sanitize_file_name( \wp_unslash( $_POST['path'] ) ) : '';
 		// if not an absolute path, prepend with WP_CONTENT_DIR, else use as is.
 		if ( ! preg_match( '#^([a-zA-Z]:)?/#', $requested_path ) ) {
 			$requested_path = WP_CONTENT_DIR . '/' . $requested_path;

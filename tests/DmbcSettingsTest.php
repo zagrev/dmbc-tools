@@ -15,6 +15,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- sanitize_song_library_directory -------------------------------------------------
 
 	/**
+	 * Backslashes are converted to forward slashes and outer whitespace/trailing slashes are trimmed.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::sanitize_song_library_directory
 	 */
 	public function test_sanitize_song_library_directory_normalizes_separators_and_trims(): void {
@@ -28,6 +30,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- get_song_library_directory_option -----------------------------------------------
 
 	/**
+	 * Returns the default directory name when no option has been saved.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_library_directory_option
 	 */
 	public function test_get_song_library_directory_option_defaults_when_unset(): void {
@@ -37,6 +41,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * The stored option value is run through the same sanitization as direct input.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_library_directory_option
 	 */
 	public function test_get_song_library_directory_option_sanitizes_stored_value(): void {
@@ -49,6 +55,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- get_song_library_directory_path -------------------------------------------------
 
 	/**
+	 * A relative directory option is resolved to an absolute path under WP_CONTENT_DIR.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_library_directory_path
 	 */
 	public function test_get_song_library_directory_path_resolves_relative_option_under_wp_content(): void {
@@ -59,6 +67,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * An already-absolute directory option is returned unchanged.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_library_directory_path
 	 */
 	public function test_get_song_library_directory_path_returns_absolute_option_as_is(): void {
@@ -70,6 +80,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * A blank directory option falls back to the default library folder name.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_library_directory_path
 	 */
 	public function test_get_song_library_directory_path_falls_back_to_default_when_option_empty(): void {
@@ -82,6 +94,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- sanitize_song_library_exclusion_regexes -----------------------------------------
 
 	/**
+	 * A newline-delimited string is split into trimmed regexes with blank lines dropped.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::sanitize_song_library_exclusion_regexes
 	 */
 	public function test_sanitize_song_library_exclusion_regexes_splits_trims_and_drops_empty_lines(): void {
@@ -93,6 +107,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Array input is accepted and entries that are not valid regexes are filtered out.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::sanitize_song_library_exclusion_regexes
 	 */
 	public function test_sanitize_song_library_exclusion_regexes_filters_invalid_regex_and_accepts_arrays(): void {
@@ -106,6 +122,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- get_song_library_exclusion_regexes ----------------------------------------------
 
 	/**
+	 * The stored exclusion regexes option is sanitized before being returned.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_library_exclusion_regexes
 	 */
 	public function test_get_song_library_exclusion_regexes_sanitizes_stored_option(): void {
@@ -118,6 +136,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- sanitize_song_list_recipient_roles ----------------------------------------------
 
 	/**
+	 * Only roles that exist on the site are kept, and role slugs are normalized to lowercase.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::sanitize_song_list_recipient_roles
 	 */
 	public function test_sanitize_song_list_recipient_roles_keeps_only_known_roles(): void {
@@ -137,6 +157,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- get_song_list_recipient_roles ---------------------------------------------------
 
 	/**
+	 * A non-array stored option results in an empty list of recipient roles.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_list_recipient_roles
 	 */
 	public function test_get_song_list_recipient_roles_returns_empty_array_for_non_array_option(): void {
@@ -147,6 +169,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * The stored recipient roles array is sanitized against the known site roles.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_list_recipient_roles
 	 */
 	public function test_get_song_list_recipient_roles_sanitizes_stored_array(): void {
@@ -160,6 +184,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- sanitize_song_list_default_recipient --------------------------------------------
 
 	/**
+	 * A well-formed email address is returned unchanged.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::sanitize_song_list_default_recipient
 	 */
 	public function test_sanitize_song_list_default_recipient_accepts_valid_email(): void {
@@ -169,6 +195,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * An invalid email address is sanitized down to an empty string.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::sanitize_song_list_default_recipient
 	 */
 	public function test_sanitize_song_list_default_recipient_rejects_invalid_email(): void {
@@ -180,6 +208,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- get_song_list_default_recipient --------------------------------------------------
 
 	/**
+	 * The stored default recipient is preferred over the site admin email.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_list_default_recipient
 	 */
 	public function test_get_song_list_default_recipient_uses_stored_value_when_present(): void {
@@ -191,6 +221,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * The site admin email is used when no default recipient has been stored.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_song_list_default_recipient
 	 */
 	public function test_get_song_list_default_recipient_falls_back_to_admin_email(): void {
@@ -203,6 +235,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- get_wp_content_folder_choices ---------------------------------------------------
 
 	/**
+	 * Nested subfolders are listed recursively, keyed by full path with relative-path labels.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_wp_content_folder_choices
 	 */
 	public function test_get_wp_content_folder_choices_lists_nested_folders_relative_to_base(): void {
@@ -229,6 +263,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * A base directory that does not exist yields an empty list of choices.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_wp_content_folder_choices
 	 */
 	public function test_get_wp_content_folder_choices_returns_empty_array_for_missing_directory(): void {
@@ -238,6 +274,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * With no base directory argument, the configured song library directory is used.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::get_wp_content_folder_choices
 	 */
 	public function test_get_wp_content_folder_choices_defaults_to_song_library_directory(): void {
@@ -259,6 +297,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- ajax_browse_directory ------------------------------------------------------------
 
 	/**
+	 * Users lacking the manage_options capability receive a JSON error response.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::ajax_browse_directory
 	 */
 	public function test_ajax_browse_directory_rejects_users_without_permission(): void {
@@ -274,6 +314,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * An invalid nonce causes the request to be aborted via wp_die().
+	 *
 	 * @covers \DmbcTools\DmbcSettings::ajax_browse_directory
 	 */
 	public function test_ajax_browse_directory_rejects_invalid_nonce(): void {
@@ -286,6 +328,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * An empty path lists the top-level contents of WP_CONTENT_DIR.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::ajax_browse_directory
 	 */
 	public function test_ajax_browse_directory_lists_wp_content_by_default(): void {
@@ -303,6 +347,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * A relative path resolves under WP_CONTENT_DIR and reports its subdirectories and parent.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::ajax_browse_directory
 	 */
 	public function test_ajax_browse_directory_lists_subdirectories_of_relative_path(): void {
@@ -321,6 +367,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * A path that does not exist on disk produces a JSON error response.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::ajax_browse_directory
 	 */
 	public function test_ajax_browse_directory_returns_error_for_nonexistent_path(): void {
@@ -338,6 +386,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	// -- register_settings ------------------------------------------------------------------
 
 	/**
+	 * All four options are registered with correct defaults and functioning sanitize callbacks.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::register_settings
 	 */
 	public function test_register_settings_registers_options_with_working_sanitize_callbacks(): void {
@@ -369,6 +419,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * The settings sections and fields are registered under the expected sections.
+	 *
 	 * @covers \DmbcTools\DmbcSettings::register_settings
 	 */
 	public function test_register_settings_registers_expected_sections_and_fields(): void {

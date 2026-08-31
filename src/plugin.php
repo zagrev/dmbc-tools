@@ -2,7 +2,7 @@
 declare(strict_types=1);
 namespace DmbcTools;
 
-require_once __DIR__ . '/admin/render-settings.php';
+require_once __DIR__ . '/admin/settings-edit.php';
 require_once __DIR__ . '/admin/menu.php';
 require_once __DIR__ . '/songlist-view.php';
 require_once __DIR__ . '/songlist.php';
@@ -50,22 +50,32 @@ final class Plugin {
 	private function __construct() {
 		\error_log( 'DMBC Plugin: constructor called . ' );
 
-		\register_activation_hook( __FILE__, array( $this, 'activate' ) );
-		\register_deactivation_hook( __FILE__, array( $this, 'deactivate' ) );
-
-		\add_action( 'init', array( $this, 'register_songlist_type' ) );
-		\add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-		\add_action( 'wp_dashboard_setup', array( $this, 'wp_register_user_capabilities_dashboard_widget' ) );
-
 		$this->settings = new DmbcSettings();
+	}
+
+	/**
+	 * Set up everyting for the Plugin.
+	 *
+	 * @return void
+	 */
+	public function activate(): void {
+		\error_log( 'DMBC Plugin: activate called . ' );
+
+		$this->register_songlist_type();
+		$this->register_options();
+		$this->add_songlist_capabilities();
+
+		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
 		\add_action( 'admin_menu', array( $this->settings, 'register_settings' ) );
 		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
+
+		\flush_rewrite_rules();
 	}
 
 	/**
 	 * Register the custom dashboard widget.
 	 */
-	public function wp_register_user_capabilities_dashboard_widget() {
+	public function register_user_capabilities_dashboard_widget() {
 		\error_log( 'DMBC Tools: registering user capabilities dashboard widget.' );
 		wp_add_dashboard_widget(
 			'wp_user_capabilities_widget',
@@ -132,20 +142,11 @@ final class Plugin {
 	 */
 	public function run(): void {
 		\error_log( 'DMBC Plugin: run method called.' );
+		\add_action( 'init', array( $this, 'activate' ) );
+		\add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
+
 		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
-	}
-
-	/**
-	 * Activate the plugin. register the custom post type and add the capabilities neededd to manage it.
-	 *
-	 * @return void
-	 */
-	public function activate(): void {
-		\error_log( 'DMBC Plugin: activate method called . ' );
-		\add_action( 'init', array( $this, 'register_songlist_type' ) );
-		\add_action( 'init', array( $this, 'add_songlist_capabilities' ) );
-		\add_action( 'init', array( $this, 'register_options' ) );
 	}
 
 	/**
@@ -163,7 +164,7 @@ final class Plugin {
 	 *
 	 * @return void
 	 */
-	private function add_songlist_capabilities() {
+	public function add_songlist_capabilities() {
 		\error_log( 'DMBC Plugin: add_songlist_capabilities method called.' );
 		foreach ( $this->get_roles_with_edit_cap() as $role_name ) {
 			$role = \get_role( $role_name );
@@ -351,30 +352,22 @@ final class Plugin {
 	 *
 	 * @return void
 	 */
-	public function add_admin_menu() {
+	public function add_admin_menu(): void {
 		\error_log( 'DMBC Plugin: add_admin_menu method called.' );
+
 		add_menu_page(
-			__( 'Rehearsal Song Lists', 'dmbc-tools' ),
+			__( 'All Rehearsal Song Lists', 'dmbc-tools' ),
 			__( 'Rehearsal Songs', 'dmbc-tools' ),
 			self::CAP_VIEW_SONGLISTS,
-			'dmbc-rehearsal-songlists',
+			'dmbc-songlists-menu',
 			array( SongListView::class, 'dmbc_render_songlist_table_page' ),
 			'dashicons-playlist-audio',
 			25
 		);
 
 		add_submenu_page(
-			'dmbc-rehearsal-songlists',
-			__( 'All Rehearsal Songs', 'dmbc-tools' ),
-			__( 'All', 'dmbc-tools' ),
-			self::CAP_VIEW_SONGLISTS,
-			'dmbc-songlist-view',
-			array( SongListView::class, 'dmbc_render_songlist_table_page' ),
-		);
-
-		add_submenu_page(
-			'dmbc-rehearsal-songlists',
-			__( 'Add Song list', 'dmbc-tools' ),
+			'dmbc-songlists-menu',
+			__( 'Add Rehearsal Song list', 'dmbc-tools' ),
 			__( 'Add Song list', 'dmbc-tools' ),
 			self::CAP_EDIT_SONGLIST,
 			'dmbc-songlist-edit',
@@ -392,5 +385,3 @@ final class Plugin {
 		);
 	}
 }
-
-
