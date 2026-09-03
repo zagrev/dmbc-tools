@@ -2,8 +2,6 @@ name: Build and Test
 
 on:
   push:
-    branches-ignore:
-      - main
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -14,18 +12,20 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php: ["8.0", "8.1", "8.2", "8.3", "8.4"]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up PHP
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up PHP for Composer checks
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
+          php-version: "8.3"
           coverage: none
           tools: composer
 
@@ -41,5 +41,15 @@ jobs:
       - name: Check PHP syntax
         run: composer lint
 
-      - name: Run PHPUnit
-        run: composer test
+      - name: Install wp-env
+        run: npm install --global @wordpress/env
+
+      - name: Start WordPress test environment
+        run: wp-env start --update
+
+      - name: Run PHPUnit in WordPress test container
+        run: wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools vendor/bin/phpunit --colors=never
+
+      - name: Stop WordPress test environment
+        if: always()
+        run: wp-env stop
