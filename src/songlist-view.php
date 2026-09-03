@@ -570,7 +570,7 @@ class SongListView {
 			return;
 		}
 
-		if ( ! \current_user_can( self::CAP_EDIT_SONGLIST ) && ! \current_user_can( 'manage_options' ) ) {
+		if ( ! \current_user_can( Plugin::CAP_EDIT_SONGLIST ) && ! \current_user_can( 'manage_options' ) ) {
 			die( 'You do not have permission to delete this song list.' );
 		}
 
