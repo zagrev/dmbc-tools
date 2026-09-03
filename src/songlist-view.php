@@ -70,6 +70,9 @@ class SongListView {
 	 */
 	public function dmbc_render_songlist_edit_page( $song_list_id = 0 ): void {
 		\error_log( 'DMBC SongListView: dmbc_render_songlist_edit_page method called.' );
+		if ( 0 === (int) $song_list_id && isset( $_GET['song_list_id'] ) ) {
+			$song_list_id = \absint( \wp_unslash( $_GET['song_list_id'] ) );
+		}
 		echo $this->render_song_list_edit_page( $song_list_id );
 	}
 

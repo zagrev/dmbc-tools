@@ -106,6 +106,22 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$this->assertStringContainsString( 'Bring folders.', $html );
 	}
 
+	public function test_admin_edit_page_loads_the_song_list_id_from_the_request(): void {
+		$post    = $this->make_post();
+		$library = $this->create_temp_directory();
+		$this->make_directory_tree( $library, array( 'Song A' => array() ) );
+		$this->set_option( 'song_library_directory', $library );
+		$this->set_post_meta( $post->ID, Plugin::SONGS_META_KEY, array( 'Song A' ) );
+		$_GET = array( 'song_list_id' => (string) $post->ID );
+
+		ob_start();
+		$this->make_view()->dmbc_render_songlist_edit_page();
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'value="September rehearsal"', $html );
+		$this->assertStringContainsString( 'value="21"', $html );
+	}
+
 	public function test_table_page_renderers_and_admin_route_render_member_table(): void {
 		$this->make_post();
 		$view = $this->make_view();
