@@ -15,6 +15,11 @@ $GLOBALS['dmbc_test_state'] = array(
 	'settings_fields'         => array(),
 	'actions'                 => array(),
 	'post_meta'               => array(),
+	'posts'                   => array(),
+	'logged_in'               => true,
+	'last_get_posts_args'     => array(),
+	'mail_calls'              => array(),
+	'next_post_id'            => 1,
 	'roles'                   => array(),
 	'registered_post_types'   => array(),
 	'existing_post_types'     => array(),
@@ -41,6 +46,11 @@ if ( ! class_exists( 'WP_Post' ) ) {
 	/** Minimal stand-in for WP_Post, enough to satisfy the type hints used by the plugin. */
 	class WP_Post {
 		public int $ID;
+		public string $post_title = '';
+		public string $post_type = '';
+		public string $post_content = '';
+		public string $post_excerpt = '';
+		public string $dmbc_song_list_rehearsal_date = '';
 
 		public function __construct( int $id ) {
 			$this->ID = $id;
@@ -157,6 +167,9 @@ if ( ! function_exists( 'esc_html' ) ) {
 
 if ( ! function_exists( 'esc_textarea' ) ) {
 	function esc_textarea( $text ): string {
+		if (is_array($text)){
+			$text = join( "\n", $text );
+		}
 		return htmlspecialchars( (string) $text, ENT_QUOTES );
 	}
 }
@@ -186,6 +199,48 @@ if ( ! function_exists( 'wp_create_nonce' ) ) {
 if ( ! function_exists( 'admin_url' ) ) {
 	function admin_url( string $path = '' ): string {
 		return 'http://example.test/wp-admin/' . ltrim( $path, '/' );
+	}
+}
+
+if ( ! function_exists( 'is_admin' ) ) {
+	function is_admin(): bool {
+		return true;
+	}
+}
+
+if ( ! function_exists( 'get_permalink' ) ) {
+	function get_permalink(): string {
+		return 'http://example.test/song-list';
+	}
+}
+
+if ( ! function_exists( 'add_query_arg' ) ) {
+	function add_query_arg( array $args, string $url ): string {
+		return $url . '&' . http_build_query( $args );
+	}
+}
+
+if ( ! function_exists( 'content_url' ) ) {
+	function content_url( string $path = '' ): string {
+		return 'http://example.test/wp-content/' . ltrim( $path, '/' );
+	}
+}
+
+if ( ! function_exists( 'get_song_library_directory_path' ) ) {
+	function get_song_library_directory_path(): string {
+		return WP_CONTENT_DIR . '/dmbc-song-library';
+	}
+}
+
+if ( ! function_exists( 'esc_url' ) ) {
+	function esc_url( string $url ): string {
+		return $url;
+	}
+}
+
+if ( ! function_exists( 'absint' ) ) {
+	function absint( $value ): int {
+		return abs( (int) $value );
 	}
 }
 
@@ -335,6 +390,65 @@ if ( ! function_exists( 'get_post_meta' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_posts' ) ) {
+	function get_posts( array $args = array() ): array {
+		$GLOBALS['dmbc_test_state']['last_get_posts_args'] = $args;
+		return array_values( $GLOBALS['dmbc_test_state']['posts'] );
+	}
+}
+
+if ( ! function_exists( 'get_post' ) ) {
+	function get_post( int $post_id ) {
+		return $GLOBALS['dmbc_test_state']['posts'][ $post_id ] ?? null;
+	}
+}
+
+if ( ! function_exists( 'wp_insert_post' ) ) {
+	function wp_insert_post( array $post_data, bool $wp_error = false ): int {
+		$post_id = $GLOBALS['dmbc_test_state']['next_post_id']++;
+		$post = new WP_Post( $post_id );
+		$post->post_title = $post_data['post_title'];
+		$post->post_type = $post_data['post_type'];
+		$post->post_content = $post_data['post_content'];
+		$GLOBALS['dmbc_test_state']['posts'][ $post_id ] = $post;
+		return $post_id;
+	}
+}
+
+if ( ! function_exists( 'is_wp_error' ) ) {
+	function is_wp_error( $value ): bool {
+		return false;
+	}
+}
+
+if ( ! function_exists( 'clean_post_cache' ) ) {
+	function clean_post_cache( int $post_id ): void {}
+}
+
+if ( ! function_exists( 'get_the_title' ) ) {
+	function get_the_title( WP_Post $post ): string {
+		return $post->post_title;
+	}
+}
+
+if ( ! function_exists( 'get_the_excerpt' ) ) {
+	function get_the_excerpt( WP_Post $post ): string {
+		return $post->post_excerpt;
+	}
+}
+
+if ( ! function_exists( 'is_user_logged_in' ) ) {
+	function is_user_logged_in(): bool {
+		return $GLOBALS['dmbc_test_state']['logged_in'];
+	}
+}
+
+if ( ! function_exists( 'current_time' ) ) {
+	function current_time( string $format ): string {
+		return '2026-09-02';
+	}
+}
+
 if ( ! function_exists( 'update_post_meta' ) ) {
 	function update_post_meta( int $post_id, string $key, $value ): bool {
 		$GLOBALS['dmbc_test_state']['post_meta'][ $post_id ][ $key ] = $value;
@@ -351,6 +465,25 @@ if ( ! function_exists( 'sanitize_text_field' ) ) {
 if ( ! function_exists( 'sanitize_textarea_field' ) ) {
 	function sanitize_textarea_field( string $value ): string {
 		return trim( strip_tags( $value ) );
+	}
+}
+
+if ( ! function_exists( 'wp_kses_post' ) ) {
+	function wp_kses_post( string $value ): string {
+		return $value;
+	}
+}
+
+if ( ! function_exists( 'get_users' ) ) {
+	function get_users( array $args = array() ): array {
+		return array();
+	}
+}
+
+if ( ! function_exists( 'wp_mail' ) ) {
+	function wp_mail( array $recipients, string $subject, string $message ): bool {
+		$GLOBALS['dmbc_test_state']['mail_calls'][] = compact( 'recipients', 'subject', 'message' );
+		return true;
 	}
 }
 
@@ -403,5 +536,54 @@ if ( ! function_exists( 'add_submenu_page' ) ) {
 	function add_submenu_page( string $parent_slug, string $page_title, string $menu_title, string $capability, string $menu_slug, $callback = '' ) {
 		$GLOBALS['dmbc_test_state']['submenu_pages'][ $menu_slug ] = compact( 'parent_slug', 'page_title', 'menu_title', 'capability', 'callback' );
 		return $menu_slug;
+	}
+}
+
+if ( ! class_exists( 'WP_List_Table' ) ) {
+	class WP_List_Table {
+		public $items = [];
+		public $_columns = [];
+
+		public function __construct( array $args = array() ) {}
+
+		public function get_columns() {
+			return $this->_columns;
+		}
+		public function row_actions( $item ) {
+			return 'action=';
+		}
+		public function display() {
+			foreach ( $this->items as $item ) {
+				foreach ( $this->get_columns() as $column_name => $attributes ) {
+					if ( \method_exists( $this, 'column_' . $column_name ) ) {
+						echo \call_user_func( array( $this, 'column_' . $column_name ), $item );
+					}
+					else {
+						echo $this->column_default( $item, $column_name );
+					}
+				}
+			}
+		}
+		public function column_default( $item, $column_name ) {
+			return isset( $item->$column_name ) ? $item->$column_name : '';
+		}
+		public function prepare_items() {
+			$this->items = \get_posts();
+		}
+		public function get_items() {
+			return $this->items;
+		}
+		// 		public function set_items( $items ) {
+// 			$this->items = $items;
+// 		}
+		public function get_pagenum() {
+			return 1;
+		}
+		// 		public function get_pagination_args() {
+// 			return [];
+// 		}
+		public function set_pagination_args( $args ) {
+		}
+		// 	}
 	}
 }

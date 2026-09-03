@@ -1,7 +1,7 @@
 <?php
 
 use DmbcTools\Plugin;
-
+use DmbcTools\SongListTable;
 /**
  * Tests for the DMBC Tools plugin metadata and Plugin class behavior.
  */
@@ -123,6 +123,7 @@ final class PluginTest extends DmbcUnitTestBase {
 	public function test_add_admin_menu_registers_menu_and_submenu_pages(): void {
 		$plugin = Plugin::instance();
 
+		$plugin->create_song_list_view();
 		$plugin->add_admin_menu();
 
 		$menu_pages = $GLOBALS['dmbc_test_state']['menu_pages'];

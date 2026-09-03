@@ -2,30 +2,29 @@
 declare(strict_types=1);
 namespace DmbcTools;
 
-require_once __DIR__ . '/admin/settings-edit.php';
-require_once __DIR__ . '/admin/menu.php';
-require_once __DIR__ . '/songlist-view.php';
-require_once __DIR__ . '/songlist.php';
-
-use DmbcTools\SongListView;
-use DmbcTools\DmbcSettings;
-
 if ( ! \defined( 'ABSPATH' ) ) {
 	print 'ABSPATH is not defined . This file( ' . __FILE__ . ' ) should not be accessed directly . ' . PHP_EOL;
 	exit;
 }
 
+require_once __DIR__ . '/admin/settings-edit.php';
+require_once __DIR__ . '/admin/menu.php';
+require_once __DIR__ . '/songlist.php';
+
+use DmbcTools\SongListView;
+use DmbcTools\DmbcSettings;
+
 /**
  * The DMBC Plugin
  */
 final class Plugin {
-	private const string VERSION                   = '0.1.0';
-	private const string OPTION_VERSION            = 'dmbc_tools_version';
-	private const string SONGLIST_POST_TYPE        = 'dmbc-songlist';
-	private const string SONGLIST_META_NONCE       = 'dmbc_songlist_meta_nonce';
-	private const string PERFORMANCE_DATE_META_KEY = '_dmbc_performance_date';
-	private const string SONGS_META_KEY            = '_dmbc_songs';
-	private const string NOTES_META_KEY            = '_dmbc_notes';
+	public const string VERSION                   = '0.1.0';
+	public const string OPTION_VERSION            = 'dmbc_tools_version';
+	public const string SONGLIST_POST_TYPE        = 'dmbc-songlist';
+	public const string SONGLIST_META_NONCE       = 'dmbc_songlist_meta_nonce';
+	public const string PERFORMANCE_DATE_META_KEY = '_dmbc_performance_date';
+	public const string SONGS_META_KEY            = '_dmbc_songs';
+	public const string NOTES_META_KEY            = '_dmbc_notes';
 
 	public const string CAP_EDIT_SONGLIST  = 'dmbc_edit_songlist';
 	public const string CAP_VIEW_SONGLISTS = 'dmbc_view_songlist';
@@ -36,6 +35,13 @@ final class Plugin {
 	 * @var DmbcSettings
 	 */
 	private DmbcSettings $settings;
+
+	/**
+	 * The song list view handler.
+	 *
+	 * @var SongListView
+	 */
+	private SongListView $song_list_view;
 
 	/**
 	 * The singleton instance of this plugin
@@ -54,29 +60,71 @@ final class Plugin {
 	}
 
 	/**
-	 * Set up everyting for the Plugin.
+	 * Get the singleton instance of this plugin.
+	 *
+	 * @return self
+	 */
+	public static function instance(): self {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
+	}
+
+	/**
+	 * Register the hooks that start the plugin.
 	 *
 	 * @return void
 	 */
-	public function activate(): void {
-		\error_log( 'DMBC Plugin: activate called . ' );
+	public function run(): void {
+		\error_log( 'DMBC Plugin: "run" called. ------------------------------------' );
+		// \add_action( 'all', fn( $tag ) => \error_log( $tag . ': ' . \print( \func_get_args(), true ) ) );
+
+		\add_action( 'init', array( $this, 'initialize' ) );
+		\add_action( 'admin_init', array( $this, 'handle_admin_init' ) );
+		\add_action( 'admin_menu', array( $this, 'register_admin' ) );
+		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
+		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
+
+		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
+		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
+
+		\flush_rewrite_rules();
+	}
+
+	// init -------------------------------------------------------------------------------
+
+	/**
+	 * Set up everyting for the Plugin. This method is called at 'init' time.
+	 *
+	 * @return void
+	 */
+	public function initialize(): void {
+		\error_log( 'DMBC Plugin: "initialize" called.' );
 
 		$this->register_songlist_type();
 		$this->register_options();
 		$this->add_songlist_capabilities();
 
-		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
-		\add_action( 'admin_menu', array( $this->settings, 'register_settings' ) );
-		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
-
 		\flush_rewrite_rules();
+	}
+
+	/**
+	 * Handle submitted song-list forms before the admin menu is rendered.
+	 *
+	 * @return void
+	 */
+	public function handle_admin_init(): void {
+		$this->create_song_list_view();
+		$this->song_list_view->handle_song_list_form();
 	}
 
 	/**
 	 * Register the custom dashboard widget.
 	 */
 	public function register_user_capabilities_dashboard_widget() {
-		\error_log( 'DMBC Tools: registering user capabilities dashboard widget.' );
+		\error_log( 'DMBC Tools: registering user capabilities dashboard widget . ' );
 		wp_add_dashboard_widget(
 			'wp_user_capabilities_widget',
 			'Your Current Capabilities',
@@ -86,6 +134,8 @@ final class Plugin {
 
 	/**
 	 * Display the current user's capabilities inside the widget.
+	 *
+	 * @return void
 	 */
 	public function render_user_capabilities_widget() {
 		\error_log( 'DMBC Tools: displaying user capabilities widget.' );
@@ -120,33 +170,6 @@ final class Plugin {
 		} else {
 			echo '<p>No capabilities found.</p>';
 		}
-	}
-
-	/**
-	 * Get the singleton instance of this plugin
-	 *
-	 * @return Plugin|null
-	 */
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-
-		return self::$instance;
-	}
-
-	/**
-	 * The main entrypoint for the plugin. This replaces(?) activate.
-	 *
-	 * @return void
-	 */
-	public function run(): void {
-		\error_log( 'DMBC Plugin: run method called.' );
-		\add_action( 'init', array( $this, 'activate' ) );
-		\add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-
-		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
-		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
 	}
 
 	/**
@@ -199,6 +222,7 @@ final class Plugin {
 		return array( 'um_member' );
 	}
 
+	// Plugin deactivation and uninstall --------------------------------------------------
 
 	/**
 	 * Deactivate the plugin. Remove all the added hooks and filters.
@@ -232,8 +256,10 @@ final class Plugin {
 		);
 	}
 
+	// add_meta_boxes and save_post_dmbc-songlist ----------------------------------------
+
 	/**
-	 * Register the new .SONGLIST_POST_TYPE type
+	 * Register the custom post type for song lists.
 	 *
 	 * @return void
 	 */
@@ -289,7 +315,7 @@ final class Plugin {
 		\wp_nonce_field( 'dmbc_save_songlist_meta', self::SONGLIST_META_NONCE );
 
 		$performance_date = \get_post_meta( $post->ID, self::PERFORMANCE_DATE_META_KEY, true );
-		$songs            = \get_post_meta( $post->ID, self::SONGS_META_KEY, true );
+		$songs            = \get_post_meta( $post->ID, self::SONGS_META_KEY, false );
 		$notes            = \get_post_meta( $post->ID, self::NOTES_META_KEY, true );
 		?>
 		<p>
@@ -347,6 +373,40 @@ final class Plugin {
 		}
 	}
 
+	// admin_menu -------------------------------------------------------------------------
+
+	/**
+	 * Register the admin components for the plugin.
+	 *
+	 * @return void
+	 */
+	public function register_admin(): void {
+		\error_log( 'DMBC Plugin: register_admin method called.' );
+		$this->create_song_list_view();
+		$this->register_options();
+		$this->add_admin_menu();
+		$this->settings->register_settings();
+	}
+
+	/**
+	 * Create the song list view table.
+	 *
+	 * @return void
+	 */
+	public function create_song_list_view(): void {
+		\error_log( 'DMBC Plugin: create_song_list_view method called.' );
+
+		if ( ! class_exists( '\WP_List_Table' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+		}
+		require_once __DIR__ . '/songlist-table.php';
+		require_once __DIR__ . '/songlist-view.php';
+
+		if ( ! isset( $this->song_list_view ) ) {
+			$this->song_list_view = new SongListView( $this->settings );
+		}
+	}
+
 	/**
 	 * Registers the plugin's admin menu pages .
 	 *
@@ -360,7 +420,7 @@ final class Plugin {
 			__( 'Rehearsal Songs', 'dmbc-tools' ),
 			self::CAP_VIEW_SONGLISTS,
 			'dmbc-songlists-menu',
-			array( SongListView::class, 'dmbc_render_songlist_table_page' ),
+			array( $this->song_list_view, 'dmbc_render_songlist_table_page' ),
 			'dashicons-playlist-audio',
 			25
 		);
@@ -371,7 +431,7 @@ final class Plugin {
 			__( 'Add Song list', 'dmbc-tools' ),
 			self::CAP_EDIT_SONGLIST,
 			'dmbc-songlist-edit',
-			array( SongListView::class, 'dmbc_render_songlist_edit_page' )
+			array( $this->song_list_view, 'dmbc_render_songlist_edit_page' )
 		);
 
 		// add options page separately.

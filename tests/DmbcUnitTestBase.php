@@ -17,7 +17,9 @@ abstract class DmbcUnitTestBase extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$_POST = array();
+		$_POST    = array();
+		$_GET     = array();
+		$_REQUEST = array();
 
 		$GLOBALS['dmbc_test_state'] = array(
 			'options'                   => array(),
@@ -33,6 +35,11 @@ abstract class DmbcUnitTestBase extends TestCase {
 			'settings_fields'           => array(),
 			'actions'                   => array(),
 			'post_meta'                 => array(),
+			'posts'                     => array(),
+			'logged_in'                 => true,
+			'last_get_posts_args'       => array(),
+			'mail_calls'                => array(),
+			'next_post_id'              => 1,
 			'roles'                     => array(),
 			'registered_post_types'     => array(),
 			'existing_post_types'       => array(),
