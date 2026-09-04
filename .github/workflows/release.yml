@@ -8,6 +8,9 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -15,7 +18,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2"
+          php-version: "8.4"
           tools: composer
 
       - name: Install dependencies
@@ -24,10 +27,31 @@ jobs:
       - name: Create plugin artifact
         env:
           VERSION: ${{ github.ref_name }}
-        run: zip -r "dmbc-tools-${VERSION#v}.zip" . -x '.git/*' '.github/*' 'tests/*' 'vendor/*/.git/*'
+        run: |
+          PACKAGE_DIR="$RUNNER_TEMP/dmbc-tools-${VERSION#v}"
+          mkdir "$PACKAGE_DIR"
+          rsync -a ./ "$PACKAGE_DIR/" \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.phpunit.cache/' \
+            --exclude='tests/' \
+            --exclude='.wp-env.json' \
+            --exclude='composer.json' \
+            --exclude='composer.lock' \
+            --exclude='phpcs.xml' \
+            --exclude='phpunit.xml'
+          cd "$RUNNER_TEMP"
+          zip -r "$GITHUB_WORKSPACE/dmbc-tools-${VERSION#v}.zip" "dmbc-tools-${VERSION#v}"
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
           name: dmbc-tools-${{ github.ref_name }}
           path: dmbc-tools-*.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: DMBC Tools ${{ github.ref_name }}
+          generate_release_notes: true
+          files: dmbc-tools-*.zip
