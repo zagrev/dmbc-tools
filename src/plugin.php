@@ -32,6 +32,8 @@ final class Plugin {
 	public const string CAP_EDIT_MEMBER_UPDATES = 'dmbc_edit_member_updates';
 	public const string CAP_VIEW_MEMBER_UPDATES = 'dmbc_view_member_updates';
 	public const string CAP_PUBLISH_MEMBER_UPDATES = 'dmbc_publish_member_updates';
+	public const string MEMBER_UPDATE_CRON_HOOK = 'dmbc_send_member_update_digest';
+	public const string MEMBER_UPDATE_SENT_META_KEY = '_dmbc_member_update_sent_at';
 
 	/**
 	 *  The settings used by the plugin.
@@ -97,6 +99,7 @@ final class Plugin {
 		\add_action( 'admin_menu', array( $this, 'register_admin' ) );
 		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
+		\add_action( self::MEMBER_UPDATE_CRON_HOOK, array( $this, 'send_member_update_digest' ) );
 
 		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
 		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
@@ -118,6 +121,7 @@ final class Plugin {
 		$this->register_member_update_type();
 		$this->register_options();
 		$this->add_songlist_capabilities();
+		$this->schedule_member_update_digest();
 
 		\flush_rewrite_rules();
 	}
@@ -270,7 +274,77 @@ final class Plugin {
 	 */
 	public function deactivate(): void {
 		\error_log( 'DMBC Plugin: deactivate method called.' );
+		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
 		\flush_rewrite_rules();
+	}
+
+	/**
+	 * Schedule the recurring member update digest.
+	 *
+	 * @return void
+	 */
+	public function schedule_member_update_digest(): void {
+		if ( ! \wp_next_scheduled( self::MEMBER_UPDATE_CRON_HOOK ) ) {
+			\wp_schedule_event( \time(), 'daily', self::MEMBER_UPDATE_CRON_HOOK );
+		}
+	}
+
+	/**
+	 * Email all member updates that have changed since their last delivery.
+	 *
+	 * @return void
+	 */
+	public function send_member_update_digest(): void {
+		$updates = \get_posts(
+			array(
+				'post_type'      => self::MEMBER_UPDATE_POST_TYPE,
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'orderby'        => 'modified',
+				'order'          => 'ASC',
+			)
+		);
+		$updates = array_values(
+			array_filter(
+				$updates,
+				function ( \WP_Post $update ): bool {
+					$sent_at = \get_post_meta( $update->ID, self::MEMBER_UPDATE_SENT_META_KEY, true );
+					return empty( $sent_at ) || $update->post_modified_gmt > $sent_at;
+				}
+			)
+		);
+		if ( empty( $updates ) ) {
+			return;
+		}
+
+		$recipients = array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						fn( $user ) => isset( $user->user_email ) ? $user->user_email : '',
+						(array) \get_users( array( 'role' => 'um_member' ) )
+					),
+					fn( string $email ): bool => \is_email( $email )
+				)
+			)
+		);
+		if ( empty( $recipients ) ) {
+			return;
+		}
+
+		$message = "Member updates:\n\n";
+		foreach ( $updates as $update ) {
+			$message .= $update->post_title . "\n" . \wp_strip_all_tags( $update->post_content ) . "\n\n";
+		}
+
+		if ( ! \wp_mail( $recipients, __( 'Member Updates', 'dmbc-tools' ), $message ) ) {
+			return;
+		}
+
+		$sent_at = \gmdate( 'Y-m-d H:i:s' );
+		foreach ( $updates as $update ) {
+			\update_post_meta( $update->ID, self::MEMBER_UPDATE_SENT_META_KEY, $sent_at );
+		}
 	}
 
 	/**

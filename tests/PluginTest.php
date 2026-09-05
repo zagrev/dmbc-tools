@@ -136,6 +136,50 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * The member update digest is scheduled only once and cleared on deactivation.
+	 *
+	 * @covers \DmbcTools\Plugin::schedule_member_update_digest
+	 * @covers \DmbcTools\Plugin::deactivate
+	 */
+	public function test_member_update_digest_is_scheduled_once_and_cleared_on_deactivation(): void {
+		$plugin = Plugin::instance();
+		$plugin->schedule_member_update_digest();
+		$plugin->schedule_member_update_digest();
+
+		$this->assertSame( 'daily', $GLOBALS['dmbc_test_state']['cron_events'][ Plugin::MEMBER_UPDATE_CRON_HOOK ]['recurrence'] );
+		$plugin->deactivate();
+		$this->assertArrayNotHasKey( Plugin::MEMBER_UPDATE_CRON_HOOK, $GLOBALS['dmbc_test_state']['cron_events'] );
+	}
+
+	/**
+	 * Updated published member updates are sent once to all member recipients.
+	 *
+	 * @covers \DmbcTools\Plugin::send_member_update_digest
+	 */
+	public function test_member_update_digest_emails_updates_and_records_delivery(): void {
+		$update                    = new \WP_Post( 81 );
+		$update->post_type         = Plugin::MEMBER_UPDATE_POST_TYPE;
+		$update->post_title        = 'Schedule change';
+		$update->post_content      = '<p>Practice starts at 7.</p>';
+		$update->post_modified_gmt = '2026-09-04 12:00:00';
+		$GLOBALS['dmbc_test_state']['posts'][81] = $update;
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array( 'user_email' => 'member@example.com' ),
+			(object) array( 'user_email' => 'member@example.com' ),
+		);
+
+		Plugin::instance()->send_member_update_digest();
+
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertSame( array( 'member@example.com' ), $GLOBALS['dmbc_test_state']['mail_calls'][0]['recipients'] );
+		$this->assertStringContainsString( 'Schedule change', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertNotEmpty( $this->get_stored_post_meta( 81, Plugin::MEMBER_UPDATE_SENT_META_KEY ) );
+
+		Plugin::instance()->send_member_update_digest();
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
+	}
+
+	/**
 	 * Method admin_success() registers an admin_notices callback that surfaces the given message.
 	 *
 	 * @covers \DmbcTools\Plugin::admin_success
