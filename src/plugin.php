@@ -7,6 +7,7 @@ if ( ! \defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+
 require_once __DIR__ . '/admin/settings-edit.php';
 require_once __DIR__ . '/admin/menu.php';
 require_once __DIR__ . '/songlist.php';
@@ -274,10 +275,7 @@ final class Plugin {
 	 */
 	public function deactivate(): void {
 		\error_log( 'DMBC Plugin: deactivate method called.' );
-		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
-		\unregister_post_type( self::MEMBER_UPDATE_POST_TYPE );
-		\unregister_post_type(Plugin::SONGLIST_POST_TYPE);
-		\delete_option( Plugin::OPTION_VERSION );
+		\wp_clear_scheduled_hook( Plugin::MEMBER_UPDATE_CRON_HOOK );
 
 		\flush_rewrite_rules();
 	}
@@ -360,7 +358,48 @@ final class Plugin {
 	 */
 	public static function uninstall(): void {
 		\error_log( 'DMBC Plugin: uninstall method called.' );
-		\delete_option( self::OPTION_VERSION );
+
+		// If uninstall.php is not called by WordPress, die immediately.
+		if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
+			die;
+		}
+		if ( ! (bool) \get_option( 'remove_data_on_uninstall', false ) ) {
+			return;
+		}
+
+		foreach ( array( Plugin::SONGLIST_POST_TYPE, Plugin::MEMBER_UPDATE_POST_TYPE ) as $post_type ) {
+			$cpt_posts = get_posts( array(
+				'post_type'   => $post_type,
+				'post_status' => 'any',
+				'numberposts' => -1,
+				'fields'      => 'ids', // Only fetch IDs to save memory
+			) );
+
+			if ( ! empty( $cpt_posts ) ) {
+				foreach ( $cpt_posts as $post_id ) {
+					// True forces deletion and bypasses the Trash
+					wp_delete_post( $post_id, true ); 
+				}
+			}
+		}
+		\add_action( 'init', function() {
+			\unregister_post_type( Plugin::MEMBER_UPDATE_POST_TYPE );
+			\unregister_post_type( Plugin::SONGLIST_POST_TYPE );
+		}, 11 );
+
+		foreach (
+			array(
+				self::OPTION_VERSION,
+				'song_library_directory',
+				'song_library_exclusion_regexes',
+				'song_list_recipient_roles',
+				'song_list_default_recipient',
+				'member_update_recipient',
+				'remove_data_on_uninstall',
+			) as $option_name
+		) {
+			\delete_option( $option_name );
+		}
 	}
 	/**
 	 * Show a successful admin result message

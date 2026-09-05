@@ -106,20 +106,37 @@ final class PluginTest extends DmbcUnitTestBase {
 
 		$plugin->register_options();
 
-		$this->assertSame( Plugin::VERSION, get_option( 'dmbc_tools_version' ) );
+		$this->assertSame( Plugin::VERSION, get_option( Plugin::OPTION_VERSION ) );
 	}
 
 	/**
-	 * Method uninstall() removes the plugin's version option.
+	 * Method uninstall() preserves plugin data unless cleanup is explicitly enabled.
 	 *
 	 * @covers \DmbcTools\Plugin::uninstall
 	 */
-	public function test_uninstall_removes_version_option(): void {
-		$this->set_option( 'dmbc_tools_version', '0.1.0' );
+	public function test_uninstall_preserves_version_option_when_cleanup_is_disabled(): void {
+		$this->set_option( Plugin::OPTION_VERSION, '0.1.0' );
 
 		Plugin::uninstall();
 
-		$this->assertFalse( get_option( 'dmbc_tools_version', false ) );
+		$this->assertSame( '0.1.0', get_option( Plugin::OPTION_VERSION, false ) );
+	}
+
+	/**
+	 * Method uninstall() removes plugin options when cleanup is explicitly enabled.
+	 *
+	 * @covers \DmbcTools\Plugin::uninstall
+	 */
+	public function test_uninstall_removes_plugin_options_when_cleanup_is_enabled(): void {
+		$this->set_option( Plugin::OPTION_VERSION, '0.1.0' );
+		$this->set_option( 'member_update_recipient', 'updates@example.com' );
+		$this->set_option( 'remove_data_on_uninstall', true );
+
+		Plugin::uninstall();
+
+		$this->assertFalse( get_option( Plugin::OPTION_VERSION, false ) );
+		$this->assertFalse( get_option( 'member_update_recipient', false ) );
+		$this->assertFalse( get_option( 'remove_data_on_uninstall', false ) );
 	}
 
 	/**
