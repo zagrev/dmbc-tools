@@ -11,7 +11,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  should-run:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+
+    steps:
+      - name: Check for an open pull request
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName !== 'push') {
+              core.setOutput('run', 'true');
+              return;
+            }
+
+            const { data: pullRequests } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:${context.ref.replace('refs/heads/', '')}`,
+            });
+            core.setOutput('run', pullRequests.length === 0 ? 'true' : 'false');
+
   test:
+    needs: should-run
+    if: needs.should-run.outputs.run == 'true'
     runs-on: ubuntu-latest
 
     steps:

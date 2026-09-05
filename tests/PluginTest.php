@@ -106,7 +106,7 @@ final class PluginTest extends DmbcUnitTestBase {
 
 		$plugin->register_options();
 
-		$this->assertSame( '0.1.0', get_option( 'dmbc_tools_version' ) );
+		$this->assertSame( Plugin::VERSION, get_option( 'dmbc_tools_version' ) );
 	}
 
 	/**
