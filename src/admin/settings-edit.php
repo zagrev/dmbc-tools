@@ -63,6 +63,15 @@ class DmbcSettings {
 				'default'           => '',
 			)
 		);
+		register_setting(
+			'settings_group',
+			'remove_data_on_uninstall',
+			array(
+				'type'              => 'boolean',
+				'sanitize_callback' => array( $this, 'sanitize_remove_data_on_uninstall' ),
+				'default'           => false,
+			)
+		);
 
 		add_settings_section(
 			'general_section',
@@ -81,6 +90,13 @@ class DmbcSettings {
 			'song_library_exclusion_regexes',
 			__( 'Song library exclusion regexes', 'dmbc-tools' ),
 			array( $this, 'render_song_library_exclusion_regexes_field' ),
+			'settings',
+			'general_section'
+		);
+		add_settings_field(
+			'remove_data_on_uninstall',
+			__( 'Remove data on uninstall', 'dmbc-tools' ),
+			array( $this, 'render_remove_data_on_uninstall_field' ),
 			'settings',
 			'general_section'
 		);
@@ -284,6 +300,20 @@ class DmbcSettings {
 		<p class="description">
 			<?php esc_html_e( 'Enter one regular expression per line. Do not include the delimiters (leading and trailing slashes). Matching song folders are excluded from the song selector.', 'dmbc-tools' ); ?>
 		</p>
+		<?php
+	}
+
+	/**
+	 * Render the uninstall data removal setting.
+	 *
+	 * @return void
+	 */
+	public function render_remove_data_on_uninstall_field(): void {
+		?>
+		<label>
+			<input type="checkbox" name="remove_data_on_uninstall" value="1" <?php checked( $this->get_remove_data_on_uninstall() ); ?> />
+			<?php esc_html_e( 'Permanently delete all DMBC Tools settings and content when this plugin is uninstalled.', 'dmbc-tools' ); ?>
+		</label>
 		<?php
 	}
 
@@ -506,6 +536,25 @@ class DmbcSettings {
 		}
 
 		return $this->sanitize_member_update_recipient( $recipient );
+	}
+
+	/**
+	 * Sanitize the uninstall data removal setting.
+	 *
+	 * @param mixed $value The submitted value.
+	 * @return bool
+	 */
+	public function sanitize_remove_data_on_uninstall( $value ): bool {
+		return (bool) $value;
+	}
+
+	/**
+	 * Whether plugin data should be deleted on uninstall.
+	 *
+	 * @return bool
+	 */
+	public function get_remove_data_on_uninstall(): bool {
+		return (bool) \get_option( 'remove_data_on_uninstall', false );
 	}
 
 	/**

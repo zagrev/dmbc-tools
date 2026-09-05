@@ -426,6 +426,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 		$this->assertArrayHasKey( 'song_list_recipient_roles', $registered );
 		$this->assertArrayHasKey( 'song_list_default_recipient', $registered );
 		$this->assertArrayHasKey( 'member_update_recipient', $registered );
+		$this->assertArrayHasKey( 'remove_data_on_uninstall', $registered );
+		$this->assertFalse( $registered['remove_data_on_uninstall']['args']['default'] );
 		$this->assertSame(
 			'',
 			call_user_func( $registered['song_list_default_recipient']['args']['sanitize_callback'], 'invalid-email' )
@@ -449,6 +451,8 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 		$fields = $GLOBALS['dmbc_test_state']['settings_fields'];
 		$this->assertArrayHasKey( 'song_library_directory', $fields );
 		$this->assertSame( 'general_section', $fields['song_library_directory']['section'] );
+		$this->assertArrayHasKey( 'remove_data_on_uninstall', $fields );
+		$this->assertSame( 'general_section', $fields['remove_data_on_uninstall']['section'] );
 		$this->assertArrayHasKey( 'song_list_recipient_roles', $fields );
 		$this->assertSame( 'notifications_section', $fields['song_list_recipient_roles']['section'] );
 		$this->assertArrayHasKey( 'member_update_recipient', $fields );
