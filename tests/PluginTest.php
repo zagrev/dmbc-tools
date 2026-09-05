@@ -62,6 +62,41 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Member updates are registered as a private custom post type.
+	 *
+	 * @covers \DmbcTools\Plugin::register_member_update_type
+	 */
+	public function test_register_member_update_type_registers_the_custom_post_type(): void {
+		$plugin = Plugin::instance();
+		$this->set_existing_post_types( array() );
+
+		$plugin->register_member_update_type();
+
+		$registered = $GLOBALS['dmbc_test_state']['registered_post_types'];
+		$this->assertArrayHasKey( Plugin::MEMBER_UPDATE_POST_TYPE, $registered );
+		$this->assertSame( 'Member Updates', $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['labels']['name'] );
+		$this->assertFalse( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['public'] );
+		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_post'] );
+		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['create_posts'] );
+	}
+
+	/**
+	 * Members can manage updates but do not receive song-list editing access.
+	 *
+	 * @covers \DmbcTools\Plugin::add_songlist_capabilities
+	 */
+	public function test_um_member_role_receives_only_member_update_management_capabilities(): void {
+		$this->define_role( 'um_member', array( Plugin::CAP_EDIT_MEMBER_UPDATES => true ) );
+
+		Plugin::instance()->add_songlist_capabilities();
+
+		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_EDIT_MEMBER_UPDATES ) );
+		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_VIEW_MEMBER_UPDATES ) );
+		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_PUBLISH_MEMBER_UPDATES ) );
+		$this->assertFalse( $this->role_has_cap( 'um_member', Plugin::CAP_EDIT_SONGLIST ) );
+	}
+
+	/**
 	 * Method register_options() adds the plugin's version option with its default value.
 	 *
 	 * @covers \DmbcTools\Plugin::register_options
@@ -133,7 +168,8 @@ final class PluginTest extends DmbcUnitTestBase {
 		$submenu_pages = $GLOBALS['dmbc_test_state']['submenu_pages'];
 		$this->assertArrayHasKey( 'dmbc-songlist-edit', $submenu_pages );
 		$this->assertSame( Plugin::CAP_EDIT_SONGLIST, $submenu_pages['dmbc-songlist-edit']['capability'] );
-
+		$this->assertArrayHasKey( 'dmbc-member-updates-menu', $menu_pages );
+		$this->assertSame( Plugin::CAP_VIEW_MEMBER_UPDATES, $menu_pages['dmbc-member-updates-menu']['capability'] );
 		$this->assertArrayHasKey( 'dmbc-tools-settings', $submenu_pages );
 		$this->assertSame( 'options-general.php', $submenu_pages['dmbc-tools-settings']['parent_slug'] );
 		$this->assertSame( 'manage_options', $submenu_pages['dmbc-tools-settings']['capability'] );
