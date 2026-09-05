@@ -24,6 +24,7 @@
     "lint": "php -l dmbc-tools.php && php -l src/plugin.php"
   },
   "require": {
-    "monolog/monolog": "^3.10"
+    "monolog/monolog": "^3.10",
+    "yahnis-elsts/plugin-update-checker": "^5.7"
   }
 }
