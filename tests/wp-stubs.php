@@ -19,6 +19,8 @@ $GLOBALS['dmbc_test_state'] = array(
 	'logged_in'               => true,
 	'last_get_posts_args'     => array(),
 	'mail_calls'              => array(),
+		'users'                   => array(),
+		'cron_events'             => array(),
 	'next_post_id'            => 1,
 	'roles'                   => array(),
 	'registered_post_types'   => array(),
@@ -49,6 +51,7 @@ if ( ! class_exists( 'WP_Post' ) ) {
 		public string $post_title = '';
 		public string $post_type = '';
 		public string $post_content = '';
+		public string $post_modified_gmt = '';
 		public string $post_excerpt = '';
 		public string $dmbc_song_list_rehearsal_date = '';
 
@@ -476,13 +479,44 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 
 if ( ! function_exists( 'get_users' ) ) {
 	function get_users( array $args = array() ): array {
-		return array();
+		return $GLOBALS['dmbc_test_state']['users'];
+	}
+}
+
+if ( ! function_exists( 'is_email' ) ) {
+	function is_email( string $email ): bool {
+		return false !== filter_var( $email, FILTER_VALIDATE_EMAIL );
+	}
+}
+
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	function wp_strip_all_tags( string $text ): string {
+		return trim( strip_tags( $text ) );
+	}
+}
+
+if ( ! function_exists( 'wp_next_scheduled' ) ) {
+	function wp_next_scheduled( string $hook ) {
+		return $GLOBALS['dmbc_test_state']['cron_events'][ $hook ]['timestamp'] ?? false;
+	}
+}
+
+if ( ! function_exists( 'wp_schedule_event' ) ) {
+	function wp_schedule_event( int $timestamp, string $recurrence, string $hook ): bool {
+		$GLOBALS['dmbc_test_state']['cron_events'][ $hook ] = compact( 'timestamp', 'recurrence' );
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
+	function wp_clear_scheduled_hook( string $hook ): void {
+		unset( $GLOBALS['dmbc_test_state']['cron_events'][ $hook ] );
 	}
 }
 
 if ( ! function_exists( 'wp_mail' ) ) {
-	function wp_mail( array $recipients, string $subject, string $message ): bool {
-		$GLOBALS['dmbc_test_state']['mail_calls'][] = compact( 'recipients', 'subject', 'message' );
+	function wp_mail( $recipients, string $subject, string $message, $headers = array() ): bool {
+		$GLOBALS['dmbc_test_state']['mail_calls'][] = compact( 'recipients', 'subject', 'message', 'headers' );
 		return true;
 	}
 }

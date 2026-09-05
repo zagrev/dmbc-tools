@@ -21,6 +21,7 @@ final class Plugin {
 	public const string VERSION                   = '0.1.0';
 	public const string OPTION_VERSION            = 'dmbc_tools_version';
 	public const string SONGLIST_POST_TYPE        = 'dmbc-songlist';
+	public const string MEMBER_UPDATE_POST_TYPE   = 'dmbc-member-updates';
 	public const string SONGLIST_META_NONCE       = 'dmbc_songlist_meta_nonce';
 	public const string PERFORMANCE_DATE_META_KEY = '_dmbc_performance_date';
 	public const string SONGS_META_KEY            = '_dmbc_songs';
@@ -28,6 +29,11 @@ final class Plugin {
 
 	public const string CAP_EDIT_SONGLIST  = 'dmbc_edit_songlist';
 	public const string CAP_VIEW_SONGLISTS = 'dmbc_view_songlist';
+	public const string CAP_EDIT_MEMBER_UPDATES = 'dmbc_edit_member_updates';
+	public const string CAP_VIEW_MEMBER_UPDATES = 'dmbc_view_member_updates';
+	public const string CAP_PUBLISH_MEMBER_UPDATES = 'dmbc_publish_member_updates';
+	public const string MEMBER_UPDATE_CRON_HOOK = 'dmbc_send_member_update_digest';
+	public const string MEMBER_UPDATE_SENT_META_KEY = '_dmbc_member_update_sent_at';
 
 	/**
 	 *  The settings used by the plugin.
@@ -42,6 +48,13 @@ final class Plugin {
 	 * @var SongListView
 	 */
 	private SongListView $song_list_view;
+
+	/**
+	 * The member update view handler.
+	 *
+	 * @var MemberUpdateView
+	 */
+	private MemberUpdateView $member_update_view;
 
 	/**
 	 * The singleton instance of this plugin
@@ -86,6 +99,7 @@ final class Plugin {
 		\add_action( 'admin_menu', array( $this, 'register_admin' ) );
 		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
+		\add_action( self::MEMBER_UPDATE_CRON_HOOK, array( $this, 'send_member_update_digest' ) );
 
 		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
 		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
@@ -104,8 +118,10 @@ final class Plugin {
 		\error_log( 'DMBC Plugin: "initialize" called.' );
 
 		$this->register_songlist_type();
+		$this->register_member_update_type();
 		$this->register_options();
 		$this->add_songlist_capabilities();
+		$this->schedule_member_update_digest();
 
 		\flush_rewrite_rules();
 	}
@@ -196,10 +212,28 @@ final class Plugin {
 				$role->add_cap( self::CAP_VIEW_SONGLISTS );
 			}
 		}
+		foreach ( $this->get_roles_with_member_update_edit_cap() as $role_name ) {
+			$role = \get_role( $role_name );
+			if ( ! $role ) {
+				continue;
+			}
+			if ( ! $role->has_cap( self::CAP_EDIT_MEMBER_UPDATES ) ) {
+				$role->add_cap( self::CAP_EDIT_MEMBER_UPDATES );
+			}
+			if ( ! $role->has_cap( self::CAP_VIEW_MEMBER_UPDATES ) ) {
+				$role->add_cap( self::CAP_VIEW_MEMBER_UPDATES );
+			}
+			if ( ! $role->has_cap( self::CAP_PUBLISH_MEMBER_UPDATES ) ) {
+				$role->add_cap( self::CAP_PUBLISH_MEMBER_UPDATES );
+			}
+		}
 		foreach ( $this->get_roles_with_view_cap() as $role_name ) {
 			$role = \get_role( $role_name );
 			if ( $role && ! $role->has_cap( self::CAP_VIEW_SONGLISTS ) ) {
 				$role->add_cap( self::CAP_VIEW_SONGLISTS );
+			}
+			if ( $role && ! $role->has_cap( self::CAP_VIEW_MEMBER_UPDATES ) ) {
+				$role->add_cap( self::CAP_VIEW_MEMBER_UPDATES );
 			}
 		}
 	}
@@ -211,6 +245,15 @@ final class Plugin {
 	 */
 	private function get_roles_with_edit_cap(): array {
 		return array( 'administrator', 'editor', 'um_director' );
+	}
+
+	/**
+	 * Get the roles that can create and modify member updates.
+	 *
+	 * @return string[]
+	 */
+	private function get_roles_with_member_update_edit_cap(): array {
+		return array( 'administrator', 'editor', 'um_director', 'um_member' );
 	}
 
 	/**
@@ -231,7 +274,79 @@ final class Plugin {
 	 */
 	public function deactivate(): void {
 		\error_log( 'DMBC Plugin: deactivate method called.' );
+		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
 		\flush_rewrite_rules();
+	}
+
+	/**
+	 * Schedule the recurring member update digest.
+	 *
+	 * @return void
+	 */
+	public function schedule_member_update_digest(): void {
+		if ( ! \wp_next_scheduled( self::MEMBER_UPDATE_CRON_HOOK ) ) {
+			\wp_schedule_event( \time(), 'daily', self::MEMBER_UPDATE_CRON_HOOK );
+		}
+	}
+
+	/**
+	 * Email all member updates that have changed since their last delivery.
+	 *
+	 * @return void
+	 */
+	public function send_member_update_digest(): void {
+		$updates = \get_posts(
+			array(
+				'post_type'      => self::MEMBER_UPDATE_POST_TYPE,
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'orderby'        => 'modified',
+				'order'          => 'ASC',
+			)
+		);
+		$updates = array_values(
+			array_filter(
+				$updates,
+				function ( \WP_Post $update ): bool {
+					$sent_at = \get_post_meta( $update->ID, self::MEMBER_UPDATE_SENT_META_KEY, true );
+					return empty( $sent_at ) || $update->post_modified_gmt > $sent_at;
+				}
+			)
+		);
+		if ( empty( $updates ) ) {
+			return;
+		}
+
+		$bcc_recipients = array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						fn( $user ) => isset( $user->user_email ) ? $user->user_email : '',
+						(array) \get_users( array( 'role' => 'um_member' ) )
+					),
+					fn( string $email ): bool => \is_email( $email )
+				)
+			)
+		);
+		$recipient = $this->settings->get_member_update_recipient();
+		if ( empty( $recipient ) ) {
+			return;
+		}
+
+		$message = "Member updates:\n\n";
+		foreach ( $updates as $update ) {
+			$message .= $update->post_title . "\n" . \wp_strip_all_tags( $update->post_content ) . "\n\n";
+		}
+
+		$headers = empty( $bcc_recipients ) ? array() : array( 'Bcc: ' . implode( ',', $bcc_recipients ) );
+		if ( ! \wp_mail( $recipient, __( 'Member Updates', 'dmbc-tools' ), $message, $headers ) ) {
+			return;
+		}
+
+		$sent_at = \gmdate( 'Y-m-d H:i:s' );
+		foreach ( $updates as $update ) {
+			\update_post_meta( $update->ID, self::MEMBER_UPDATE_SENT_META_KEY, $sent_at );
+		}
 	}
 
 	/**
@@ -285,6 +400,45 @@ final class Plugin {
 				),
 			);
 		}
+	}
+
+	/**
+	 * Register the custom post type for member updates.
+	 *
+	 * @return void
+	 */
+	public function register_member_update_type(): void {
+		if ( \post_type_exists( self::MEMBER_UPDATE_POST_TYPE ) ) {
+			return;
+		}
+
+		\register_post_type(
+			self::MEMBER_UPDATE_POST_TYPE,
+			array(
+				'labels'       => array(
+					'name'          => __( 'Member Updates', 'dmbc-tools' ),
+					'singular_name' => __( 'Member Update', 'dmbc-tools' ),
+					'add_new_item'  => __( 'Add Member Update', 'dmbc-tools' ),
+					'edit_item'     => __( 'Edit Member Update', 'dmbc-tools' ),
+				),
+				'public'       => false,
+				'show_ui'      => true,
+				'show_in_menu' => false,
+				'show_in_rest' => true,
+				'supports'     => array( 'title', 'editor' ),
+				'capability_type' => 'post',
+				'map_meta_cap' => false,
+				'capabilities' => array(
+					'edit_post'     => self::CAP_EDIT_MEMBER_UPDATES,
+					'read_post'     => self::CAP_VIEW_MEMBER_UPDATES,
+					'delete_post'   => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_posts'    => self::CAP_EDIT_MEMBER_UPDATES,
+					'publish_posts' => self::CAP_PUBLISH_MEMBER_UPDATES,
+					'create_posts'  => self::CAP_EDIT_MEMBER_UPDATES,
+				),
+				'menu_icon'    => 'dashicons-megaphone',
+			)
+		);
 	}
 
 	/**
@@ -383,6 +537,7 @@ final class Plugin {
 	public function register_admin(): void {
 		\error_log( 'DMBC Plugin: register_admin method called.' );
 		$this->create_song_list_view();
+		$this->create_member_update_view();
 		$this->register_options();
 		$this->add_admin_menu();
 		$this->settings->register_settings();
@@ -408,12 +563,31 @@ final class Plugin {
 	}
 
 	/**
+	 * Create the member update view table.
+	 *
+	 * @return void
+	 */
+	public function create_member_update_view(): void {
+		if ( ! class_exists( '\WP_List_Table' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+		}
+		require_once __DIR__ . '/member-update-table.php';
+		require_once __DIR__ . '/member-update-view.php';
+
+		if ( ! isset( $this->member_update_view ) ) {
+			$this->member_update_view = new MemberUpdateView();
+		}
+	}
+
+	/**
 	 * Registers the plugin's admin menu pages .
 	 *
 	 * @return void
 	 */
 	public function add_admin_menu(): void {
 		\error_log( 'DMBC Plugin: add_admin_menu method called.' );
+		$this->create_song_list_view();
+		$this->create_member_update_view();
 
 		add_menu_page(
 			__( 'All Rehearsal Song Lists', 'dmbc-tools' ),
@@ -432,6 +606,16 @@ final class Plugin {
 			self::CAP_EDIT_SONGLIST,
 			'dmbc-songlist-edit',
 			array( $this->song_list_view, 'dmbc_render_songlist_edit_page' )
+		);
+
+		add_menu_page(
+			__( 'All Member Updates', 'dmbc-tools' ),
+			__( 'Member Updates', 'dmbc-tools' ),
+			self::CAP_VIEW_MEMBER_UPDATES,
+			'dmbc-member-updates-menu',
+			array( $this->member_update_view, 'render_member_update_table_page' ),
+			'dashicons-megaphone',
+			26
 		);
 
 		// add options page separately.

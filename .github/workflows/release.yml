@@ -1,42 +1,53 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows:
-      - Build and Test
+  pull_request:
+    branches:
+      - main
     types:
-      - completed
+      - closed
 
 jobs:
   release:
-    if: >-
-      ${{
-        github.event.workflow_run.conclusion == 'success' &&
-        startsWith(github.event.workflow_run.head_branch, 'v')
-      }}
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout main
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: main
+          fetch-depth: 0
 
       - name: Set release version
-        env:
-          VERSION_TAG: ${{ github.event.workflow_run.head_branch }}
+        id: version
         run: |
-          VERSION="${VERSION_TAG#v}"
-          test -n "$VERSION"
+          CURRENT_VERSION=$(sed -nE 's/^ \* Version: ([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' dmbc-tools.php)
+          test -n "$CURRENT_VERSION"
+          IFS=. read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+
           sed -i -E "s/^ \* Version: .*/ * Version: ${VERSION}/" dmbc-tools.php
           sed -i -E "s/(public const string VERSION[[:space:]]*=[[:space:]]*')[^']+('.*)/\1${VERSION}\2/" src/plugin.php
           sed -i -E "s/^Stable tag: .*/Stable tag: ${VERSION}/" readme.txt
-          sed -i -E "s/^=[[:space:]]*0\.1\.0[[:space:]]*=$/= ${VERSION} =/" readme.txt
+
           grep -F "Version: $VERSION" dmbc-tools.php
           grep -F "public const string VERSION" src/plugin.php | grep -F "'$VERSION'"
           grep -F "Stable tag: $VERSION" readme.txt
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and tag release version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dmbc-tools.php src/plugin.php readme.txt
+          git commit -m "chore: release v${VERSION}"
+          git tag "v${VERSION}"
+          git push origin main "v${VERSION}"
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -49,7 +60,7 @@ jobs:
 
       - name: Create plugin artifact
         env:
-          VERSION: ${{ github.event.workflow_run.head_branch }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           PACKAGE_DIR="$RUNNER_TEMP/dmbc-tools"
           mkdir "$PACKAGE_DIR"
@@ -64,18 +75,18 @@ jobs:
             --exclude='phpcs.xml' \
             --exclude='phpunit.xml'
           cd "$RUNNER_TEMP"
-          zip -r "$GITHUB_WORKSPACE/dmbc-tools-${VERSION#v}.zip" "dmbc-tools"
+          zip -r "$GITHUB_WORKSPACE/dmbc-tools-${VERSION}.zip" "dmbc-tools"
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v7
         with:
-          name: dmbc-tools-${{ github.event.workflow_run.head_branch }}
-          path: dmbc-tools-*.zip
+          name: dmbc-tools-${{ steps.version.outputs.version }}
+          path: dmbc-tools-${{ steps.version.outputs.version }}.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.event.workflow_run.head_branch }}
-          name: ${{ github.event.workflow_run.head_branch }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
           generate_release_notes: true
-          files: dmbc-tools-*.zip
+          files: dmbc-tools-${{ steps.version.outputs.version }}.zip

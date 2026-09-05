@@ -62,6 +62,41 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Member updates are registered as a private custom post type.
+	 *
+	 * @covers \DmbcTools\Plugin::register_member_update_type
+	 */
+	public function test_register_member_update_type_registers_the_custom_post_type(): void {
+		$plugin = Plugin::instance();
+		$this->set_existing_post_types( array() );
+
+		$plugin->register_member_update_type();
+
+		$registered = $GLOBALS['dmbc_test_state']['registered_post_types'];
+		$this->assertArrayHasKey( Plugin::MEMBER_UPDATE_POST_TYPE, $registered );
+		$this->assertSame( 'Member Updates', $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['labels']['name'] );
+		$this->assertFalse( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['public'] );
+		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_post'] );
+		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['create_posts'] );
+	}
+
+	/**
+	 * Members can manage updates but do not receive song-list editing access.
+	 *
+	 * @covers \DmbcTools\Plugin::add_songlist_capabilities
+	 */
+	public function test_um_member_role_receives_only_member_update_management_capabilities(): void {
+		$this->define_role( 'um_member', array( Plugin::CAP_EDIT_MEMBER_UPDATES => true ) );
+
+		Plugin::instance()->add_songlist_capabilities();
+
+		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_EDIT_MEMBER_UPDATES ) );
+		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_VIEW_MEMBER_UPDATES ) );
+		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_PUBLISH_MEMBER_UPDATES ) );
+		$this->assertFalse( $this->role_has_cap( 'um_member', Plugin::CAP_EDIT_SONGLIST ) );
+	}
+
+	/**
 	 * Method register_options() adds the plugin's version option with its default value.
 	 *
 	 * @covers \DmbcTools\Plugin::register_options
@@ -101,6 +136,52 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * The member update digest is scheduled only once and cleared on deactivation.
+	 *
+	 * @covers \DmbcTools\Plugin::schedule_member_update_digest
+	 * @covers \DmbcTools\Plugin::deactivate
+	 */
+	public function test_member_update_digest_is_scheduled_once_and_cleared_on_deactivation(): void {
+		$plugin = Plugin::instance();
+		$plugin->schedule_member_update_digest();
+		$plugin->schedule_member_update_digest();
+
+		$this->assertSame( 'daily', $GLOBALS['dmbc_test_state']['cron_events'][ Plugin::MEMBER_UPDATE_CRON_HOOK ]['recurrence'] );
+		$plugin->deactivate();
+		$this->assertArrayNotHasKey( Plugin::MEMBER_UPDATE_CRON_HOOK, $GLOBALS['dmbc_test_state']['cron_events'] );
+	}
+
+	/**
+	 * Updated published member updates are sent once to all member recipients.
+	 *
+	 * @covers \DmbcTools\Plugin::send_member_update_digest
+	 */
+	public function test_member_update_digest_emails_updates_and_records_delivery(): void {
+		$update                    = new \WP_Post( 81 );
+		$update->post_type         = Plugin::MEMBER_UPDATE_POST_TYPE;
+		$update->post_title        = 'Schedule change';
+		$update->post_content      = '<p>Practice starts at 7.</p>';
+		$update->post_modified_gmt = '2026-09-04 12:00:00';
+		$GLOBALS['dmbc_test_state']['posts'][81] = $update;
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array( 'user_email' => 'member@example.com' ),
+			(object) array( 'user_email' => 'member@example.com' ),
+		);
+		$this->set_option( 'member_update_recipient', 'updates@example.com' );
+
+		Plugin::instance()->send_member_update_digest();
+
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertSame( 'updates@example.com', $GLOBALS['dmbc_test_state']['mail_calls'][0]['recipients'] );
+		$this->assertSame( array( 'Bcc: member@example.com' ), $GLOBALS['dmbc_test_state']['mail_calls'][0]['headers'] );
+		$this->assertStringContainsString( 'Schedule change', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertNotEmpty( $this->get_stored_post_meta( 81, Plugin::MEMBER_UPDATE_SENT_META_KEY ) );
+
+		Plugin::instance()->send_member_update_digest();
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
+	}
+
+	/**
 	 * Method admin_success() registers an admin_notices callback that surfaces the given message.
 	 *
 	 * @covers \DmbcTools\Plugin::admin_success
@@ -133,7 +214,8 @@ final class PluginTest extends DmbcUnitTestBase {
 		$submenu_pages = $GLOBALS['dmbc_test_state']['submenu_pages'];
 		$this->assertArrayHasKey( 'dmbc-songlist-edit', $submenu_pages );
 		$this->assertSame( Plugin::CAP_EDIT_SONGLIST, $submenu_pages['dmbc-songlist-edit']['capability'] );
-
+		$this->assertArrayHasKey( 'dmbc-member-updates-menu', $menu_pages );
+		$this->assertSame( Plugin::CAP_VIEW_MEMBER_UPDATES, $menu_pages['dmbc-member-updates-menu']['capability'] );
 		$this->assertArrayHasKey( 'dmbc-tools-settings', $submenu_pages );
 		$this->assertSame( 'options-general.php', $submenu_pages['dmbc-tools-settings']['parent_slug'] );
 		$this->assertSame( 'manage_options', $submenu_pages['dmbc-tools-settings']['capability'] );
