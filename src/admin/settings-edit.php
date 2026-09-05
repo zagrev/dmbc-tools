@@ -54,6 +54,15 @@ class DmbcSettings {
 				'default'           => '',
 			)
 		);
+		register_setting(
+			'settings_group',
+			'member_update_recipient',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_member_update_recipient' ),
+				'default'           => '',
+			)
+		);
 
 		add_settings_section(
 			'general_section',
@@ -94,6 +103,19 @@ class DmbcSettings {
 			array( $this, 'render_song_list_default_recipient_field' ),
 			'settings',
 			'notifications_section'
+		);
+		add_settings_section(
+			'member_update_notifications_section',
+			__( 'Member update notifications', 'dmbc-tools' ),
+			'__return_empty_string',
+			'settings'
+		);
+		add_settings_field(
+			'member_update_recipient',
+			__( 'Primary recipient', 'dmbc-tools' ),
+			array( $this, 'render_member_update_recipient_field' ),
+			'settings',
+			'member_update_notifications_section'
 		);
 	}
 
@@ -301,6 +323,21 @@ class DmbcSettings {
 	}
 
 	/**
+	 * Render the primary recipient field for member update digests.
+	 *
+	 * @return void
+	 */
+	public function render_member_update_recipient_field(): void {
+		?>
+		<input type="email" name="member_update_recipient" id="member_update_recipient" value="<?php echo \esc_attr( $this->get_member_update_recipient() ); ?>"
+			class="regular-text" />
+		<p class="description">
+			<?php esc_html_e( 'This address receives member update digests directly. Members are included as BCC recipients. It defaults to the site administrator email.', 'dmbc-tools' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
 	 * Render the settings page only if the user can view/edit the settings
 	 *
 	 * @return void
@@ -445,6 +482,30 @@ class DmbcSettings {
 		}
 
 		return $this->sanitize_song_list_default_recipient( $recipient );
+	}
+
+	/**
+	 * Sanitize the primary recipient for member update digests.
+	 *
+	 * @param mixed $value The email address to sanitize.
+	 * @return string
+	 */
+	public function sanitize_member_update_recipient( $value ): string {
+		return function_exists( 'sanitize_email' ) ? \sanitize_email( (string) $value ) : '';
+	}
+
+	/**
+	 * Retrieve the primary recipient for member update digests.
+	 *
+	 * @return string
+	 */
+	public function get_member_update_recipient(): string {
+		$recipient = \get_option( 'member_update_recipient', '' );
+		if ( empty( $recipient ) ) {
+			$recipient = \get_option( 'admin_email', '' );
+		}
+
+		return $this->sanitize_member_update_recipient( $recipient );
 	}
 
 	/**

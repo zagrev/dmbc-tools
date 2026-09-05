@@ -317,7 +317,7 @@ final class Plugin {
 			return;
 		}
 
-		$recipients = array_values(
+		$bcc_recipients = array_values(
 			array_unique(
 				array_filter(
 					array_map(
@@ -328,7 +328,8 @@ final class Plugin {
 				)
 			)
 		);
-		if ( empty( $recipients ) ) {
+		$recipient = $this->settings->get_member_update_recipient();
+		if ( empty( $recipient ) ) {
 			return;
 		}
 
@@ -337,7 +338,8 @@ final class Plugin {
 			$message .= $update->post_title . "\n" . \wp_strip_all_tags( $update->post_content ) . "\n\n";
 		}
 
-		if ( ! \wp_mail( $recipients, __( 'Member Updates', 'dmbc-tools' ), $message ) ) {
+		$headers = empty( $bcc_recipients ) ? array() : array( 'Bcc: ' . implode( ',', $bcc_recipients ) );
+		if ( ! \wp_mail( $recipient, __( 'Member Updates', 'dmbc-tools' ), $message, $headers ) ) {
 			return;
 		}
 

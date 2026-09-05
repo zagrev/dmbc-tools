@@ -232,6 +232,19 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 		$this->assertSame( 'admin@example.com', $settings->get_song_list_default_recipient() );
 	}
 
+	/**
+	 * The configured member update recipient is preferred over the site admin email.
+	 *
+	 * @covers \DmbcTools\DmbcSettings::get_member_update_recipient
+	 */
+	public function test_get_member_update_recipient_uses_stored_value_when_present(): void {
+		$settings = $this->make_settings();
+		$this->set_option( 'member_update_recipient', 'updates@example.com' );
+		$this->set_option( 'admin_email', 'admin@example.com' );
+
+		$this->assertSame( 'updates@example.com', $settings->get_member_update_recipient() );
+	}
+
 	// -- get_wp_content_folder_choices ---------------------------------------------------
 
 	/**
@@ -412,6 +425,7 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 
 		$this->assertArrayHasKey( 'song_list_recipient_roles', $registered );
 		$this->assertArrayHasKey( 'song_list_default_recipient', $registered );
+		$this->assertArrayHasKey( 'member_update_recipient', $registered );
 		$this->assertSame(
 			'',
 			call_user_func( $registered['song_list_default_recipient']['args']['sanitize_callback'], 'invalid-email' )
@@ -430,11 +444,14 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 
 		$this->assertArrayHasKey( 'general_section', $GLOBALS['dmbc_test_state']['settings_sections'] );
 		$this->assertArrayHasKey( 'notifications_section', $GLOBALS['dmbc_test_state']['settings_sections'] );
+		$this->assertArrayHasKey( 'member_update_notifications_section', $GLOBALS['dmbc_test_state']['settings_sections'] );
 
 		$fields = $GLOBALS['dmbc_test_state']['settings_fields'];
 		$this->assertArrayHasKey( 'song_library_directory', $fields );
 		$this->assertSame( 'general_section', $fields['song_library_directory']['section'] );
 		$this->assertArrayHasKey( 'song_list_recipient_roles', $fields );
 		$this->assertSame( 'notifications_section', $fields['song_list_recipient_roles']['section'] );
+		$this->assertArrayHasKey( 'member_update_recipient', $fields );
+		$this->assertSame( 'member_update_notifications_section', $fields['member_update_recipient']['section'] );
 	}
 }

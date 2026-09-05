@@ -515,8 +515,8 @@ if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
 }
 
 if ( ! function_exists( 'wp_mail' ) ) {
-	function wp_mail( array $recipients, string $subject, string $message ): bool {
-		$GLOBALS['dmbc_test_state']['mail_calls'][] = compact( 'recipients', 'subject', 'message' );
+	function wp_mail( $recipients, string $subject, string $message, $headers = array() ): bool {
+		$GLOBALS['dmbc_test_state']['mail_calls'][] = compact( 'recipients', 'subject', 'message', 'headers' );
 		return true;
 	}
 }

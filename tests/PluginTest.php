@@ -167,11 +167,13 @@ final class PluginTest extends DmbcUnitTestBase {
 			(object) array( 'user_email' => 'member@example.com' ),
 			(object) array( 'user_email' => 'member@example.com' ),
 		);
+		$this->set_option( 'member_update_recipient', 'updates@example.com' );
 
 		Plugin::instance()->send_member_update_digest();
 
 		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
-		$this->assertSame( array( 'member@example.com' ), $GLOBALS['dmbc_test_state']['mail_calls'][0]['recipients'] );
+		$this->assertSame( 'updates@example.com', $GLOBALS['dmbc_test_state']['mail_calls'][0]['recipients'] );
+		$this->assertSame( array( 'Bcc: member@example.com' ), $GLOBALS['dmbc_test_state']['mail_calls'][0]['headers'] );
 		$this->assertStringContainsString( 'Schedule change', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
 		$this->assertNotEmpty( $this->get_stored_post_meta( 81, Plugin::MEMBER_UPDATE_SENT_META_KEY ) );
 

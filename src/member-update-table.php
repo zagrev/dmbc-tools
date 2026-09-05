@@ -41,6 +41,7 @@ class MemberUpdateTable extends \WP_List_Table {
 		return array(
 			'title' => __( 'Title', 'dmbc-tools' ),
 			'date'  => __( 'Published', 'dmbc-tools' ),
+			'sent'  => __( 'Sent', 'dmbc-tools' ),
 		);
 	}
 
@@ -69,6 +70,16 @@ class MemberUpdateTable extends \WP_List_Table {
 	 */
 	public function column_date( WP_Post $item ): string {
 		return \esc_html( $item->post_date );
+	}
+
+	/**
+	 * Render the member update delivery timestamp.
+	 *
+	 * @param WP_Post $item The current update.
+	 * @return string
+	 */
+	public function column_sent( WP_Post $item ): string {
+		return \esc_html( (string) \get_post_meta( $item->ID, Plugin::MEMBER_UPDATE_SENT_META_KEY, true ) );
 	}
 
 	/**
