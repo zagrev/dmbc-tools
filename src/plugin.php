@@ -275,6 +275,10 @@ final class Plugin {
 	public function deactivate(): void {
 		\error_log( 'DMBC Plugin: deactivate method called.' );
 		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
+		\unregister_post_type( self::MEMBER_UPDATE_POST_TYPE );
+		\unregister_post_type(Plugin::SONGLIST_POST_TYPE);
+		\delete_option( Plugin::OPTION_VERSION );
+
 		\flush_rewrite_rules();
 	}
 
