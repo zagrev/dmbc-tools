@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
@@ -67,13 +67,13 @@ jobs:
           zip -r "$GITHUB_WORKSPACE/dmbc-tools-${VERSION#v}.zip" "dmbc-tools-${VERSION#v}"
 
       - name: Upload plugin artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dmbc-tools-${{ github.event.workflow_run.head_branch }}
           path: dmbc-tools-*.zip
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.workflow_run.head_branch }}
           name: DMBC Tools ${{ github.event.workflow_run.head_branch }}
