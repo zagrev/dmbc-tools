@@ -18,7 +18,7 @@ use DmbcTools\DmbcSettings;
  * The DMBC Plugin
  */
 final class Plugin {
-	public const string VERSION                   = '0.1.0';
+	public const string VERSION                   = '0.1.1';
 	public const string OPTION_VERSION            = 'dmbc_tools_version';
 	public const string SONGLIST_POST_TYPE        = 'dmbc-songlist';
 	public const string MEMBER_UPDATE_POST_TYPE   = 'dmbc-member-updates';
