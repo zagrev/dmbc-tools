@@ -1,12 +1,19 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_run:
+    workflows:
+      - Build and Test
+    types:
+      - completed
 
 jobs:
   release:
+    if: >-
+      ${{
+        github.event.workflow_run.conclusion == 'success' &&
+        startsWith(github.event.workflow_run.head_branch, 'v')
+      }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -14,6 +21,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set release version
+        env:
+          VERSION_TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          VERSION="${VERSION_TAG#v}"
+          test -n "$VERSION"
+          sed -i -E "s/^ \* Version: .*/ * Version: ${VERSION}/" dmbc-tools.php
+          sed -i -E "s/(public const string VERSION[[:space:]]*=[[:space:]]*')[^']+('.*)/\1${VERSION}\2/" src/plugin.php
+          sed -i -E "s/^Stable tag: .*/Stable tag: ${VERSION}/" readme.txt
+          sed -i -E "s/^=[[:space:]]*0\.1\.0[[:space:]]*=$/= ${VERSION} =/" readme.txt
+          grep -F "Version: $VERSION" dmbc-tools.php
+          grep -F "public const string VERSION" src/plugin.php | grep -F "'$VERSION'"
+          grep -F "Stable tag: $VERSION" readme.txt
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -26,7 +49,7 @@ jobs:
 
       - name: Create plugin artifact
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ github.event.workflow_run.head_branch }}
         run: |
           PACKAGE_DIR="$RUNNER_TEMP/dmbc-tools-${VERSION#v}"
           mkdir "$PACKAGE_DIR"
@@ -46,12 +69,13 @@ jobs:
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dmbc-tools-${{ github.ref_name }}
+          name: dmbc-tools-${{ github.event.workflow_run.head_branch }}
           path: dmbc-tools-*.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: DMBC Tools ${{ github.ref_name }}
+          tag_name: ${{ github.event.workflow_run.head_branch }}
+          name: DMBC Tools ${{ github.event.workflow_run.head_branch }}
           generate_release_notes: true
           files: dmbc-tools-*.zip
