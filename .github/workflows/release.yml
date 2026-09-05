@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -9,7 +10,7 @@ on:
 
 jobs:
   release:
-    if: github.event.pull_request.merged == true
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -26,12 +27,22 @@ jobs:
         run: |
           CURRENT_VERSION=$(sed -nE 's/^ \* Version: ([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' dmbc-tools.php)
           test -n "$CURRENT_VERSION"
-          IFS=. read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-          VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
 
-          sed -i -E "s/^ \* Version: .*/ * Version: ${VERSION}/" dmbc-tools.php
-          sed -i -E "s/(public const string VERSION[[:space:]]*=[[:space:]]*')[^']+('.*)/\1${VERSION}\2/" src/plugin.php
-          sed -i -E "s/^Stable tag: .*/Stable tag: ${VERSION}/" readme.txt
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="$CURRENT_VERSION"
+          else
+            LATEST_TAG=$(git tag --list 'v[0-9]*' --sort=-version:refname | head -n 1)
+            LATEST_VERSION="${LATEST_TAG#v}"
+            if [ -z "$LATEST_TAG" ]; then
+              LATEST_VERSION="$CURRENT_VERSION"
+            fi
+            IFS=. read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+            VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+
+            sed -i -E "s/^ \* Version: .*/ * Version: ${VERSION}/" dmbc-tools.php
+            sed -i -E "s/(public const string VERSION[[:space:]]*=[[:space:]]*')[^']+('.*)/\1${VERSION}\2/" src/plugin.php
+            sed -i -E "s/^Stable tag: .*/Stable tag: ${VERSION}/" readme.txt
+          fi
 
           grep -F "Version: $VERSION" dmbc-tools.php
           grep -F "public const string VERSION" src/plugin.php | grep -F "'$VERSION'"
@@ -39,6 +50,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Commit and tag release version
+        if: github.event_name != 'workflow_dispatch'
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -48,6 +60,17 @@ jobs:
           git commit -m "chore: release v${VERSION}"
           git tag "v${VERSION}"
           git push origin main "v${VERSION}"
+
+      - name: Ensure manual release tag
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "v${VERSION}"; then
+            exit 0
+          fi
+          git tag "v${VERSION}"
+          git push origin "v${VERSION}"
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2

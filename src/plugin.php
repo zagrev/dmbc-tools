@@ -324,7 +324,7 @@ final class Plugin {
 						fn( $user ) => isset( $user->user_email ) ? $user->user_email : '',
 						(array) \get_users( array( 'role' => 'um_member' ) )
 					),
-					fn( string $email ): bool => \is_email( $email )
+					fn( string $email ): bool => \is_email( $email ) !== false
 				)
 			)
 		);
