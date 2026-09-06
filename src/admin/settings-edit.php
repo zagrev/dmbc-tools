@@ -14,6 +14,7 @@ namespace DmbcTools;
 class DmbcSettings {
 	/**
 	 * Determine whether a path is absolute. Stolen from WP-CLI\Utils::is_path_absolute().
+	 *
 	 * @param string $path
 	 * @return bool
 	 */
@@ -239,8 +240,16 @@ class DmbcSettings {
 
 			$('#dmbc_folder_browser_select').on('click', function () {
 				if (currentPath) {
-					$relative_path = currentPath.split('/').pop();
-					$('#song_library_directory').val($relative_path);
+					const normalizeSlashes = path => path.replace(/[\\/]+/g, '/');
+					currentPath = normalizeSlashes(currentPath);
+					<?php
+						$normalized_content_dir = \wp_normalize_path( WP_CONTENT_DIR . '/' );
+					?>
+					// if the current path is within the content directory, store it as a relative path
+					if (currentPath.startsWith('<?php echo \esc_html( $normalized_content_dir ); ?>')) {
+						currentPath = currentPath.replace('<?php echo \esc_html( $normalized_content_dir ); ?>', '');
+					}
+					$('#song_library_directory').val(currentPath);
 				}
 				$('#dmbc_folder_browser_modal').hide();
 			});
@@ -260,13 +269,15 @@ class DmbcSettings {
 			\wp_send_json_error( array( 'message' => \__( 'You do not have permission to browse the server filesystem.', 'dmbc-tools' ) ), 403 );
 		}
 
-		$requested_path = isset( $_POST['path'] ) ? (string) \sanitize_file_name( \wp_unslash( $_POST['path'] ) ) : '';
+		$requested_path = isset( $_POST['path'] ) ? \wp_normalize_path( \wp_unslash( (string) $_POST['path'] ) ) : '';
 		// if not an absolute path, prepend with WP_CONTENT_DIR, else use as is.
 		if ( ! $this->is_path_absolute( $requested_path ) ) {
 			$requested_path = WP_CONTENT_DIR . '/' . $requested_path;
 		}
+		\error_log( 'DMBC Ajax: absolute path: ' . $requested_path );
 
 		$real_path = realpath( $requested_path );
+		\error_log( 'DMBC Ajax: real path: ' . $real_path );
 
 		if ( false === $real_path || ! is_dir( $real_path ) || ! is_readable( $real_path ) ) {
 			\wp_send_json_error( array( 'message' => \__( 'The requested directory could not be found or is not readable.', 'dmbc-tools' ) ), 400 );
