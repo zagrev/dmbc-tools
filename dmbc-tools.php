@@ -11,7 +11,7 @@ if ( ! \defined( 'ABSPATH' ) ) {
  * Plugin Name: DMBC Tools
  * Plugin URI: https://github.com/zagrev/dmbc-tools
  * Description: Shared tools for the Dayton Metro Barbershop Chorus WordPress site.
- * Version: 1.1.7
+ * Version: 1.1.8
  * Author: Steve Betts
  * Author URI: https://github.com/zagrev
  * Text Domain: dmbc-tools
