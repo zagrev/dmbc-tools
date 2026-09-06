@@ -116,10 +116,14 @@ final class PluginTest extends DmbcUnitTestBase {
 	 */
 	public function test_uninstall_preserves_version_option_when_cleanup_is_disabled(): void {
 		$this->set_option( Plugin::OPTION_VERSION, '0.1.0' );
+		$this->set_option( Plugin::OPTION_MEMBER_UPDATE_RECIPIENT, 'updates@example.com' );
+		$this->set_option( Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL, false );
 
 		Plugin::uninstall();
 
 		$this->assertSame( '0.1.0', get_option( Plugin::OPTION_VERSION, false ) );
+		$this->assertSame( 'updates@example.com', get_option( Plugin::OPTION_MEMBER_UPDATE_RECIPIENT, false ) );
+		$this->assertSame( false, get_option( Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL, false ) );
 	}
 
 	/**
@@ -129,14 +133,14 @@ final class PluginTest extends DmbcUnitTestBase {
 	 */
 	public function test_uninstall_removes_plugin_options_when_cleanup_is_enabled(): void {
 		$this->set_option( Plugin::OPTION_VERSION, '0.1.0' );
-		$this->set_option( 'member_update_recipient', 'updates@example.com' );
-		$this->set_option( 'remove_data_on_uninstall', true );
+		$this->set_option( Plugin::OPTION_MEMBER_UPDATE_RECIPIENT, 'updates@example.com' );
+		$this->set_option( Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL, true );
 
 		Plugin::uninstall();
 
 		$this->assertFalse( get_option( Plugin::OPTION_VERSION, false ) );
-		$this->assertFalse( get_option( 'member_update_recipient', false ) );
-		$this->assertFalse( get_option( 'remove_data_on_uninstall', false ) );
+		$this->assertFalse( get_option( Plugin::OPTION_MEMBER_UPDATE_RECIPIENT, false ) );
+		$this->assertFalse( get_option( Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL, false ) );
 	}
 
 	/**

@@ -13,6 +13,20 @@ namespace DmbcTools;
  */
 class DmbcSettings {
 	/**
+	 * Determine whether a path is absolute. Stolen from WP-CLI\Utils::is_path_absolute().
+	 * @param string $path
+	 * @return bool
+	 */
+	function is_path_absolute( $path ) {
+		// Windows.
+		if ( isset( $path[1] ) && ':' === $path[1] ) {
+			return true;
+		}
+
+		return isset( $path[0] ) && '/' === $path[0];
+	}
+
+	/**
 	 * Registers the settings for this plugin.
 	 */
 	public function register_settings(): void {
@@ -248,7 +262,7 @@ class DmbcSettings {
 
 		$requested_path = isset( $_POST['path'] ) ? (string) \sanitize_file_name( \wp_unslash( $_POST['path'] ) ) : '';
 		// if not an absolute path, prepend with WP_CONTENT_DIR, else use as is.
-		if ( ! preg_match( '#^([a-zA-Z]:)?/#', $requested_path ) ) {
+		if ( ! $this->is_path_absolute( $requested_path ) ) {
 			$requested_path = WP_CONTENT_DIR . '/' . $requested_path;
 		}
 
@@ -428,7 +442,7 @@ class DmbcSettings {
 		}
 
 		// if already an absolute path, return it as-is.
-		if ( preg_match( '#^([a-zA-Z]:)?/#', $directory ) ) {
+		if ( $this->is_path_absolute( $directory ) ) {
 			return wp_normalize_path( $directory );
 		}
 		return \wp_normalize_path( WP_CONTENT_DIR . '/' . $directory );
