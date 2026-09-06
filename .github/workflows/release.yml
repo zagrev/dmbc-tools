@@ -93,6 +93,7 @@ jobs:
           rsync -a ./ "$PACKAGE_DIR/" \
             --exclude='.git/' \
             --exclude='.github/' \
+            --exclude='.gitignore' \
             --exclude='.phpunit.cache/' \
             --exclude='tests/' \
             --exclude='.wp-env.json' \
