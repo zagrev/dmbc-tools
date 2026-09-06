@@ -1,7 +1,4 @@
 {
-  "plugins": [
-    "."
-  ],
-  "phpVersion": "8.4",
-  "nodeVersion": "24"
+  "plugins": ["."],
+  "phpVersion": "8.4"
 }
