@@ -82,10 +82,13 @@ jobs:
         run: composer install --no-dev --no-progress --prefer-dist --no-interaction
 
       - name: Create plugin artifact
+        id: package
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          test -f vendor/autoload.php
           PACKAGE_DIR="$RUNNER_TEMP/dmbc-tools"
+          PACKAGE_ZIP="$RUNNER_TEMP/dmbc-tools-${VERSION}.zip"
           mkdir "$PACKAGE_DIR"
           rsync -a ./ "$PACKAGE_DIR/" \
             --exclude='.git/' \
@@ -98,13 +101,15 @@ jobs:
             --exclude='phpcs.xml' \
             --exclude='phpunit.xml'
           cd "$RUNNER_TEMP"
-          zip -r "$GITHUB_WORKSPACE/dmbc-tools-${VERSION}.zip" "dmbc-tools"
+          zip -r "$PACKAGE_ZIP" "dmbc-tools"
+          sha256sum "$PACKAGE_ZIP"
+          echo "path=$PACKAGE_ZIP" >> "$GITHUB_OUTPUT"
 
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v7
         with:
           name: dmbc-tools-${{ steps.version.outputs.version }}
-          path: dmbc-tools-${{ steps.version.outputs.version }}.zip
+          path: ${{ steps.package.outputs.path }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
@@ -112,4 +117,4 @@ jobs:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
           generate_release_notes: true
-          files: dmbc-tools-${{ steps.version.outputs.version }}.zip
+          files: ${{ steps.package.outputs.path }}
