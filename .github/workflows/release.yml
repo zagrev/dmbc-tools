@@ -108,8 +108,9 @@ jobs:
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v7
         with:
-          #  name: dmbc-tools-${{ steps.version.outputs.version }}
+          name: dmbc-tools-${{ steps.version.outputs.version }}
           path: ${{ steps.package.outputs.path }}
+          archive: false
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
