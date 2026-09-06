@@ -30,11 +30,14 @@ if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 
 
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+use YahnisElsts\PluginUpdateChecker\v5p7\Vcs\Api;
+
 $update_checker = PucFactory::buildUpdateChecker(
 	'https://github.com/zagrev/dmbc-tools',
 	__FILE__,
 	'dmbc-tools'
 );
+$update_checker->getVcsApi()->setStrategyFilterName( Api::STRATEGY_LATEST_RELEASE );
 
 require_once __DIR__ . '/src/plugin.php';
 Plugin::instance()->run();
