@@ -552,6 +552,13 @@ if ( ! function_exists( 'add_option' ) ) {
 	}
 }
 
+if ( ! function_exists( 'update_option' ) ) {
+	function update_option( string $name, $value ): bool {
+		$GLOBALS['dmbc_test_state']['options'][ $name ] = $value;
+		return true;
+	}
+}
+
 if ( ! function_exists( 'delete_option' ) ) {
 	function delete_option( string $name ): bool {
 		unset( $GLOBALS['dmbc_test_state']['options'][ $name ] );
@@ -563,6 +570,16 @@ if ( ! function_exists( 'add_menu_page' ) ) {
 	function add_menu_page( string $page_title, string $menu_title, string $capability, string $menu_slug, $callback = '', string $icon_url = '', $position = null ): string {
 		$GLOBALS['dmbc_test_state']['menu_pages'][ $menu_slug ] = compact( 'page_title', 'menu_title', 'capability', 'callback', 'icon_url', 'position' );
 		return $menu_slug;
+	}
+}
+
+if ( ! function_exists( 'remove_menu_page' ) ) {
+	function remove_menu_page( string $menu_slug ): bool {
+		if ( array_key_exists( $menu_slug, $GLOBALS['dmbc_test_state']['menu_pages'] ) ) {
+			unset( $GLOBALS['dmbc_test_state']['menu_pages'][ $menu_slug ] );
+			return true;
+		}
+		return false;
 	}
 }
 

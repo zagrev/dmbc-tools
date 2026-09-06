@@ -2,6 +2,10 @@
 declare(strict_types=1);
 namespace DmbcTools;
 
+/**
+ * Plugin functionality for DMBC Tools.
+ */
+
 if ( ! \defined( 'ABSPATH' ) ) {
 	print 'ABSPATH is not defined . This file( ' . __FILE__ . ' ) should not be accessed directly . ' . PHP_EOL;
 	exit;
@@ -19,22 +23,24 @@ use DmbcTools\DmbcSettings;
  * The DMBC Plugin
  */
 final class Plugin {
-	public const string VERSION                   = '1.1.5';
-	public const string OPTION_VERSION            = 'dmbc_tools_version';
-	public const string SONGLIST_POST_TYPE        = 'dmbc-songlist';
-	public const string MEMBER_UPDATE_POST_TYPE   = 'dmbc-member-updates';
-	public const string SONGLIST_META_NONCE       = 'dmbc_songlist_meta_nonce';
-	public const string PERFORMANCE_DATE_META_KEY = '_dmbc_performance_date';
-	public const string SONGS_META_KEY            = '_dmbc_songs';
-	public const string NOTES_META_KEY            = '_dmbc_notes';
 
-	public const string CAP_EDIT_SONGLIST  = 'dmbc_edit_songlist';
-	public const string CAP_VIEW_SONGLISTS = 'dmbc_view_songlist';
-	public const string CAP_EDIT_MEMBER_UPDATES = 'dmbc_edit_member_updates';
-	public const string CAP_VIEW_MEMBER_UPDATES = 'dmbc_view_member_updates';
-	public const string CAP_PUBLISH_MEMBER_UPDATES = 'dmbc_publish_member_updates';
-	public const string MEMBER_UPDATE_CRON_HOOK = 'dmbc_send_member_update_digest';
-	public const string MEMBER_UPDATE_SENT_META_KEY = '_dmbc_member_update_sent_at';
+	public const string CAP_EDIT_MEMBER_UPDATES         = 'dmbc_edit_member_updates';
+	public const string CAP_EDIT_SONGLIST               = 'dmbc_edit_songlist';
+	public const string CAP_PUBLISH_MEMBER_UPDATES      = 'dmbc_publish_member_updates';
+	public const string CAP_VIEW_MEMBER_UPDATES         = 'dmbc_view_member_updates';
+	public const string CAP_VIEW_SONGLISTS              = 'dmbc_view_songlist';
+	public const string MEMBER_UPDATE_CRON_HOOK         = 'dmbc_send_member_update_digest';
+	public const string MEMBER_UPDATE_POST_TYPE         = 'dmbc-member-updates';
+	public const string MEMBER_UPDATE_SENT_META_KEY     = '_dmbc_member_update_sent_at';
+	public const string NOTES_META_KEY                  = '_dmbc_notes';
+	public const string OPTION_MEMBER_UPDATE_RECIPIENT  = 'member_update_recipient';
+	public const string OPTION_REMOVE_DATA_ON_UNINSTALL = 'remove_data_on_uninstall';
+	public const string OPTION_VERSION                  = 'dmbc_tools_version';
+	public const string PERFORMANCE_DATE_META_KEY       = '_dmbc_performance_date';
+	public const string SONGLIST_META_NONCE             = 'dmbc_songlist_meta_nonce';
+	public const string SONGLIST_POST_TYPE              = 'dmbc-songlist';
+	public const string SONGS_META_KEY                  = '_dmbc_songs';
+	public const string VERSION                         = '1.1.5';
 
 	/**
 	 *  The settings used by the plugin.
@@ -197,6 +203,7 @@ final class Plugin {
 	public function register_options(): void {
 		\error_log( 'DMBC Plugin: register_options method called.' );
 		\add_option( self::OPTION_VERSION, self::VERSION );
+		\update_option( self::OPTION_VERSION, self::VERSION ); // in case it already exists
 	}
 
 	/**
@@ -275,7 +282,7 @@ final class Plugin {
 	 */
 	public function deactivate(): void {
 		\error_log( 'DMBC Plugin: deactivate method called.' );
-		\wp_clear_scheduled_hook( Plugin::MEMBER_UPDATE_CRON_HOOK );
+		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
 
 		\flush_rewrite_rules();
 	}
@@ -330,7 +337,7 @@ final class Plugin {
 				)
 			)
 		);
-		$recipient = $this->settings->get_member_update_recipient();
+		$recipient      = $this->settings->get_member_update_recipient();
 		if ( empty( $recipient ) ) {
 			return;
 		}
@@ -367,25 +374,31 @@ final class Plugin {
 			return;
 		}
 
-		foreach ( array( Plugin::SONGLIST_POST_TYPE, Plugin::MEMBER_UPDATE_POST_TYPE ) as $post_type ) {
-			$cpt_posts = get_posts( array(
-				'post_type'   => $post_type,
-				'post_status' => 'any',
-				'numberposts' => -1,
-				'fields'      => 'ids', // Only fetch IDs to save memory
-			) );
+		foreach ( array( self::SONGLIST_POST_TYPE, self::MEMBER_UPDATE_POST_TYPE ) as $post_type ) {
+			$cpt_posts = get_posts(
+				array(
+					'post_type'   => $post_type,
+					'post_status' => 'any',
+					'numberposts' => -1,
+					'fields'      => 'ids', // Only fetch IDs to save memory
+				)
+			);
 
 			if ( ! empty( $cpt_posts ) ) {
 				foreach ( $cpt_posts as $post_id ) {
 					// True forces deletion and bypasses the Trash
-					wp_delete_post( $post_id, true ); 
+					wp_delete_post( $post_id, true );
 				}
 			}
 		}
-		\add_action( 'init', function() {
-			\unregister_post_type( Plugin::MEMBER_UPDATE_POST_TYPE );
-			\unregister_post_type( Plugin::SONGLIST_POST_TYPE );
-		}, 11 );
+		\add_action(
+			'init',
+			function () {
+				\unregister_post_type( Plugin::MEMBER_UPDATE_POST_TYPE );
+				\unregister_post_type( Plugin::SONGLIST_POST_TYPE );
+			},
+			11
+		);
 
 		foreach (
 			array(
@@ -458,20 +471,20 @@ final class Plugin {
 		\register_post_type(
 			self::MEMBER_UPDATE_POST_TYPE,
 			array(
-				'labels'       => array(
+				'labels'          => array(
 					'name'          => __( 'Member Updates', 'dmbc-tools' ),
 					'singular_name' => __( 'Member Update', 'dmbc-tools' ),
 					'add_new_item'  => __( 'Add Member Update', 'dmbc-tools' ),
 					'edit_item'     => __( 'Edit Member Update', 'dmbc-tools' ),
 				),
-				'public'       => false,
-				'show_ui'      => true,
-				'show_in_menu' => false,
-				'show_in_rest' => true,
-				'supports'     => array( 'title', 'editor' ),
+				'public'          => false,
+				'show_ui'         => true,
+				'show_in_menu'    => false,
+				'show_in_rest'    => true,
+				'supports'        => array( 'title', 'editor' ),
 				'capability_type' => 'post',
-				'map_meta_cap' => false,
-				'capabilities' => array(
+				'map_meta_cap'    => false,
+				'capabilities'    => array(
 					'edit_post'     => self::CAP_EDIT_MEMBER_UPDATES,
 					'read_post'     => self::CAP_VIEW_MEMBER_UPDATES,
 					'delete_post'   => self::CAP_EDIT_MEMBER_UPDATES,
@@ -479,7 +492,7 @@ final class Plugin {
 					'publish_posts' => self::CAP_PUBLISH_MEMBER_UPDATES,
 					'create_posts'  => self::CAP_EDIT_MEMBER_UPDATES,
 				),
-				'menu_icon'    => 'dashicons-megaphone',
+				'menu_icon'       => 'dashicons-megaphone',
 			)
 		);
 	}
@@ -632,7 +645,9 @@ final class Plugin {
 		$this->create_song_list_view();
 		$this->create_member_update_view();
 
-		add_menu_page(
+		\remove_menu_page( 'dmbc_song_list' );
+
+		\add_menu_page(
 			__( 'All Rehearsal Song Lists', 'dmbc-tools' ),
 			__( 'Rehearsal Songs', 'dmbc-tools' ),
 			self::CAP_VIEW_SONGLISTS,
@@ -642,7 +657,7 @@ final class Plugin {
 			25
 		);
 
-		add_submenu_page(
+		\add_submenu_page(
 			'dmbc-songlists-menu',
 			__( 'Add Rehearsal Song list', 'dmbc-tools' ),
 			__( 'Add Song list', 'dmbc-tools' ),
@@ -651,7 +666,7 @@ final class Plugin {
 			array( $this->song_list_view, 'dmbc_render_songlist_edit_page' )
 		);
 
-		add_menu_page(
+		\add_menu_page(
 			__( 'All Member Updates', 'dmbc-tools' ),
 			__( 'Member Updates', 'dmbc-tools' ),
 			self::CAP_VIEW_MEMBER_UPDATES,
@@ -662,7 +677,7 @@ final class Plugin {
 		);
 
 		// add options page separately.
-		add_submenu_page(
+		\add_submenu_page(
 			'options-general.php',
 			__( 'DMBC Tools', 'dmbc-tools' ),
 			__( 'DMBC Tools', 'dmbc-tools' ),
