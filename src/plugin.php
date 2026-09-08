@@ -130,6 +130,8 @@ final class Plugin {
 		$this->add_songlist_capabilities();
 		$this->schedule_member_update_digest();
 
+		add_action( 'wp_dashboard_setup', array( self::instance(), 'register_menu_slugs_dashboard_widget' ) );
+
 		\flush_rewrite_rules();
 	}
 
@@ -685,5 +687,71 @@ final class Plugin {
 			'dmbc-tools-settings',
 			array( $this->settings, 'dmbc_render_settings_page' )
 		);
+	}
+
+	/**
+	 * Register the WordPress Dashboard Widget
+	 */
+	public function register_menu_slugs_dashboard_widget() {
+		\wp_add_dashboard_widget(
+			'wp_admin_menu_slugs_widget',          // Widget slug.
+			'Registered Admin Menu Slugs',         // Widget title.
+			array( $this, 'render_menu_slugs_dashboard_widget' )   // Display callback function.
+		);
+	}
+
+	/**
+	 * Render the Widget Content
+	 */
+	public function render_menu_slugs_dashboard_widget() {
+		global $menu, $submenu;
+
+		// Optional styling to make the list scrollable and easy to read
+		echo '<style>
+        .slugs-widget-container { max-height: 350px; overflow-y: auto; padding-right: 5px; }
+        .slugs-parent { font-weight: bold; background: #f0f6fc; padding: 4px 8px; margin: 8px 0 4px 0; border-left: 4px solid #72aee6; font-family: monospace; }
+        .slugs-sub-list { margin: 0 0 10px 15px; padding-left: 10px; border-left: 1px dashed #ccd0d4; font-family: monospace; list-style: none; }
+        .slugs-sub-item { margin-bottom: 2px; }
+        .slug-tag { background: #eaeaea; padding: 1px 4px; border-radius: 3px; font-size: 11px; color: #d63638; }
+    </style>';
+
+		echo '<div class="slugs-widget-container">';
+		echo '<p>Below is a dynamic map of your site\'s currently active admin menu slugs:</p>';
+
+		if ( ! empty( $menu ) ) {
+			foreach ( $menu as $menu_item ) {
+				// $menu_item[0] is the clean title, $menu_item[2] is the menu slug
+				if ( empty( $menu_item[2] ) ) {
+					continue;
+				}
+
+				$parent_slug  = $menu_item[2];
+				$parent_title = wp_strip_all_tags( $menu_item[0] );
+
+				// If it's just a separator, skip it
+				if ( strpos( $menu_item[4], 'wp-menu-separator' ) !== false ) {
+					continue;
+				}
+
+				echo '<div class="slugs-parent">' . esc_html( $parent_title ) . ' ➡️ <span class="slug-tag">' . esc_html( $parent_slug ) . '</span></div>';
+
+				// Check if this parent has submenus
+				if ( isset( $submenu[ $parent_slug ] ) && ! empty( $submenu[ $parent_slug ] ) ) {
+					echo '<ul class="slugs-sub-list">';
+					foreach ( $submenu[ $parent_slug ] as $sub_item ) {
+						// $sub_item[0] is the sub title, $sub_item[2] is the sub slug
+						$sub_title = wp_strip_all_tags( $sub_item[0] );
+						$sub_slug  = $sub_item[2];
+
+						echo '<li class="slugs-sub-item">— ' . esc_html( $sub_title ) . ': <span class="slug-tag">' . esc_html( $sub_slug ) . '</span></li>';
+					}
+					echo '</ul>';
+				}
+			}
+		} else {
+			echo '<p>No menus found.</p>';
+		}
+
+		echo '</div>';
 	}
 }
