@@ -46,7 +46,7 @@ class SongListView {
 	 * Creates the song list table instance.
 	 */
 	public function create_song_list_table(): void {
-		\error_log( 'DMBC SongListView: create_song_list_table method called.' );
+		// \error_log( 'DMBC SongListView: create_song_list_table method called.' );
 		if ( ! isset( $this->song_list_table ) ) {
 			$this->song_list_table = new SongListTable();
 		}
@@ -58,7 +58,7 @@ class SongListView {
 	 * @return void
 	 */
 	public function dmbc_render_songlist_table_page(): void {
-		\error_log( 'DMBC SongListView: dmbc_render_songlist_table_page method called.' );
+		// \error_log( 'DMBC SongListView: dmbc_render_songlist_table_page method called.' );
 		echo $this->render_member_song_lists_table_page();
 	}
 
@@ -69,7 +69,7 @@ class SongListView {
 	 * @return void
 	 */
 	public function dmbc_render_songlist_edit_page( $song_list_id = 0 ): void {
-		\error_log( 'DMBC SongListView: dmbc_render_songlist_edit_page method called.' );
+		// \error_log( 'DMBC SongListView: dmbc_render_songlist_edit_page method called.' );
 		if ( 0 === (int) $song_list_id && isset( $_GET['song_list_id'] ) ) {
 			$song_list_id = \absint( \wp_unslash( $_GET['song_list_id'] ) );
 		}
@@ -483,7 +483,7 @@ class SongListView {
 	 * @return bool|string
 	 */
 	public function render_member_song_lists_table_page(): string|bool {
-		\error_log( 'DMBC SongListView: render_member_song_lists_table_page called.' );
+		// \error_log( 'DMBC SongListView: render_member_song_lists_table_page called.' );
 
 		$this->create_song_list_table();
 		$this->song_list_table->prepare_items();
@@ -693,7 +693,7 @@ class SongListView {
 	 * @return void
 	 */
 	public function handle_song_list_form(): void {
-		\error_log( 'DMBC SongListView: handle_song_list_form.' );
+		// \error_log( 'DMBC SongListView: handle_song_list_form.' );
 		if ( isset( $_POST['dmbc_delete_song_list'] ) ) {
 			$this->handle_delete_song_list_form();
 			return;
