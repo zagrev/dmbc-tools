@@ -5,7 +5,7 @@ Tags: dmbc, tools
 Requires at least: 6.0
 Requires PHP: 8.0
 Tested up to: 6.8
-Stable tag: 1.1.10
+Stable tag: 1.1.11
 License: CC BY-NC-ND
 License URI: https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.txt
 
