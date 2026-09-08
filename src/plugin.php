@@ -74,8 +74,7 @@ final class Plugin {
 	 * Private constructor to prevent direct instantiation.
 	 */
 	private function __construct() {
-		\error_log( 'DMBC Plugin: constructor called . ' );
-
+		// \error_log( 'DMBC Plugin: constructor called . ' );
 		$this->settings = new DmbcSettings();
 	}
 
@@ -98,7 +97,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function run(): void {
-		\error_log( 'DMBC Plugin: "run" called. ------------------------------------' );
+		// \error_log( 'DMBC Plugin: "run" called. ------------------------------------' );
 		// \add_action( 'all', fn( $tag ) => \error_log( $tag . ': ' . \print( \func_get_args(), true ) ) );
 
 		\add_action( 'init', array( $this, 'initialize' ) );
@@ -122,7 +121,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function initialize(): void {
-		\error_log( 'DMBC Plugin: "initialize" called.' );
+		// \error_log( 'DMBC Plugin: "initialize" called.' );
 
 		$this->register_songlist_type();
 		$this->register_member_update_type();
@@ -149,7 +148,7 @@ final class Plugin {
 	 * Register the custom dashboard widget.
 	 */
 	public function register_user_capabilities_dashboard_widget() {
-		\error_log( 'DMBC Tools: registering user capabilities dashboard widget . ' );
+		// \error_log( 'DMBC Tools: registering user capabilities dashboard widget . ' );
 		wp_add_dashboard_widget(
 			'wp_user_capabilities_widget',
 			'Your Current Capabilities',
@@ -163,7 +162,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function render_user_capabilities_widget() {
-		\error_log( 'DMBC Tools: displaying user capabilities widget.' );
+		// \error_log( 'DMBC Tools: displaying user capabilities widget.' );
 		// Get the current user data object.
 		$current_user = wp_get_current_user();
 
@@ -203,7 +202,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function register_options(): void {
-		\error_log( 'DMBC Plugin: register_options method called.' );
+		// \error_log( 'DMBC Plugin: register_options method called.' );
 		\add_option( self::OPTION_VERSION, self::VERSION );
 		\update_option( self::OPTION_VERSION, self::VERSION ); // in case it already exists
 	}
@@ -214,7 +213,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function add_songlist_capabilities() {
-		\error_log( 'DMBC Plugin: add_songlist_capabilities method called.' );
+		// \error_log( 'DMBC Plugin: add_songlist_capabilities method called.' );
 		foreach ( $this->get_roles_with_edit_cap() as $role_name ) {
 			$role = \get_role( $role_name );
 			if ( $role && ! $role->has_cap( self::CAP_EDIT_SONGLIST ) ) {
@@ -283,7 +282,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function deactivate(): void {
-		\error_log( 'DMBC Plugin: deactivate method called.' );
+		// \error_log( 'DMBC Plugin: deactivate method called.' );
 		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
 
 		\flush_rewrite_rules();
@@ -366,7 +365,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public static function uninstall(): void {
-		\error_log( 'DMBC Plugin: uninstall method called.' );
+		// \error_log( 'DMBC Plugin: uninstall method called.' );
 
 		// If uninstall.php is not called by WordPress, die immediately.
 		if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
@@ -437,7 +436,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function register_songlist_type(): void {
-		\error_log( 'DMBC Plugin: register_songlist_type method called.' );
+		// \error_log( 'DMBC Plugin: register_songlist_type method called.' );
 
 		if ( ! \post_type_exists( self::SONGLIST_POST_TYPE ) ) {
 			\register_post_type(
@@ -505,7 +504,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function add_songlist_meta_box(): void {
-		\error_log( 'DMBC Plugin: add_songlist_meta_box method called.' );
+		// \error_log( 'DMBC Plugin: add_songlist_meta_box method called.' );
 		\add_meta_box(
 			'dmbc-songlist-details',
 			__( 'Song list Details', 'dmbc-tools' ),
@@ -523,7 +522,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function render_songlist_meta_box( \WP_Post $post ): void {
-		\error_log( 'DMBC Plugin: render_songlist_meta_box method called.' );
+		// \error_log( 'DMBC Plugin: render_songlist_meta_box method called.' );
 		\wp_nonce_field( 'dmbc_save_songlist_meta', self::SONGLIST_META_NONCE );
 
 		$performance_date = \get_post_meta( $post->ID, self::PERFORMANCE_DATE_META_KEY, true );
@@ -556,7 +555,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function save_songlist_meta( int $post_id ): void {
-		\error_log( 'DMBC Plugin: save_songlist_meta method called.' );
+		// \error_log( 'DMBC Plugin: save_songlist_meta method called.' );
 		if (
 		! isset( $_POST[ self::SONGLIST_META_NONCE ] ) ||
 		! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST[ self::SONGLIST_META_NONCE ] ) ), 'dmbc_save_songlist_meta' ) ||
@@ -593,7 +592,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function register_admin(): void {
-		\error_log( 'DMBC Plugin: register_admin method called.' );
+		// \error_log( 'DMBC Plugin: register_admin method called.' );
 		$this->create_song_list_view();
 		$this->create_member_update_view();
 		$this->register_options();
@@ -607,7 +606,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function create_song_list_view(): void {
-		\error_log( 'DMBC Plugin: create_song_list_view method called.' );
+		// \error_log( 'DMBC Plugin: create_song_list_view method called.' );
 
 		if ( ! class_exists( '\WP_List_Table' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
@@ -643,11 +642,12 @@ final class Plugin {
 	 * @return void
 	 */
 	public function add_admin_menu(): void {
-		\error_log( 'DMBC Plugin: add_admin_menu method called.' );
+		// \error_log( 'DMBC Plugin: add_admin_menu method called.' );
 		$this->create_song_list_view();
 		$this->create_member_update_view();
 
-		\remove_menu_page( 'dmbc_song_list' );
+		// Remove any left-over rehearsal notes menu page.
+		\remove_menu_page( 'rehearsal-notes' );
 
 		\add_menu_page(
 			__( 'All Rehearsal Song Lists', 'dmbc-tools' ),

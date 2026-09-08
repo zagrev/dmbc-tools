@@ -31,7 +31,7 @@ class DmbcSettings {
 	 * Registers the settings for this plugin.
 	 */
 	public function register_settings(): void {
-		\error_log( 'DMBC Settings: register_settings method called.' );
+		// \error_log( 'DMBC Settings: register_settings method called.' );
 
 		register_setting(
 			'settings_group',
@@ -274,10 +274,10 @@ class DmbcSettings {
 		if ( ! $this->is_path_absolute( $requested_path ) ) {
 			$requested_path = WP_CONTENT_DIR . '/' . $requested_path;
 		}
-		\error_log( 'DMBC Ajax: absolute path: ' . $requested_path );
+		// \error_log( 'DMBC Ajax: absolute path: ' . $requested_path );
 
 		$real_path = realpath( $requested_path );
-		\error_log( 'DMBC Ajax: real path: ' . $real_path );
+		// \error_log( 'DMBC Ajax: real path: ' . $real_path );
 
 		if ( false === $real_path || ! is_dir( $real_path ) || ! is_readable( $real_path ) ) {
 			\wp_send_json_error( array( 'message' => \__( 'The requested directory could not be found or is not readable.', 'dmbc-tools' ) ), 400 );
