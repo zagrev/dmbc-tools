@@ -78,6 +78,15 @@ class DmbcSettings {
 				'default'           => false,
 			)
 		);
+		register_setting(
+			'settings_group',
+			Plugin::OPTION_MAX_BCC_PER_EMAIL,
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => array( $this, 'sanitize_max_bcc_per_email' ),
+				'default'           => 50,
+			)
+		);
 
 		add_settings_section(
 			'general_section',
@@ -103,6 +112,13 @@ class DmbcSettings {
 			'remove_data_on_uninstall',
 			__( 'Remove data on uninstall', 'dmbc-tools' ),
 			array( $this, 'render_remove_data_on_uninstall_field' ),
+			'settings',
+			'general_section'
+		);
+		add_settings_field(
+			Plugin::OPTION_MAX_BCC_PER_EMAIL,
+			__( 'Max BCC recipients per email', 'dmbc-tools' ),
+			array( $this, 'render_max_bcc_per_email_field' ),
 			'settings',
 			'general_section'
 		);
@@ -334,6 +350,18 @@ class DmbcSettings {
 	}
 
 	/**
+	 * Render the max bcc recipients per email field.
+	 */
+	public function render_max_bcc_per_email_field(): void {
+		?>
+		<input type="number" min="1" step="1" name="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" id="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" value="<?php echo esc_attr( (string) $this->get_max_bcc_per_email() ); ?>" class="small-text" />
+		<p class="description">
+			<?php esc_html_e( 'The maximum number of addresses to bcc in a single email. Larger recipient lists are split across multiple emails.', 'dmbc-tools' ); ?>
+		</p>
+		<?php
+	}
+
+	/**
 	 * Render the song list recipient roles field.
 	 */
 	public function render_song_list_recipient_roles_field(): void {
@@ -528,6 +556,27 @@ class DmbcSettings {
 		}
 
 		return $this->sanitize_email_recipient( $recipient );
+	}
+
+	/**
+	 * Sanitize the maximum number of bcc recipients per email.
+	 *
+	 * @param mixed $value The submitted value.
+	 * @return int
+	 */
+	public function sanitize_max_bcc_per_email( $value ): int {
+		$value = (int) $value;
+
+		return $value > 0 ? $value : 50;
+	}
+
+	/**
+	 * Retrieve the maximum number of bcc recipients to include in a single email.
+	 *
+	 * @return int
+	 */
+	public function get_max_bcc_per_email(): int {
+		return $this->sanitize_max_bcc_per_email( \get_option( Plugin::OPTION_MAX_BCC_PER_EMAIL, 50 ) );
 	}
 
 	/**

@@ -36,6 +36,7 @@ final class Plugin {
 	public const string MEMBER_UPDATE_RECIPIENT_META_KEY = '_dmbc_member_update_recipient';
 	public const string NOTES_META_KEY                   = '_dmbc_notes';
 	public const string OPTION_EMAIL_RECIPIENT           = 'member_update_recipient';
+	public const string OPTION_MAX_BCC_PER_EMAIL         = 'max_bcc_recipients_per_email';
 	public const string OPTION_REMOVE_DATA_ON_UNINSTALL  = 'remove_data_on_uninstall';
 	public const string OPTION_VERSION                   = 'dmbc_tools_version';
 	public const string PERFORMANCE_DATE_META_KEY        = '_dmbc_performance_date';
