@@ -15,6 +15,7 @@ if ( ! \defined( 'ABSPATH' ) ) {
 require_once __DIR__ . '/admin/settings-edit.php';
 require_once __DIR__ . '/admin/menu.php';
 require_once __DIR__ . '/songlist.php';
+require_once __DIR__ . '/mailer.php';
 
 use DmbcTools\SongListView;
 use DmbcTools\DmbcSettings;
@@ -24,23 +25,24 @@ use DmbcTools\DmbcSettings;
  */
 final class Plugin {
 
-	public const string CAP_EDIT_MEMBER_UPDATES         = 'dmbc_edit_member_updates';
-	public const string CAP_EDIT_SONGLIST               = 'dmbc_edit_songlist';
-	public const string CAP_PUBLISH_MEMBER_UPDATES      = 'dmbc_publish_member_updates';
-	public const string CAP_VIEW_MEMBER_UPDATES         = 'dmbc_view_member_updates';
-	public const string CAP_VIEW_SONGLISTS              = 'dmbc_view_songlist';
-	public const string MEMBER_UPDATE_CRON_HOOK         = 'dmbc_send_member_update_digest';
-	public const string MEMBER_UPDATE_POST_TYPE         = 'dmbc-member-updates';
-	public const string MEMBER_UPDATE_SENT_META_KEY     = '_dmbc_member_update_sent_at';
-	public const string NOTES_META_KEY                  = '_dmbc_notes';
-	public const string OPTION_MEMBER_UPDATE_RECIPIENT  = 'member_update_recipient';
-	public const string OPTION_REMOVE_DATA_ON_UNINSTALL = 'remove_data_on_uninstall';
-	public const string OPTION_VERSION                  = 'dmbc_tools_version';
-	public const string PERFORMANCE_DATE_META_KEY       = '_dmbc_performance_date';
-	public const string SONGLIST_META_NONCE             = 'dmbc_songlist_meta_nonce';
-	public const string SONGLIST_POST_TYPE              = 'dmbc-songlist';
-	public const string SONGS_META_KEY                  = '_dmbc_songs';
-	public const string VERSION                         = '1.1.8';
+	public const string CAP_EDIT_MEMBER_UPDATES          = 'dmbc_edit_member_updates';
+	public const string CAP_EDIT_SONGLIST                = 'dmbc_edit_songlist';
+	public const string CAP_PUBLISH_MEMBER_UPDATES       = 'dmbc_publish_member_updates';
+	public const string CAP_VIEW_MEMBER_UPDATES          = 'dmbc_view_member_updates';
+	public const string CAP_VIEW_SONGLISTS               = 'dmbc_view_songlist';
+	public const string MEMBER_UPDATE_CRON_HOOK          = 'dmbc_send_member_update_digest';
+	public const string MEMBER_UPDATE_POST_TYPE          = 'dmbc-member-updates';
+	public const string MEMBER_UPDATE_SENT_META_KEY      = '_dmbc_member_update_sent_at';
+	public const string MEMBER_UPDATE_RECIPIENT_META_KEY = '_dmbc_member_update_recipient';
+	public const string NOTES_META_KEY                   = '_dmbc_notes';
+	public const string OPTION_EMAIL_RECIPIENT           = 'dmbc_email_recipient';
+	public const string OPTION_REMOVE_DATA_ON_UNINSTALL  = 'remove_data_on_uninstall';
+	public const string OPTION_VERSION                   = 'dmbc_tools_version';
+	public const string PERFORMANCE_DATE_META_KEY        = '_dmbc_performance_date';
+	public const string SONGLIST_META_NONCE              = 'dmbc_songlist_meta_nonce';
+	public const string SONGLIST_POST_TYPE               = 'dmbc-songlist';
+	public const string SONGS_META_KEY                   = '_dmbc_songs';
+	public const string VERSION                          = '1.1.8';
 
 	/**
 	 *  The settings used by the plugin.
@@ -48,6 +50,13 @@ final class Plugin {
 	 * @var DmbcSettings
 	 */
 	private DmbcSettings $settings;
+
+	/**
+	 * The mailer used to send plugin emails.
+	 *
+	 * @var Mailer
+	 */
+	private Mailer $mailer;
 
 	/**
 	 * The song list view handler.
@@ -76,6 +85,7 @@ final class Plugin {
 	private function __construct() {
 		// \error_log( 'DMBC Plugin: constructor called . ' );
 		$this->settings = new DmbcSettings();
+		$this->mailer   = new Mailer( $this->settings );
 	}
 
 	/**
@@ -327,35 +337,50 @@ final class Plugin {
 			return;
 		}
 
-		$bcc_recipients = array_values(
-			array_unique(
-				array_filter(
-					array_map(
-						fn( $user ) => isset( $user->user_email ) ? $user->user_email : '',
-						(array) \get_users( array( 'role' => 'um_member' ) )
-					),
-					fn( string $email ): bool => \is_email( $email ) !== false
-				)
-			)
-		);
-		$recipient      = $this->settings->get_member_update_recipient();
-		if ( empty( $recipient ) ) {
-			return;
+		$subject   = __( 'Member Updates', 'dmbc - tools' );
+		$post_list = '';
+		foreach ( $updates as $post ) {
+			$post_title   = \get_the_title( $post );
+			$raw_content  = \apply_filters( 'the_content', $post->post_content );
+			$featured_img = \get_the_post_thumbnail_url( $post->ID, 'large' );
+
+			// 2. Inline standard styles to raw web HTML so email clients don't break them
+			$email_content = str_replace( '<p>', '<p style="margin:0 0 16px 0; font-size:16px; line-height:1.6; color:#444444;">', $raw_content );
+			$email_content = str_replace( '<h2>', '<h2 style="margin:24px 0 12px 0; font-size:20px; color:#222222; font-family:Arial, sans-serif;">', $email_content );
+			$email_content = str_replace( '<a ', '<a style="color:#0073aa; text-decoration:underline;" ', $email_content );
+
+			$post_list .= "<tr><td><h1 style='font-size:28px; margin:0 0 20px 0;'>{$post_title}</h1></td></tr>";
+			$post_list .= ( $featured_img ? "<tr><td style='padding-bottom:25px;'><img src='{$featured_img}' width='100%' /></td></tr>" : '' );
+			$post_list .= "<tr><td>{$email_content}</td></tr>";
 		}
 
-		$message = "Member updates:\n\n";
-		foreach ( $updates as $update ) {
-			$message .= $update->post_title . "\n" . \wp_strip_all_tags( $update->post_content ) . "\n\n";
-		}
+		// 3. Inject variables into your template string
+		$message = "
+<!DOCTYPE html>
+<html>
+<body style='margin:0; padding:0; background-color:#f6f6f6; font-family:Arial, sans-serif;'>
+    <table width='100%' bgcolor='#f6f6f6' style='padding:20px 0;'>
+        <tr>
+            <td align='center'>
+                <table width='600' bgcolor='#ffffff' style='padding:40px; border-radius:8px;'>
+                    
+                    <tr><td>{$post_list}</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>";
 
-		$headers = empty( $bcc_recipients ) ? array() : array( 'Bcc: ' . implode( ',', $bcc_recipients ) );
-		if ( ! \wp_mail( $recipient, __( 'Member Updates', 'dmbc-tools' ), $message, $headers ) ) {
+		$recipients = $this->mailer->send_email( $subject, $message, array( 'um_member' ) );
+		if ( empty( $recipients ) ) {
 			return;
 		}
 
 		$sent_at = \gmdate( 'Y-m-d H:i:s' );
 		foreach ( $updates as $update ) {
 			\update_post_meta( $update->ID, self::MEMBER_UPDATE_SENT_META_KEY, $sent_at );
+			\update_post_meta( $update->ID, self::MEMBER_UPDATE_RECIPIENT_META_KEY, $recipients );
 		}
 	}
 
@@ -371,7 +396,7 @@ final class Plugin {
 		if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 			die;
 		}
-		if ( ! (bool) \get_option( 'remove_data_on_uninstall', false ) ) {
+		if ( ! (bool) \get_option( self::OPTION_REMOVE_DATA_ON_UNINSTALL, false ) ) {
 			return;
 		}
 
@@ -402,15 +427,14 @@ final class Plugin {
 		);
 
 		foreach (
-			array(
-				self::OPTION_VERSION,
-				'song_library_directory',
-				'song_library_exclusion_regexes',
-				'song_list_recipient_roles',
-				'song_list_default_recipient',
-				'member_update_recipient',
-				'remove_data_on_uninstall',
-			) as $option_name
+		array(
+			self::OPTION_VERSION,
+			'song_library_directory',
+			'song_library_exclusion_regexes',
+			'song_list_recipient_roles',
+			self::OPTION_EMAIL_RECIPIENT,
+			self::OPTION_REMOVE_DATA_ON_UNINSTALL,
+		) as $option_name
 		) {
 			\delete_option( $option_name );
 		}
@@ -615,7 +639,7 @@ final class Plugin {
 		require_once __DIR__ . '/songlist-view.php';
 
 		if ( ! isset( $this->song_list_view ) ) {
-			$this->song_list_view = new SongListView( $this->settings );
+			$this->song_list_view = new SongListView( $this->settings, $this->mailer );
 		}
 	}
 
