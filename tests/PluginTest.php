@@ -194,7 +194,7 @@ final class PluginTest extends DmbcUnitTestBase {
 
 		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
 		$this->assertSame( 'updates@example.com', $GLOBALS['dmbc_test_state']['mail_calls'][0]['recipients'] );
-		$this->assertSame( array( 'Bcc: member@example.com' ), $GLOBALS['dmbc_test_state']['mail_calls'][0]['headers'] );
+		$this->assertSame( array( 'Bcc: member@example.com', 'Content-Type: text/html; charset=UTF-8' ), $GLOBALS['dmbc_test_state']['mail_calls'][0]['headers'] );
 		$this->assertStringContainsString( 'Schedule change', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
 		$this->assertNotEmpty( $this->get_stored_post_meta( 81, Plugin::MEMBER_UPDATE_SENT_META_KEY ) );
 
