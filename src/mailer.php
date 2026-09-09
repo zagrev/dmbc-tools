@@ -36,12 +36,13 @@ class Mailer {
 	/**
 	 * Send an email to all users with the specified roles, bcc'ing them.
 	 *
-	 * @param string        $subject The email subject.
-	 * @param string        $message The email body.
-	 * @param array<string> $roles   The roles of users to email.
+	 * @param string             $subject The email subject.
+	 * @param string             $message The email body.
+	 * @param array<string>|null $roles   The roles of users to email.
 	 * @return array<string> The recipients who were emailed.
 	 */
-	public function send_email( string $subject, string $message, array $roles ): array {
+	public function send_email( string $subject, string $message, array|null $roles = null ): array {
+		$roles      = null === $roles ? $this->settings->get_song_list_recipient_roles() : (array) $roles;
 		$recipients = array_values(
 			array_unique(
 				array_filter(
@@ -58,10 +59,8 @@ class Mailer {
 			return array();
 		}
 
+		// This can never return empty, so no need to check the result.
 		$recipient = $this->settings->get_email_recipient();
-		if ( empty( $recipient ) ) {
-			return array();
-		}
 
 		foreach ( array_chunk( $recipients, $this->settings->get_max_bcc_per_email() ) as $bcc_batch ) {
 			$headers = array(

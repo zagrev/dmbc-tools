@@ -23,12 +23,26 @@ final class SongListTableTest extends DmbcUnitTestBase {
 	public function test_column_renderers_return_post_values(): void {
 		$table = new SongListTable();
 		$post  = $this->make_post();
-		$this->set_post_meta( $post->ID, Plugin::SONGS_META_KEY, array( 'Song A', 'Song B' ) );
+		$this->set_post_meta(
+			$post->ID,
+			Plugin::SONGS_META_KEY,
+			array(
+				array(
+					'type'  => 'song',
+					'value' => 'Song A',
+				),
+				array(
+					'type'  => 'note',
+					'value' => 'Ten-minute break',
+				),
+				'Song B',
+			)
+		);
 		$this->set_post_meta( $post->ID, Plugin::PERFORMANCE_DATE_META_KEY, '2026-09-09' );
 
 		$this->assertSame( 'September rehearsal', $table->column_name( $post ) );
 		$this->assertSame( '<input type="checkbox" name="bulk-items[]" value="12" />', $table->column_cb( $post ) );
-		$this->assertSame( 'Song A, Song B', $table->column_songs( $post ) );
+		$this->assertSame( 'Song A, Ten-minute break, Song B', $table->column_songs( $post ) );
 		$this->assertStringContainsString( '2026-09-09', $table->column_rehearsal_date( $post ) );
 	}
 

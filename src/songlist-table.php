@@ -13,6 +13,8 @@ if ( ! \defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/songlist.php';
+
 use WP_Post;
 
 /**
@@ -45,7 +47,7 @@ class SongListTable extends \WP_List_Table {
 			'cb'             => '<input type="checkbox" />',
 			'rehearsal_date' => __( 'Rehearsal Date', 'dmbc-extras' ),
 			'name'           => __( 'Name', 'dmbc-extras' ),
-			'songs'          => __( 'Songs', 'dmbc-extras' ),
+			'songs'          => __( 'Rehearsal Items', 'dmbc-extras' ),
 		);
 	}
 
@@ -114,8 +116,8 @@ class SongListTable extends \WP_List_Table {
 	 * @return string
 	 */
 	public function column_songs( WP_Post $item ) {
-		$songs = \get_post_meta( $item->ID, Plugin::SONGS_META_KEY, true );
-		return is_array( $songs ) ? implode( ', ', $songs ) : $songs;
+		$items = SongList::normalize_items( \get_post_meta( $item->ID, Plugin::SONGS_META_KEY, true ) );
+		return implode( ', ', array_map( fn( $i ) => $i['value'], $items ) );
 	}
 
 	/**

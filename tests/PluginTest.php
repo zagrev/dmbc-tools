@@ -313,6 +313,39 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Method save_songlist_meta() parses song textarea lines into typed rehearsal items.
+	 *
+	 * @covers \DmbcTools\Plugin::save_songlist_meta
+	 */
+	public function test_save_songlist_meta_parses_song_lines_into_rehearsal_items(): void {
+		$plugin = Plugin::instance();
+		$_POST  = array(
+			'dmbc_songlist_meta_nonce' => 'some-nonce',
+			'dmbc_songs'               => "Song A\nnote: Ten-minute break\n\nSong B",
+		);
+
+		$plugin->save_songlist_meta( 106 );
+
+		$this->assertSame(
+			array(
+				array(
+					'type'  => 'song',
+					'value' => 'Song A',
+				),
+				array(
+					'type'  => 'note',
+					'value' => 'Ten-minute break',
+				),
+				array(
+					'type'  => 'song',
+					'value' => 'Song B',
+				),
+			),
+			$this->get_stored_post_meta( 106, '_dmbc_songs' )
+		);
+	}
+
+	/**
 	 * Method render_songlist_meta_box() outputs the currently stored meta values.
 	 *
 	 * @covers \DmbcTools\Plugin::render_songlist_meta_box
