@@ -115,18 +115,18 @@ class DmbcSettings {
 			'settings',
 			'general_section'
 		);
+		add_settings_section(
+			'notifications_section',
+			__( 'DMBC Tools notifications', 'dmbc-tools' ),
+			'__return_empty_string',
+			'settings'
+		);
 		add_settings_field(
 			Plugin::OPTION_MAX_BCC_PER_EMAIL,
 			__( 'Max BCC recipients per email', 'dmbc-tools' ),
 			array( $this, 'render_max_bcc_per_email_field' ),
 			'settings',
-			'general_section'
-		);
-		add_settings_section(
-			'notifications_section',
-			__( 'Rehearsal song list notifications', 'dmbc-tools' ),
-			'__return_empty_string',
-			'settings'
+			'notifications_section'
 		);
 		add_settings_field(
 			'song_list_recipient_roles',
@@ -141,19 +141,6 @@ class DmbcSettings {
 			array( $this, 'render_song_list_default_recipient_field' ),
 			'settings',
 			'notifications_section'
-		);
-		add_settings_section(
-			'member_update_notifications_section',
-			__( 'Member update notifications', 'dmbc-tools' ),
-			'__return_empty_string',
-			'settings'
-		);
-		add_settings_field(
-			Plugin::OPTION_EMAIL_RECIPIENT,
-			__( 'Primary recipient', 'dmbc-tools' ),
-			array( $this, 'render_member_update_recipient_field' ),
-			'settings',
-			'member_update_notifications_section'
 		);
 	}
 
@@ -354,9 +341,12 @@ class DmbcSettings {
 	 */
 	public function render_max_bcc_per_email_field(): void {
 		?>
-		<input type="number" min="1" step="1" name="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" id="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" value="<?php echo esc_attr( (string) $this->get_max_bcc_per_email() ); ?>" class="small-text" />
+		<input type="number" min="1" step="1" 
+			name="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" 
+			id="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" 
+			value="<?php echo esc_attr( (string) $this->get_max_bcc_per_email() ); ?>" class="small-text" />
 		<p class="description">
-			<?php esc_html_e( 'The maximum number of addresses to bcc in a single email. Larger recipient lists are split across multiple emails.', 'dmbc-tools' ); ?>
+			<?php esc_html_e( 'The maximum number of addresses to bcc in a single email. Larger recipient lists are split across multiple emails. Certain email providers may have their own limits, such as a max of 50 using AWS SES.', 'dmbc-tools' ); ?>
 		</p>
 		<?php
 	}
@@ -388,25 +378,10 @@ class DmbcSettings {
 	 */
 	public function render_song_list_default_recipient_field(): void {
 		?>
-		<input type="email" name="song_list_default_recipient" id="song_list_default_recipient" value="<?php echo \esc_attr( $this->get_song_list_default_recipient() ); ?>"
+		<input type="email" name="song_list_default_recipient" id="song_list_default_recipient" value="<?php echo \esc_attr( $this->get_email_recipient() ); ?>"
 			class="regular-text" />
 		<p class="description">
 			<?php esc_html_e( 'This address receives the email in addition to selected role members. It defaults to the site administrator email.', 'dmbc-tools' ); ?>
-		</p>
-		<?php
-	}
-
-	/**
-	 * Render the primary recipient field for member update digests.
-	 *
-	 * @return void
-	 */
-	public function render_member_update_recipient_field(): void {
-		?>
-		<input type="email" name="member_update_recipient" id="member_update_recipient" value="<?php echo \esc_attr( $this->get_member_update_recipient() ); ?>"
-			class="regular-text" />
-		<p class="description">
-			<?php esc_html_e( 'This address receives member update digests directly. Members are included as BCC recipients. It defaults to the site administrator email.', 'dmbc-tools' ); ?>
 		</p>
 		<?php
 	}

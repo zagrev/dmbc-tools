@@ -21,7 +21,8 @@
   },
   "scripts": {
     "test": "phpunit",
-    "lint": "php -l dmbc-tools.php && php -l src/plugin.php"
+    "lint": "php -l dmbc-tools.php && php -l src/plugin.php",
+    "j2p": "php bin/json-php-serializer.php"
   },
   "require": {
     "monolog/monolog": "^3.10",
