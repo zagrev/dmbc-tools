@@ -13,6 +13,9 @@
     <exclude-pattern>*/vendor/*</exclude-pattern>
     <exclude-pattern>*/node_modules/*</exclude-pattern>
 
+    <!-- Standalone CLI tools; no WordPress context is loaded, WP-specific sniffs don't apply -->
+    <exclude-pattern>*/bin/*</exclude-pattern>
+
     <!-- Test-only WordPress function stubs; not subject to WP core coding standards -->
     <exclude-pattern>*/tests/wp-stubs.php</exclude-pattern>
 </ruleset>
