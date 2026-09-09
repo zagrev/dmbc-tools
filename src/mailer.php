@@ -58,17 +58,20 @@ class Mailer {
 			return array();
 		}
 
-		$headers = array(
-			'Bcc: ' . implode( ',', $recipients ),
-			'Content-Type: text/html; charset=UTF-8',
-		);
-
 		$recipient = $this->settings->get_email_recipient();
 		if ( empty( $recipient ) ) {
 			return array();
 		}
 
-		\wp_mail( $recipient, $subject, $message, $headers );
+		foreach ( array_chunk( $recipients, $this->settings->get_max_bcc_per_email() ) as $bcc_batch ) {
+			$headers = array(
+				'Bcc: ' . implode( ',', $bcc_batch ),
+				'Content-Type: text/html; charset=UTF-8',
+			);
+
+			\wp_mail( $recipient, $subject, $message, $headers );
+		}
+
 		return $recipients;
 	}
 }
