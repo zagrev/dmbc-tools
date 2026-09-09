@@ -1,6 +1,7 @@
 <?php
 
 use DmbcTools\DmbcSettings;
+use DmbcTools\Plugin;
 
 /**
  * Tests for DmbcSettings covering its observable behavior: option
@@ -191,7 +192,7 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	public function test_sanitize_song_list_default_recipient_accepts_valid_email(): void {
 		$settings = $this->make_settings();
 
-		$this->assertSame( 'person@example.com', $settings->sanitize_song_list_default_recipient( 'person@example.com' ) );
+		$this->assertSame( 'person@example.com', $settings->sanitize_email_recipient( 'person@example.com' ) );
 	}
 
 	/**
@@ -202,47 +203,34 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 	public function test_sanitize_song_list_default_recipient_rejects_invalid_email(): void {
 		$settings = $this->make_settings();
 
-		$this->assertSame( '', $settings->sanitize_song_list_default_recipient( 'not-an-email' ) );
+		$this->assertSame( '', $settings->sanitize_email_recipient( 'not-an-email' ) );
 	}
 
-	// -- get_song_list_default_recipient --------------------------------------------------
+	// -- get_email_recipient --------------------------------------------------------------
 
 	/**
-	 * The stored default recipient is preferred over the site admin email.
+	 * The stored recipient is preferred over the site admin email.
 	 *
-	 * @covers \DmbcTools\DmbcSettings::get_song_list_default_recipient
+	 * @covers \DmbcTools\DmbcSettings::get_email_recipient
 	 */
-	public function test_get_song_list_default_recipient_uses_stored_value_when_present(): void {
+	public function test_get_email_recipient_uses_stored_value_when_present(): void {
 		$settings = $this->make_settings();
-		$this->set_option( 'song_list_default_recipient', 'stored@example.com' );
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'stored@example.com' );
 		$this->set_option( 'admin_email', 'admin@example.com' );
 
-		$this->assertSame( 'stored@example.com', $settings->get_song_list_default_recipient() );
-	}
-
-	/**
-	 * The site admin email is used when no default recipient has been stored.
-	 *
-	 * @covers \DmbcTools\DmbcSettings::get_song_list_default_recipient
-	 */
-	public function test_get_song_list_default_recipient_falls_back_to_admin_email(): void {
-		$settings = $this->make_settings();
-		$this->set_option( 'admin_email', 'admin@example.com' );
-
-		$this->assertSame( 'admin@example.com', $settings->get_song_list_default_recipient() );
+		$this->assertSame( 'stored@example.com', $settings->get_email_recipient() );
 	}
 
 	/**
-	 * The configured member update recipient is preferred over the site admin email.
+	 * The site admin email is used when no recipient has been stored.
 	 *
-	 * @covers \DmbcTools\DmbcSettings::get_member_update_recipient
+	 * @covers \DmbcTools\DmbcSettings::get_email_recipient
 	 */
-	public function test_get_member_update_recipient_uses_stored_value_when_present(): void {
+	public function test_get_email_recipient_falls_back_to_admin_email(): void {
 		$settings = $this->make_settings();
-		$this->set_option( 'member_update_recipient', 'updates@example.com' );
 		$this->set_option( 'admin_email', 'admin@example.com' );
 
-		$this->assertSame( 'updates@example.com', $settings->get_member_update_recipient() );
+		$this->assertSame( 'admin@example.com', $settings->get_email_recipient() );
 	}
 
 	// -- get_wp_content_folder_choices ---------------------------------------------------
@@ -424,13 +412,13 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 		);
 
 		$this->assertArrayHasKey( 'song_list_recipient_roles', $registered );
-		$this->assertArrayHasKey( 'song_list_default_recipient', $registered );
-		$this->assertArrayHasKey( 'member_update_recipient', $registered );
+		$this->assertArrayHasKey( Plugin::OPTION_EMAIL_RECIPIENT, $registered );
+		$this->assertArrayHasKey( Plugin::OPTION_EMAIL_RECIPIENT, $registered );
 		$this->assertArrayHasKey( 'remove_data_on_uninstall', $registered );
 		$this->assertFalse( $registered['remove_data_on_uninstall']['args']['default'] );
 		$this->assertSame(
 			'',
-			call_user_func( $registered['song_list_default_recipient']['args']['sanitize_callback'], 'invalid-email' )
+			call_user_func( $registered[ Plugin::OPTION_EMAIL_RECIPIENT ]['args']['sanitize_callback'], 'invalid-email' )
 		);
 	}
 
@@ -455,7 +443,7 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 		$this->assertSame( 'general_section', $fields['remove_data_on_uninstall']['section'] );
 		$this->assertArrayHasKey( 'song_list_recipient_roles', $fields );
 		$this->assertSame( 'notifications_section', $fields['song_list_recipient_roles']['section'] );
-		$this->assertArrayHasKey( 'member_update_recipient', $fields );
-		$this->assertSame( 'member_update_notifications_section', $fields['member_update_recipient']['section'] );
+		$this->assertArrayHasKey( Plugin::OPTION_EMAIL_RECIPIENT, $fields );
+		$this->assertSame( 'member_update_notifications_section', $fields[ Plugin::OPTION_EMAIL_RECIPIENT ]['section'] );
 	}
 }

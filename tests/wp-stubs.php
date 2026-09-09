@@ -590,6 +590,18 @@ if ( ! function_exists( 'add_submenu_page' ) ) {
 	}
 }
 
+if ( ! function_exists( 'apply_filters' ) ) {
+	function apply_filters( string $tag, $value ) {
+		return $value;
+	}
+}
+
+if ( ! function_exists( 'get_the_post_thumbnail_url' ) ) {
+	function get_the_post_thumbnail_url( $post = null, $size = 'post-thumbnail' ) {
+		return '';
+	}
+}
+
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	class WP_List_Table {
 		public $items = [];

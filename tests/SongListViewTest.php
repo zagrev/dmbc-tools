@@ -186,7 +186,7 @@ final class SongListViewTest extends DmbcUnitTestBase {
 	}
 
 	public function test_send_methods_return_false_without_a_valid_song_list(): void {
-		$this->set_option( 'song_list_default_recipient', 'director@example.com' );
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'director@example.com' );
 		$view = $this->make_view();
 
 		$this->assertFalse( $view->send_song_list_to_roles( 999, array() ) );

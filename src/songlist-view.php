@@ -13,6 +13,8 @@ if ( ! \defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/mailer.php';
+
 use DmbcTools\SongListTable;
 
 /**
@@ -26,6 +28,12 @@ class SongListView {
 	 */
 	private DmbcSettings $settings;
 	/**
+	 * The mailer used to send plugin emails.
+	 *
+	 * @var Mailer
+	 */
+	private Mailer $mailer;
+	/**
 	 * The table layout.
 	 *
 	 * @var SongListTable
@@ -36,10 +44,12 @@ class SongListView {
 	 * Constructor.
 	 *
 	 * @param DmbcSettings $settings The plugin settings.
+	 * @param Mailer|null  $mailer   The mailer used to send emails.
 	 */
-	public function __construct( DmbcSettings $settings ) {
+	public function __construct( DmbcSettings $settings, ?Mailer $mailer = null ) {
 
 		$this->settings = $settings;
+		$this->mailer   = $mailer ?? new Mailer( $settings );
 		\add_action( 'admin_menu', array( $this, 'create_song_list_table' ) );
 	}
 	/**
@@ -633,7 +643,7 @@ class SongListView {
 			);
 		}
 
-		$default_recipient = $this->settings->get_song_list_default_recipient();
+		$default_recipient = $this->settings->get_email_recipient();
 		if ( ! empty( $default_recipient ) ) {
 			$recipients[] = $default_recipient;
 		}
@@ -666,7 +676,7 @@ class SongListView {
 		$message .= $song_list->post_content . "\n\nSongs:\n";
 		$message .= empty( $songs ) ? "No songs selected.\n" : implode( "\n", $songs ) . "\n";
 
-		return \wp_mail(
+		return $this->mailer->send(
 			$recipients,
 			'Rehearsal song list: ' . $song_list->post_title,
 			$message
