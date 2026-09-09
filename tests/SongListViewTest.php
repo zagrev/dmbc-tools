@@ -93,7 +93,21 @@ final class SongListViewTest extends DmbcUnitTestBase {
 			)
 		);
 		$this->set_option( 'song_library_directory', $library );
-		$this->set_post_meta( $post->ID, Plugin::SONGS_META_KEY, array( 'Song A', 'Song B' ) );
+		$this->set_post_meta(
+			$post->ID,
+			Plugin::SONGS_META_KEY,
+			array(
+				array(
+					'type'  => 'song',
+					'value' => 'Song A',
+				),
+				array(
+					'type'  => 'note',
+					'value' => 'Ten-minute break',
+				),
+				'Song B',
+			)
+		);
 		$this->set_post_meta( $post->ID, Plugin::PERFORMANCE_DATE_META_KEY, '2026-09-09' );
 		$this->set_post_meta( $post->ID, Plugin::NOTES_META_KEY, 'Bring folders.' );
 
@@ -103,7 +117,34 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$this->assertStringContainsString( 'value="2026-09-09"', $html );
 		$this->assertStringContainsString( 'value="Song A"', $html );
 		$this->assertStringContainsString( 'value="Song B"', $html );
+		$this->assertStringContainsString( 'data-type="note"', $html );
+		$this->assertStringContainsString( 'Note: Ten-minute break', $html );
 		$this->assertStringContainsString( 'Bring folders.', $html );
+	}
+
+	public function test_view_page_links_songs_and_renders_notes_as_plain_text(): void {
+		$post = $this->make_post();
+		$this->set_post_meta(
+			$post->ID,
+			Plugin::SONGS_META_KEY,
+			array(
+				array(
+					'type'  => 'song',
+					'value' => 'Song A',
+				),
+				array(
+					'type'  => 'note',
+					'value' => 'Ten-minute break',
+				),
+			)
+		);
+
+		$html = $this->make_view()->render_song_list_view_page( $post->ID );
+
+		$this->assertStringContainsString( '>Song A</a>', $html );
+		$this->assertStringContainsString( 'http://example.test/wp-content/', $html );
+		$this->assertStringContainsString( 'Ten-minute break', $html );
+		$this->assertStringNotContainsString( '>Ten-minute break</a>', $html );
 	}
 
 	public function test_admin_edit_page_loads_the_song_list_id_from_the_request(): void {
@@ -171,7 +212,20 @@ final class SongListViewTest extends DmbcUnitTestBase {
 			'dmbc_song_list_title'  => 'September rehearsal',
 			'dmbc_notes'            => 'Begin with warmups.',
 			'dmbc_performance_date' => '2026-09-09',
-			'dmbc_song_list_songs'  => array( $library . '/Song A', $library . '/Song B' ),
+			'dmbc_rehearsal_items'  => array(
+				array(
+					'type'  => 'song',
+					'value' => $library . '/Song A',
+				),
+				array(
+					'type'  => 'note',
+					'value' => 'Ten-minute break',
+				),
+				array(
+					'type'  => 'song',
+					'value' => $library . '/Song B',
+				),
+			),
 		);
 
 		$this->make_view()->handle_song_list_form();
@@ -180,16 +234,38 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$this->assertSame( 'September rehearsal', $GLOBALS['dmbc_test_state']['posts'][1]->post_title );
 		$this->assertSame( Plugin::SONGLIST_POST_TYPE, $GLOBALS['dmbc_test_state']['posts'][1]->post_type );
 		$this->assertSame( 'Begin with warmups.', $GLOBALS['dmbc_test_state']['posts'][1]->post_content );
-		$this->assertSame( array( 'Song A', 'Song B' ), $this->get_stored_post_meta( 1, Plugin::SONGS_META_KEY ) );
+		$this->assertSame(
+			array(
+				array(
+					'type'  => 'song',
+					'value' => 'Song A',
+				),
+				array(
+					'type'  => 'note',
+					'value' => 'Ten-minute break',
+				),
+				array(
+					'type'  => 'song',
+					'value' => 'Song B',
+				),
+			),
+			$this->get_stored_post_meta( 1, Plugin::SONGS_META_KEY )
+		);
 		$this->assertSame( '2026-09-09', $this->get_stored_post_meta( 1, Plugin::PERFORMANCE_DATE_META_KEY ) );
 		$this->assertSame( 'Begin with warmups.', $this->get_stored_post_meta( 1, Plugin::NOTES_META_KEY ) );
 	}
 
 	public function test_send_methods_return_false_without_a_valid_song_list(): void {
+		$GLOBALS['dmbc_test_state']['users']     = array(
+			(object) array( 'user_email' => 'subscriber@example.com','role' => 'subscriber' ),
+			(object) array( 'user_email' => 'editor@example.com','role' => 'editor' ),
+		);
+
 		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'director@example.com' );
 		$view = $this->make_view();
 
-		$this->assertFalse( $view->send_song_list_to_roles( 999, array() ) );
-		$this->assertFalse( $view->send_song_list_to_role( 999, 'editor' ) );
+		$this->assertEmpty( $view->send_song_list_to_roles( 999, array() ) );
+		$this->assertEmpty($view->send_song_list_to_roles( 999, array('editor','subscriber') )
+		);
 	}
 }

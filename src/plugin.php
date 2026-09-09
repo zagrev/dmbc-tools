@@ -551,7 +551,14 @@ final class Plugin {
 		\wp_nonce_field( 'dmbc_save_songlist_meta', self::SONGLIST_META_NONCE );
 
 		$performance_date = \get_post_meta( $post->ID, self::PERFORMANCE_DATE_META_KEY, true );
-		$songs            = \get_post_meta( $post->ID, self::SONGS_META_KEY, false );
+		$items            = SongList::normalize_items( \get_post_meta( $post->ID, self::SONGS_META_KEY, true ) );
+		$item_lines       = implode(
+			"\n",
+			array_map(
+				fn( $item ) => SongList::TYPE_NOTE === $item['type'] ? 'note: ' . $item['value'] : $item['value'],
+				$items
+			)
+		);
 		$notes            = \get_post_meta( $post->ID, self::NOTES_META_KEY, true );
 		?>
 		<p>
@@ -561,9 +568,10 @@ final class Plugin {
 				value="<?php echo esc_attr( $performance_date ); ?>">
 		</p>
 		<p>
-			<label for="dmbc-songs"><strong><?php esc_html_e( 'Songs', 'dmbc-tools' ); ?></strong></label><br>
+			<label for="dmbc-songs"><strong><?php esc_html_e( 'Rehearsal items', 'dmbc-tools' ); ?></strong></label><br>
 			<textarea id="dmbc-songs" name="dmbc_songs" rows="10"
-				class="widefat"><?php echo esc_textarea( $songs ); ?></textarea>
+				class="widefat"><?php echo esc_textarea( $item_lines ); ?></textarea>
+			<span class="description"><?php esc_html_e( 'One item per line. Prefix a line with "note:" to show it as plain text instead of a song link.', 'dmbc-tools' ); ?></span>
 		</p>
 		<p>
 			<label for="dmbc-notes"><strong><?php esc_html_e( 'Notes', 'dmbc-tools' ); ?></strong></label><br>
@@ -605,8 +613,46 @@ final class Plugin {
 			? \sanitize_text_field( \wp_unslash( $_POST[ $field_name ] ) )
 			: \sanitize_textarea_field( \wp_unslash( $_POST[ $field_name ] ) );
 
+			if ( 'dmbc_songs' === $field_name ) {
+				$value = self::parse_rehearsal_item_lines( $value );
+			}
+
 			\update_post_meta( $post_id, $meta_key, $value );
 		}
+	}
+
+	/**
+	 * Parse newline-separated rehearsal item text into typed items.
+	 *
+	 * Lines prefixed with "note:" become plain-text note items; every other
+	 * non-empty line becomes a song item.
+	 *
+	 * @param string $text The raw textarea content.
+	 * @return array<int, array{type: string, value: string}>
+	 */
+	private static function parse_rehearsal_item_lines( string $text ): array {
+		$items = array();
+		foreach ( preg_split( '/\r\n|\r|\n/', $text ) as $line ) {
+			$line = trim( (string) $line );
+			if ( '' === $line ) {
+				continue;
+			}
+			if ( 0 === stripos( $line, 'note:' ) ) {
+				$note = trim( substr( $line, 5 ) );
+				if ( '' !== $note ) {
+					$items[] = array(
+						'type'  => SongList::TYPE_NOTE,
+						'value' => $note,
+					);
+				}
+				continue;
+			}
+			$items[] = array(
+				'type'  => SongList::TYPE_SONG,
+				'value' => $line,
+			);
+		}
+		return $items;
 	}
 
 	// admin_menu -------------------------------------------------------------------------

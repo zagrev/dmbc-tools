@@ -12,17 +12,31 @@ if ( ! \defined( 'ABSPATH' ) ) {
  */
 class SongList {
 	/**
+	 * Rehearsal item type for a linked song folder.
+	 *
+	 * @var string
+	 */
+	public const string TYPE_SONG = 'song';
+
+	/**
+	 * Rehearsal item type for a plain-text note (no link).
+	 *
+	 * @var string
+	 */
+	public const string TYPE_NOTE = 'note';
+
+	/**
 	 * The name of the song list
 	 *
 	 * @var string
 	 */
 	private string $name;
 	/**
-	 * The list of songs
+	 * The rehearsal items (songs and notes) in order.
 	 *
-	 * @var array
+	 * @var array<int, array{type: string, value: string}>
 	 */
-	private array $songs = array();
+	private array $items = array();
 	/**
 	 * The date of the song list
 	 *
@@ -40,15 +54,60 @@ class SongList {
 	 * Create a song list from the given parameters
 	 *
 	 * @param string             $name the name of the song list.
-	 * @param array              $songs the list of songs.
+	 * @param array              $items the rehearsal items (songs/notes). Legacy string
+	 *                                  entries are treated as songs.
 	 * @param \DateTimeImmutable $rehearsal_date the date of the rehearsal.
 	 * @param string             $note any notes to be included with the song list.
 	 */
-	public function __construct( string $name, array $songs, \DateTimeImmutable $rehearsal_date, string $note ) {
+	public function __construct( string $name, array $items, \DateTimeImmutable $rehearsal_date, string $note ) {
 		$this->name           = $name;
-		$this->songs          = $songs;
+		$this->items          = self::normalize_items( $items );
 		$this->rehearsal_date = $rehearsal_date;
 		$this->note           = $note;
+	}
+
+	/**
+	 * Normalize raw rehearsal item data into a list of typed items.
+	 *
+	 * Accepts the legacy storage formats (a plain array of song names or a
+	 * newline-separated string of song names) as well as the current format
+	 * (arrays with 'type' and 'value'). Every returned entry has a 'type' of
+	 * self::TYPE_SONG or self::TYPE_NOTE and a non-empty string 'value'.
+	 *
+	 * @param mixed $items Raw stored items.
+	 * @return array<int, array{type: string, value: string}>
+	 */
+	public static function normalize_items( mixed $items ): array {
+		if ( is_string( $items ) ) {
+			$items = preg_split( '/\r\n|\r|\n/', $items );
+		}
+		if ( ! is_array( $items ) ) {
+			return array();
+		}
+
+		$normalized = array();
+		foreach ( $items as $item ) {
+			if ( is_string( $item ) || is_numeric( $item ) ) {
+				$value = trim( (string) $item );
+				if ( '' !== $value ) {
+					$normalized[] = array(
+						'type'  => self::TYPE_SONG,
+						'value' => $value,
+					);
+				}
+				continue;
+			}
+			if ( is_array( $item ) && isset( $item['value'] ) ) {
+				$value = trim( (string) $item['value'] );
+				if ( '' !== $value ) {
+					$normalized[] = array(
+						'type'  => isset( $item['type'] ) && self::TYPE_NOTE === $item['type'] ? self::TYPE_NOTE : self::TYPE_SONG,
+						'value' => $value,
+					);
+				}
+			}
+		}
+		return $normalized;
 	}
 
 	/**
@@ -61,12 +120,12 @@ class SongList {
 	}
 
 	/**
-	 * Get the list of songs.
+	 * Get the rehearsal items (songs and notes) in order.
 	 *
-	 * @return array
+	 * @return array<int, array{type: string, value: string}>
 	 */
-	public function get_songs(): array {
-		return $this->songs;
+	public function get_items(): array {
+		return $this->items;
 	}
 
 	/**
@@ -96,12 +155,13 @@ class SongList {
 	}
 
 	/**
-	 * Set the list of songs.
+	 * Set the rehearsal items (songs and notes). Legacy string entries are
+	 * treated as songs.
 	 *
-	 * @param array $songs the list of songs.
+	 * @param array $items the rehearsal items.
 	 */
-	public function set_songs( array $songs ): void {
-		$this->songs = $songs;
+	public function set_items( array $items ): void {
+		$this->items = self::normalize_items( $items );
 	}
 
 	/**

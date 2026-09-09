@@ -14,6 +14,7 @@ if ( ! \defined( 'ABSPATH' ) ) {
 }
 
 require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/songlist.php';
 
 use DmbcTools\SongListTable;
 
@@ -157,32 +158,33 @@ class SongListView {
 		if ( empty( $rehearsal_date ) ) {
 			$rehearsal_date = date( 'Y-m-d', strtotime( $date ) );
 		}
-		$songs = \get_post_meta( $song_list->ID, Plugin::SONGS_META_KEY, false );
-		if ( ! is_array( $songs ) ) {
-			$songs = array();
-		}
+		$items = SongList::normalize_items( \get_post_meta( $song_list->ID, Plugin::SONGS_META_KEY, true ) );
 
 		ob_start();
 		?>
 	<div class="dmbc-song-list-view">
 		<h1><?php echo esc_html( $song_list_title ); ?> for <?php echo esc_html( $rehearsal_date ); ?></h1>
 
-		<?php if ( ! empty( $songs ) ) : ?>
+		<?php if ( ! empty( $items ) ) : ?>
 			<h2>
 			<?php
-			esc_html_e( 'Songs', 'dmbc-extras' );
+			esc_html_e( 'Rehearsal items', 'dmbc-extras' );
 			$song_library_dir  = $this->settings->get_song_library_directory_path();
 			$song_library_path = $this->convert_full_path_to_relative( WP_CONTENT_DIR, $song_library_dir );
 			?>
 			</h2>
 			<ul>
-				<?php
-				foreach ( $songs as $song ) :
-					$song_path     = is_array( $song ) ? implode( ',', $song ) : (string) $song;
-					$song_url_path = $this->convert_full_path_to_relative( WP_CONTENT_DIR, $song_path );
-					$song_url      = \content_url( "$song_library_path/$song_url_path" );
-					?>
+				<?php foreach ( $items as $item ) : ?>
+					<?php if ( SongList::TYPE_NOTE === $item['type'] ) : ?>
+					<li class="dmbc-rehearsal-note"><?php echo esc_html( $item['value'] ); ?></li>
+					<?php else : ?>
+						<?php
+						$song_path     = $item['value'];
+						$song_url_path = $this->convert_full_path_to_relative( WP_CONTENT_DIR, $song_path );
+						$song_url      = \content_url( "$song_library_path/$song_url_path" );
+						?>
 					<li><a href="<?php echo \esc_url( $song_url ); ?>"><?php echo esc_html( $song_path ); ?></a></li>
+					<?php endif; ?>
 				<?php endforeach; ?>
 			</ul>
 			<?php else : ?>
@@ -264,7 +266,7 @@ class SongListView {
 	public function render_song_list_edit_page( $edit_id = 0 ): string {
 		$edit_post      = $edit_id > 0 ? \get_post( $edit_id ) : null;
 		$edit_title     = '';
-		$edit_songs     = array();
+		$edit_items     = array();
 		$edit_notes     = '';
 		$rehearsal_date = ''; // Default to the next monday.
 		$next_monday    = strtotime( 'next monday' );
@@ -273,12 +275,8 @@ class SongListView {
 		}
 
 		if ( $edit_post ) {
-			$edit_title = \get_the_title( $edit_post );
-			$edit_songs = \get_post_meta( $edit_post->ID, Plugin::SONGS_META_KEY, true );
-			if ( ! is_array( $edit_songs ) ) {
-				$edit_songs = array();
-			}
-			// \error_log( "$edit_songs = " . print_r( $edit_songs, true ) );
+			$edit_title     = \get_the_title( $edit_post );
+			$edit_items     = SongList::normalize_items( \get_post_meta( $edit_post->ID, Plugin::SONGS_META_KEY, true ) );
 			$edit_notes     = \get_post_meta( $edit_post->ID, Plugin::NOTES_META_KEY, true );
 			$rehearsal_date = \get_post_meta( $edit_post->ID, Plugin::PERFORMANCE_DATE_META_KEY, true );
 		}
@@ -291,7 +289,7 @@ class SongListView {
 		<?php $action = $edit_id > 0 ? 'Update' : 'Add'; ?>
 		<h1><?php esc_html_e( "$action Rehearsal Song List", 'dmbc-extras' ); ?></h1>
 
-		<form method="post" action="">
+		<form method="post" action="" id="dmbc_edit_song_list_form">
 		<?php \wp_nonce_field( 'dmbc_create_song_list', 'dmbc_song_list_nonce' ); ?>
 			<input type="hidden" name="dmbc_song_list_id" value="<?php echo esc_attr( $edit_id ); ?>">
 			<table class="form-table" role="presentation">
@@ -319,7 +317,7 @@ class SongListView {
 					</tr>
 					<tr>
 						<th scope="row">
-							<label for="dmbc-songs"><?php esc_html_e( 'Songs', 'dmbc-extras' ); ?></label>
+							<label for="dmbc-songs"><?php esc_html_e( 'Rehearsal items', 'dmbc-extras' ); ?></label>
 						</th>
 						<td>
 							<?php if ( empty( $song_folders ) ) : ?>
@@ -357,17 +355,23 @@ class SongListView {
 									</div>
 									<div>
 										<label
-											for="dmbc_selected_song_folders"><?php \esc_html_e( 'Selected songs', 'dmbc-extras' ); ?></label>
-										<select id="dmbc_selected_song_folders" name="dmbc_song_list_songs[]" multiple size="10"
+											for="dmbc_selected_song_folders"><?php \esc_html_e( 'Selected rehearsal items', 'dmbc-extras' ); ?></label>
+										<select id="dmbc_selected_song_folders" multiple size="10"
 											class="large-text" style="min-width: 240px;">
-											<?php foreach ( $edit_songs as $song ) : ?>
-												<option value="<?php echo esc_attr( $song ); ?>">
-													<?php echo esc_html( $song ); ?>
+											<?php foreach ( $edit_items as $item ) : ?>
+												<option value="<?php echo esc_attr( $item['value'] ); ?>" data-type="<?php echo esc_attr( $item['type'] ); ?>">
+													<?php echo esc_html( SongList::TYPE_NOTE === $item['type'] ? __( 'Note:', 'dmbc-extras' ) . ' ' . $item['value'] : $item['value'] ); ?>
 												</option>
 											<?php endforeach; ?>
 										</select>
+										<p>
+											<label for="dmbc_new_note_text"><?php \esc_html_e( 'New note', 'dmbc-extras' ); ?></label>
+											<input type="text" id="dmbc_new_note_text" class="regular-text" style="min-width: 240px;">
+											<button type="button" id="dmbc_add_note_item"
+												class="button button-secondary"><?php \esc_html_e( 'Add Note', 'dmbc-extras' ); ?></button>
+										</p>
 										<p class="description">
-											<?php \esc_html_e( 'These folder names will be stored with the new song list.', 'dmbc-extras' ); ?>
+											<?php \esc_html_e( 'Songs link to the song library; notes are shown as plain text. Items are stored in the order shown.', 'dmbc-extras' ); ?>
 										</p>
 									</div>
 								</div>
@@ -423,7 +427,7 @@ class SongListView {
 					if ($selected.find('option[value="' + $option.val() + '"]').length) {
 						return;
 					}
-					$selected.append($('<option></option>').val($option.val()).text($option.text()));
+					$selected.append($('<option></option>').val($option.val()).text($option.text()).attr('data-type', 'song'));
 				});
 			};
 
@@ -432,7 +436,16 @@ class SongListView {
 				if ($selected.find('option[value="' + $option.val() + '"]').length) {
 					return;
 				}
-				$selected.append($('<option></option>').val($option.val()).text($option.text()));
+				$selected.append($('<option></option>').val($option.val()).text($option.text()).attr('data-type', 'song'));
+			});
+
+			$('#dmbc_add_note_item').on('click', function () {
+				var noteText = $.trim($('#dmbc_new_note_text').val());
+				if ('' === noteText) {
+					return;
+				}
+				$selected.append($('<option></option>').val(noteText).text('Note: ' + noteText).attr('data-type', 'note'));
+				$('#dmbc_new_note_text').val('').focus();
 			});
 
 			$available.on('keydown', function (event) {
@@ -478,8 +491,15 @@ class SongListView {
 				});
 			});
 
-			$('form').on('submit', function () {
-				$selected.find('option').prop('selected', true);
+			$('#dmbc_edit_song_list_form').on('submit', function () {
+				var $form = $(this);
+				$form.find('input.dmbc-rehearsal-item-field').remove();
+				$selected.find('option').each(function (index) {
+					var $option = $(this);
+					var type = 'note' === $option.attr('data-type') ? 'note' : 'song';
+					$form.append($('<input type="hidden" class="dmbc-rehearsal-item-field" />').attr('name', 'dmbc_rehearsal_items[' + index + '][type]').val(type));
+					$form.append($('<input type="hidden" class="dmbc-rehearsal-item-field" />').attr('name', 'dmbc_rehearsal_items[' + index + '][value]').val($option.val()));
+				});
 			});
 		});
 	</script>
@@ -624,63 +644,21 @@ class SongListView {
 	 *
 	 * @param int        $song_list_id The rehearsal song list post ID.
 	 * @param array|null $roles        Optional role slugs to notify.
-	 * @return bool Whether WordPress accepted the email for delivery.
+	 * @return array<string> The recipients who were emailed.
 	 */
-	public function send_song_list_to_roles( $song_list_id, $roles = null ) {
-		$roles      = null === $roles ? $this->settings->get_song_list_recipient_roles() : (array) $roles;
-		$recipients = array();
-		if ( ! empty( $roles ) ) {
-			$users      = \get_users(
-				array(
-					'role__in' => $roles,
-				)
-			);
-			$recipients = array_map(
-				function ( $user ) {
-					return isset( $user->user_email ) ? $user->user_email : '';
-				},
-				(array) $users
-			);
-		}
-
-		$default_recipient = $this->settings->get_email_recipient();
-		if ( ! empty( $default_recipient ) ) {
-			$recipients[] = $default_recipient;
-		}
-		$recipients = array_values( array_unique( array_filter( $recipients ) ) );
-		$recipients = array_values(
-			array_filter(
-				$recipients,
-				function ( $recipient ) {
-					return function_exists( 'is_email' ) ? \is_email( $recipient ) : filter_var( $recipient, FILTER_VALIDATE_EMAIL );
-				}
-			)
-		);
-
-		if ( empty( $recipients ) ) {
-			return false;
-		}
+	public function send_song_list_to_roles( int $song_list_id, array|null $roles = null ): array {
 
 		$song_list = \get_post( $song_list_id );
 		if ( ! $song_list || Plugin::SONGLIST_POST_TYPE !== $song_list->post_type ) {
-			return false;
+			\error_log( 'DMBC SongListView: Cannot send song list to roles. Invalid song list ID ' . $song_list_id );
+			return array();
 		}
 
-		$songs          = \get_post_meta( $song_list_id, Plugin::SONGS_META_KEY, false );
-		$songs          = is_array( $songs ) ? $songs : array();
 		$rehearsal_date = \get_post_meta( $song_list_id, Plugin::PERFORMANCE_DATE_META_KEY, true );
-		$message        = "Rehearsal song list: {$song_list->post_title}\n\n";
-		if ( ! empty( $rehearsal_date ) ) {
-			$message .= "Rehearsal date: {$rehearsal_date}\n\n";
-		}
-		$message .= $song_list->post_content . "\n\nSongs:\n";
-		$message .= empty( $songs ) ? "No songs selected.\n" : implode( "\n", $songs ) . "\n";
+		$subject        = "Rehearsal song list: {$rehearsal_date}";
+		$message        = \apply_filters( 'the_content', $song_list->post_content );
 
-		return $this->mailer->send(
-			$recipients,
-			'Rehearsal song list: ' . $song_list->post_title,
-			$message
-		);
+		return $this->mailer->send_email( $subject, $message, $roles );
 	}
 
 	/**
@@ -688,9 +666,9 @@ class SongListView {
 	 *
 	 * @param int    $song_list_id The rehearsal song list post ID.
 	 * @param string $role         The role slug whose members should receive the list.
-	 * @return bool Whether WordPress accepted the email for delivery.
+	 * @return array<string> The recipients who were emailed.
 	 */
-	public function send_song_list_to_role( $song_list_id, $role ) {
+	public function send_song_list_to_role( int $song_list_id, string $role ): array {
 		return $this->send_song_list_to_roles( $song_list_id, array( $role ) );
 	}
 
@@ -721,7 +699,6 @@ class SongListView {
 		$content        = isset( $_POST['dmbc_notes'] ) ? \wp_kses_post( \wp_unslash( $_POST['dmbc_notes'] ) ) : '';
 		$song_list_id   = isset( $_POST['dmbc_song_list_id'] ) ? \absint( \wp_unslash( $_POST['dmbc_song_list_id'] ) ) : 0;
 		$rehearsal_date = isset( $_POST['dmbc_performance_date'] ) ? \sanitize_text_field( \wp_unslash( $_POST['dmbc_performance_date'] ) ) : '';
-		$selected_songs = isset( $_POST['dmbc_song_list_songs'] ) ? (array) $_POST['dmbc_song_list_songs'] : array();
 		if ( ! empty( $rehearsal_date ) ) {
 			$date = \DateTime::createFromFormat( '!Y-m-d', $rehearsal_date );
 			if ( ! $date || $date->format( 'Y-m-d' ) !== $rehearsal_date ) {
@@ -729,14 +706,30 @@ class SongListView {
 			}
 		}
 
-		if ( isset( $_POST['dmbc_song_list_songs'] ) && is_array( $_POST['dmbc_song_list_songs'] ) ) {
+		if ( isset( $_POST['dmbc_rehearsal_items'] ) && is_array( $_POST['dmbc_rehearsal_items'] ) ) {
 			$song_library_dir = $this->settings->get_song_library_directory_path();
-			$selected_songs   = array_map(
-				fn( $full_path ) => $this->convert_full_path_to_relative( $song_library_dir, $full_path ),
-				$selected_songs
-			);
+			$selected_items   = array();
+			foreach ( \wp_unslash( $_POST['dmbc_rehearsal_items'] ) as $raw_item ) {
+				if ( ! is_array( $raw_item ) || ! isset( $raw_item['value'] ) ) {
+					continue;
+				}
+				$type  = isset( $raw_item['type'] ) && SongList::TYPE_NOTE === \sanitize_key( (string) $raw_item['type'] )
+					? SongList::TYPE_NOTE
+					: SongList::TYPE_SONG;
+				$value = trim( (string) $raw_item['value'] );
+				if ( SongList::TYPE_SONG === $type ) {
+					$value = $this->convert_full_path_to_relative( $song_library_dir, $value );
+				}
+				if ( '' === $value ) {
+					continue;
+				}
+				$selected_items[] = array(
+					'type'  => $type,
+					'value' => $value,
+				);
+			}
 
-			$selected_songs = array_unique( $selected_songs );
+			$selected_items = array_values( array_unique( $selected_items, SORT_REGULAR ) );
 		} else {
 			\add_action(
 				'admin_notices',
@@ -777,8 +770,8 @@ class SongListView {
 			return;
 		}
 
-		/* Ensure selected songs are stored explicitly in post meta on updates and creates. */
-		\update_post_meta( $post_id, Plugin::SONGS_META_KEY, $selected_songs );
+		/* Ensure selected rehearsal items are stored explicitly in post meta on updates and creates. */
+		\update_post_meta( $post_id, Plugin::SONGS_META_KEY, $selected_items );
 		\update_post_meta( $post_id, Plugin::PERFORMANCE_DATE_META_KEY, $rehearsal_date );
 		\update_post_meta( $post_id, Plugin::NOTES_META_KEY, $content );
 
