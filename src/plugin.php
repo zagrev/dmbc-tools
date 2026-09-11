@@ -1,10 +1,12 @@
 <?php
-declare(strict_types=1);
-namespace DmbcTools;
-
 /**
  * Plugin functionality for DMBC Tools.
+ *
+ * @package DmbcTools
  */
+
+declare(strict_types=1);
+namespace DmbcTools;
 
 if ( ! \defined( 'ABSPATH' ) ) {
 	print 'ABSPATH is not defined . This file( ' . __FILE__ . ' ) should not be accessed directly . ' . PHP_EOL;
@@ -16,6 +18,7 @@ require_once __DIR__ . '/admin/settings-edit.php';
 require_once __DIR__ . '/admin/menu.php';
 require_once __DIR__ . '/songlist.php';
 require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/deluxe-cc-transaction.php';
 
 use DmbcTools\SongListView;
 use DmbcTools\DmbcSettings;
@@ -60,6 +63,13 @@ final class Plugin {
 	private Mailer $mailer;
 
 	/**
+	 * The handler for Deluxe credit card transaction notifications.
+	 *
+	 * @var DeluxeCcTransaction
+	 */
+	private DeluxeCcTransaction $deluxe_cc_transaction;
+
+	/**
 	 * The song list view handler.
 	 *
 	 * @var SongListView
@@ -84,9 +94,10 @@ final class Plugin {
 	 * Private constructor to prevent direct instantiation.
 	 */
 	private function __construct() {
-		// \error_log( 'DMBC Plugin: constructor called . ' );
-		$this->settings = new DmbcSettings();
-		$this->mailer   = new Mailer( $this->settings );
+
+		$this->settings              = new DmbcSettings();
+		$this->mailer                = new Mailer( $this->settings );
+		$this->deluxe_cc_transaction = new DeluxeCcTransaction();
 	}
 
 	/**
@@ -108,15 +119,13 @@ final class Plugin {
 	 * @return void
 	 */
 	public function run(): void {
-		// \error_log( 'DMBC Plugin: "run" called. ------------------------------------' );
-		// \add_action( 'all', fn( $tag ) => \error_log( $tag . ': ' . \print( \func_get_args(), true ) ) );
-
 		\add_action( 'init', array( $this, 'initialize' ) );
 		\add_action( 'admin_init', array( $this, 'handle_admin_init' ) );
 		\add_action( 'admin_menu', array( $this, 'register_admin' ) );
 		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
 		\add_action( self::MEMBER_UPDATE_CRON_HOOK, array( $this, 'send_member_update_digest' ) );
+		\add_action( 'rest_api_init', array( $this, 'register_deluxe_cc_notification_route' ) );
 
 		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
 		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
@@ -124,7 +133,7 @@ final class Plugin {
 		\flush_rewrite_rules();
 	}
 
-	// init -------------------------------------------------------------------------------
+	// init -------------------------------------------------------------------------------.
 
 	/**
 	 * Set up everyting for the Plugin. This method is called at 'init' time.
@@ -132,13 +141,13 @@ final class Plugin {
 	 * @return void
 	 */
 	public function initialize(): void {
-		// \error_log( 'DMBC Plugin: "initialize" called.' );
 
 		$this->register_songlist_type();
 		$this->register_member_update_type();
 		$this->register_options();
 		$this->add_songlist_capabilities();
 		$this->schedule_member_update_digest();
+		DeluxeCcTransaction::create_table();
 
 		add_action( 'wp_dashboard_setup', array( self::instance(), 'register_menu_slugs_dashboard_widget' ) );
 
@@ -155,11 +164,30 @@ final class Plugin {
 		$this->song_list_view->handle_song_list_form();
 	}
 
+	// REST API ----------------------------------------------------------------------------.
+
+	/**
+	 * Registers the REST route that receives Deluxe credit card transaction notifications.
+	 *
+	 * @return void
+	 */
+	public function register_deluxe_cc_notification_route(): void {
+		\register_rest_route(
+			'dmbc',
+			'/deluxe_cc_notification',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this->deluxe_cc_transaction, 'handle_deluxe_cc_notification' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+	}
+
 	/**
 	 * Register the custom dashboard widget.
 	 */
 	public function register_user_capabilities_dashboard_widget() {
-		// \error_log( 'DMBC Tools: registering user capabilities dashboard widget . ' );
+
 		wp_add_dashboard_widget(
 			'wp_user_capabilities_widget',
 			'Your Current Capabilities',
@@ -173,7 +201,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function render_user_capabilities_widget() {
-		// \error_log( 'DMBC Tools: displaying user capabilities widget.' );
+
 		// Get the current user data object.
 		$current_user = wp_get_current_user();
 
@@ -213,9 +241,9 @@ final class Plugin {
 	 * @return void
 	 */
 	public function register_options(): void {
-		// \error_log( 'DMBC Plugin: register_options method called.' );
+
 		\add_option( self::OPTION_VERSION, self::VERSION );
-		\update_option( self::OPTION_VERSION, self::VERSION ); // in case it already exists
+		\update_option( self::OPTION_VERSION, self::VERSION ); // in case it already exists.
 	}
 
 	/**
@@ -224,7 +252,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function add_songlist_capabilities() {
-		// \error_log( 'DMBC Plugin: add_songlist_capabilities method called.' );
+
 		foreach ( $this->get_roles_with_edit_cap() as $role_name ) {
 			$role = \get_role( $role_name );
 			if ( $role && ! $role->has_cap( self::CAP_EDIT_SONGLIST ) ) {
@@ -285,7 +313,7 @@ final class Plugin {
 		return array( 'um_member' );
 	}
 
-	// Plugin deactivation and uninstall --------------------------------------------------
+	// Plugin deactivation and uninstall --------------------------------------------------.
 
 	/**
 	 * Deactivate the plugin. Remove all the added hooks and filters.
@@ -293,7 +321,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function deactivate(): void {
-		// \error_log( 'DMBC Plugin: deactivate method called.' );
+
 		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
 
 		\flush_rewrite_rules();
@@ -391,7 +419,6 @@ final class Plugin {
 	 * @return void
 	 */
 	public static function uninstall(): void {
-		// \error_log( 'DMBC Plugin: uninstall method called.' );
 
 		// If uninstall.php is not called by WordPress, die immediately.
 		if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
@@ -407,13 +434,13 @@ final class Plugin {
 					'post_type'   => $post_type,
 					'post_status' => 'any',
 					'numberposts' => -1,
-					'fields'      => 'ids', // Only fetch IDs to save memory
+					'fields'      => 'ids', // Only fetch IDs to save memory.
 				)
 			);
 
 			if ( ! empty( $cpt_posts ) ) {
 				foreach ( $cpt_posts as $post_id ) {
-					// True forces deletion and bypasses the Trash
+					// True forces deletion and bypasses the Trash.
 					wp_delete_post( $post_id, true );
 				}
 			}
@@ -453,7 +480,7 @@ final class Plugin {
 		);
 	}
 
-	// add_meta_boxes and save_post_dmbc-songlist ----------------------------------------
+	// add_meta_boxes and save_post_dmbc-songlist ----------------------------------------.
 
 	/**
 	 * Register the custom post type for song lists.
@@ -461,7 +488,6 @@ final class Plugin {
 	 * @return void
 	 */
 	public function register_songlist_type(): void {
-		// \error_log( 'DMBC Plugin: register_songlist_type method called.' );
 
 		if ( ! \post_type_exists( self::SONGLIST_POST_TYPE ) ) {
 			\register_post_type(
@@ -529,7 +555,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function add_songlist_meta_box(): void {
-		// \error_log( 'DMBC Plugin: add_songlist_meta_box method called.' );
+
 		\add_meta_box(
 			'dmbc-songlist-details',
 			__( 'Song list Details', 'dmbc-tools' ),
@@ -547,7 +573,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function render_songlist_meta_box( \WP_Post $post ): void {
-		// \error_log( 'DMBC Plugin: render_songlist_meta_box method called.' );
+
 		\wp_nonce_field( 'dmbc_save_songlist_meta', self::SONGLIST_META_NONCE );
 
 		$performance_date = \get_post_meta( $post->ID, self::PERFORMANCE_DATE_META_KEY, true );
@@ -588,7 +614,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function save_songlist_meta( int $post_id ): void {
-		// \error_log( 'DMBC Plugin: save_songlist_meta method called.' );
+
 		if (
 		! isset( $_POST[ self::SONGLIST_META_NONCE ] ) ||
 		! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST[ self::SONGLIST_META_NONCE ] ) ), 'dmbc_save_songlist_meta' ) ||
@@ -655,7 +681,7 @@ final class Plugin {
 		return $items;
 	}
 
-	// admin_menu -------------------------------------------------------------------------
+	// admin_menu -------------------------------------------------------------------------.
 
 	/**
 	 * Register the admin components for the plugin.
@@ -663,7 +689,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function register_admin(): void {
-		// \error_log( 'DMBC Plugin: register_admin method called.' );
+
 		$this->create_song_list_view();
 		$this->create_member_update_view();
 		$this->register_options();
@@ -677,7 +703,6 @@ final class Plugin {
 	 * @return void
 	 */
 	public function create_song_list_view(): void {
-		// \error_log( 'DMBC Plugin: create_song_list_view method called.' );
 
 		if ( ! class_exists( '\WP_List_Table' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
@@ -713,7 +738,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function add_admin_menu(): void {
-		// \error_log( 'DMBC Plugin: add_admin_menu method called.' );
+
 		$this->create_song_list_view();
 		$this->create_member_update_view();
 
@@ -777,7 +802,7 @@ final class Plugin {
 	public function render_menu_slugs_dashboard_widget() {
 		global $menu, $submenu;
 
-		// Optional styling to make the list scrollable and easy to read
+		// Optional styling to make the list scrollable and easy to read.
 		echo '<style>
         .slugs-widget-container { max-height: 350px; overflow-y: auto; padding-right: 5px; }
         .slugs-parent { font-weight: bold; background: #f0f6fc; padding: 4px 8px; margin: 8px 0 4px 0; border-left: 4px solid #72aee6; font-family: monospace; }
@@ -799,14 +824,14 @@ final class Plugin {
 				$parent_slug  = $menu_item[2];
 				$parent_title = wp_strip_all_tags( $menu_item[0] );
 
-				// If it's just a separator, skip it
+				// If it's just a separator, skip it.
 				if ( strpos( $menu_item[4], 'wp-menu-separator' ) !== false ) {
 					continue;
 				}
 
 				echo '<div class="slugs-parent">' . esc_html( $parent_title ) . ' ➡️ <span class="slug-tag">' . esc_html( $parent_slug ) . '</span></div>';
 
-				// Check if this parent has submenus
+				// Check if this parent has submenus.
 				if ( isset( $submenu[ $parent_slug ] ) && ! empty( $submenu[ $parent_slug ] ) ) {
 					echo '<ul class="slugs-sub-list">';
 					foreach ( $submenu[ $parent_slug ] as $sub_item ) {
