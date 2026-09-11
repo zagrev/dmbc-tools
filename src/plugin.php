@@ -19,9 +19,11 @@ require_once __DIR__ . '/admin/menu.php';
 require_once __DIR__ . '/songlist.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/deluxe-cc-transaction.php';
+require_once __DIR__ . '/acf-integration.php';
 
 use DmbcTools\SongListView;
 use DmbcTools\DmbcSettings;
+use DmbcTools\AcfIntegration;
 
 /**
  * The DMBC Plugin
@@ -148,8 +150,9 @@ final class Plugin {
 		$this->add_songlist_capabilities();
 		$this->schedule_member_update_digest();
 		DeluxeCcTransaction::create_table();
+		AcfIntegration::register_acf_fields();
 
-		add_action( 'wp_dashboard_setup', array( self::instance(), 'register_menu_slugs_dashboard_widget' ) );
+		\add_action( 'wp_dashboard_setup', array( self::instance(), 'register_menu_slugs_dashboard_widget' ) );
 
 		\flush_rewrite_rules();
 	}

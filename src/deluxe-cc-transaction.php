@@ -110,6 +110,8 @@ class DeluxeCcTransaction {
 	 */
 	public function handle_ticket_purchase( array $transaction ): void {
 		// TODO Implement the ticket purchase handling logic here.
+		// Record the ticket purchase (types of tickets, counts, update total?)
+		// Send thanks email using template.
 	}
 
 	/**
@@ -161,20 +163,45 @@ class DeluxeCcTransaction {
 					'user_status'     => 'approved',
 				)
 			);
-			$user    = \get_user( $user_id );
+			if ( is_wp_error( $user_id ) ) {
+				throw new InvalidArgumentException( 'Failed to create user:  ' . esc_html( $user_id->get_error_message() ) );
+			}
+			\clean_user_cache( $user_id );
 
-			// TODO Save the user address/phone number if available.
+			$this->set_acf_address( $user_id, $customer );
+			$user = \get_user_by( 'id', $user_id );
 		}
 		return $user;
 	}
 
 	/**
-	 * Get the custom field value for the given field name
+	 * Set the user address for the given user ID based on the customer data.
 	 *
-	 * @param array  $custom_fields The array of customer fields(Name/Value pairs) from the transaction.
-	 * @param string $field_name The name of the custom field to retrieve.
-	 * @return string|null The value of the custom field, or null if not found.
+	 * @param int   $user_id  The ID of the user.
+	 * @param array $customer The customer data containing the address information.
+	 * @return void
 	 */
+	private function set_acf_address( int $user_id, array $customer ): void {
+
+		$user_key = 'user_' . $user_id;
+		foreach ( array(
+			'field_69a4b16aa4a13' => $customer['Address'] ?? '',
+			'field_69a4b1a6a4a14' => $customer['City'] ?? '',
+			'field_69a4b1bba4a15' => $customer['State'] ?? '',
+			'field_69a4b1caa4a16' => $customer['PostalCode'] ?? '',
+			'field_6aa438ce4ed00' => $customer['Phone'] ?? '',
+		) as $name => $value ) {
+			\update_field( $name, $value, $user_key );
+		}
+	}
+
+		/**
+		 * Get the custom field value for the given field name
+		 *
+		 * @param array  $custom_fields The array of customer fields(Name/Value pairs) from the transaction.
+		 * @param string $field_name The name of the custom field to retrieve.
+		 * @return string|null The value of the custom field, or null if not found.
+		 */
 	public function get_custom_field( array $custom_fields, string $field_name ): ?string {
 		foreach ( $custom_fields as $custom_field ) {
 			if ( isset( $custom_field['Name'] ) && $custom_field['Name'] === $field_name ) {
@@ -184,12 +211,12 @@ class DeluxeCcTransaction {
 		return null;
 	}
 
-	/**
-	 * Passes the notification's decoded JSON body to handle_new_transaction().
-	 *
-	 * @param \WP_REST_Request $request The incoming REST request.
-	 * @return \WP_REST_Response
-	 */
+		/**
+		 * Passes the notification's decoded JSON body to handle_new_transaction().
+		 *
+		 * @param \WP_REST_Request $request The incoming REST request.
+		 * @return \WP_REST_Response
+		 */
 	public function handle_deluxe_cc_notification( \WP_REST_Request $request ): \WP_REST_Response {
 		\error_log( 'Handling Deluxe CC notification' );
 		try {
@@ -215,14 +242,14 @@ class DeluxeCcTransaction {
 		}
 	}
 
-	/**
-	 * Records a Deluxe credit card notification and its processing result.
-	 *
-	 * @param string $transaction_id     The ID of the transaction being recorded, if record already exists.
-	 * @param string $post_body         The raw JSON body of the notification.
-	 * @param string $processing_result The result of processing the notification.
-	 * @return void
-	 */
+		/**
+		 * Records a Deluxe credit card notification and its processing result.
+		 *
+		 * @param string $transaction_id     The ID of the transaction being recorded, if record already exists.
+		 * @param string $post_body         The raw JSON body of the notification.
+		 * @param string $processing_result The result of processing the notification.
+		 * @return void
+		 */
 	private function log_cc_notification( string $transaction_id, string $post_body, string $processing_result ): void {
 		global $wpdb;
 
