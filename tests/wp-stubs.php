@@ -121,7 +121,7 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 	/** Minimal stand-in for $wpdb, recording insert() calls for assertions. */
 	class Dmbc_Test_Wpdb {
 		public string $prefix = 'wp_';
-		public int $last_error = 0;
+		public string $last_error = '';
 
 		public function get_charset_collate(): string {
 			return '';
@@ -540,6 +540,12 @@ if ( ! function_exists( 'is_user_logged_in' ) ) {
 if ( ! function_exists( 'current_time' ) ) {
 	function current_time( string $format ): string {
 		return '2026-09-02';
+	}
+}
+
+if ( ! function_exists( 'wp_date' ) ) {
+	function wp_date( string $format, $timestamp = null, $timezone = null ): string {
+		return '2026-09-02 00:00:00';
 	}
 }
 

@@ -8,14 +8,18 @@
 declare(strict_types=1);
 namespace DmbcTools;
 
+if ( ! \defined( 'ABSPATH' ) ) {
+	print 'ABSPATH is not defined . This file( ' . __FILE__ . ' ) should not be accessed directly . ' . PHP_EOL;
+	exit;
+}
+
+require_once 'transaction-exception.php';
+
+use DateTimeZone;
 use InvalidArgumentException;
 use WP_User;
 use DmbcTools\TransactionException;
 
-if ( ! \defined( 'ABSPATH' ) ) {
-	print 'ABSPATH is not defined. This file (' . __FILE__ . ') should not be accessed directly.' . PHP_EOL;
-	exit;
-}
 
 /**
  * Handles Deluxe credit card transaction notifications.
@@ -54,10 +58,10 @@ class DeluxeCcTransaction {
 		$table_name = $wpdb->prefix . self::NOTIFICATION_TABLE_NAME;
 		$sql[]      = "CREATE TABLE {$table_name} (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			tx_id TEXT NOT NULL,
 			post_body LONGTEXT NOT NULL,
-			received_at DATETIME NOT NULL,
+			received_at DATETIME(3) NOT NULL,
 			processing_result TEXT NOT NULL,
-            transaction_id TEXT NOT NULL,
 			PRIMARY KEY  (id)
 		) {$charset_collate};";
 
@@ -66,7 +70,7 @@ class DeluxeCcTransaction {
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			transaction_id TEXT NOT NULL,
 			tx_date DATETIME NOT NULL,
-            processed_at DATETIME NOT NULL,
+            processed_at DATETIME(3) NOT NULL,
             email TEXT,
 			total decimal(10,2) NOT NULL,
             name TEXT NOT NULL,
@@ -133,7 +137,7 @@ class DeluxeCcTransaction {
 	 */
 	public function handle_ticket_purchase( array $transaction ): void {
 
-		$data = $this->record_tickets( $transaction );
+		$data = $this->log_ticket_purchase( $transaction );
 		$this->send_ticket_purchase_email( $data );
 	}
 
@@ -156,7 +160,7 @@ class DeluxeCcTransaction {
 	 * @throws TransactionException If there is an error recording the ticket purchase.
 	 * @return array The recorded ticket purchase data.
 	 */
-	public function record_tickets( array $transaction ): array {
+	public function log_ticket_purchase( array $transaction ): array {
 		global $wpdb;
 
 		\error_log( 'Handling the ticket purchase. Transaction ID: ' . $transaction[ self::FIELD_TX_ID ] );
@@ -186,7 +190,7 @@ class DeluxeCcTransaction {
 			'name'           => $customer_name,
 			'email'          => $customer_email,
 			'tx_date'        => $tx_date,
-			'processed_at'   => current_time( 'mysql' ),
+			'processed_at'   => wp_date( 'Y-m-d H:i:s.v', null, new DateTimeZone( 'UTC' ) ),
 			'items'          => \wp_json_encode( $items ),
 			'total'          => $amount,
 		);
@@ -208,6 +212,7 @@ class DeluxeCcTransaction {
 			}
 			throw new TransactionException( 'Failed to insert transaction ID (' . esc_html( $transaction_id ) . ') into the database: ' . esc_html( $wpdb->last_error ) );
 		}
+		$this->log_cc_notification( $transaction_id, $transaction, 'logged' );
 		return $data;
 	}
 
@@ -252,7 +257,7 @@ class DeluxeCcTransaction {
 				array(
 					'user_login'      => $user_email,
 					'user_email'      => $user_email,
-					'user_registered' => \current_time( 'mysql' ),
+					'user_registered' => \wp_date( 'Y-m-d H:i:s.v', null, new DateTimeZone( 'UTC' ) ),
 					'display_name'    => $customer['Name'],
 					'first_name'      => $first_name,
 					'last_name'       => $last_name,
@@ -327,16 +332,16 @@ class DeluxeCcTransaction {
 			\error_log( 'processing transaction: ' . $transaction_id );
 			$this->handle_new_transaction( $transaction );
 
-			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], $body, 'complete' );
+			$this->log_cc_notification( $transaction_id, $body, 'complete' );
 			return new \WP_REST_Response( null, 204 );
 
 		} catch ( TransactionException $e ) {
 			$processing_result = 'Transaction Error: ' . $e->getMessage();
-			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], $body, $processing_result );
+			$this->log_cc_notification( $transaction_id, $body, $processing_result );
 			return new \WP_REST_Response( array( 'error' => $e->getMessage() ), 422 );
 
 		} catch ( \Throwable $e ) {
-			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], $body, 'error: ' . $e->getMessage() );
+			$this->log_cc_notification( $transaction_id, $body, 'error: ' . $e->getMessage() );
 			return new \WP_REST_Response( array( 'error' => $e->getMessage() ), 500 );
 		}
 	}
@@ -344,20 +349,26 @@ class DeluxeCcTransaction {
 	/**
 	 * Records a Deluxe credit card notification and its processing result.
 	 *
-	 * @param string $transaction_id     The ID of the transaction being recorded, if record already exists.
-	 * @param string $post_body         The raw JSON body of the notification.
-	 * @param string $processing_result The result of processing the notification.
+	 * @param string              $transaction_id     The ID of the transaction being recorded, if record already exists.
+	 * @param string|array<mixed> $post_body         The raw JSON body of the notification.
+	 * @param string              $processing_result The result of processing the notification.
 	 * @return void
 	 */
-	private function log_cc_notification( string $transaction_id, string $post_body, string $processing_result ): void {
+	private function log_cc_notification( string $transaction_id, string|array $post_body, string $processing_result ): void {
 		global $wpdb;
+
+		if ( is_array( $post_body ) ) {
+			$content = wp_json_encode( $post_body );
+		} else {
+			$content = $post_body;
+		}
 
 		$wpdb->insert(
 			$wpdb->prefix . self::NOTIFICATION_TABLE_NAME,
 			array(
-				'transaction_id'    => $transaction_id,
-				'post_body'         => $post_body,
-				'received_at'       => \current_time( 'mysql' ),
+				'tx_id'             => $transaction_id,
+				'post_body'         => $content,
+				'received_at'       => \wp_date( 'Y-m-d H:i:s.v', null, new DateTimeZone( 'UTC' ) ),
 				'processing_result' => $processing_result,
 			),
 			array( '%s', '%s', '%s', '%s' )
