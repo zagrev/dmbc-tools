@@ -62,6 +62,29 @@ if ( ! class_exists( 'WP_Post' ) ) {
 	}
 }
 
+if ( ! class_exists( 'WP_User' ) ) {
+	class WP_User {
+		public int $ID = 0;
+		public string $user_email = '';
+		public array $roles = array();
+		public array $caps = array();
+
+		public function __construct( int $id = 0, array $data = array() ) {
+			$this->ID = $id;
+			foreach ( $data as $key => $value ) {
+				if ( property_exists( $this, $key ) ) {
+					$this->$key = $value;
+				}
+			}
+		}
+
+		public function add_role( string $role ): void {
+			$this->roles[] = $role;
+			$this->roles   = array_values( array_unique( $this->roles ) );
+		}
+	}
+}
+
 if ( ! class_exists( 'WP_REST_Request' ) ) {
 	/** Minimal stand-in for WP_REST_Request, backed by a settable JSON payload. */
 	class WP_REST_Request {
@@ -98,6 +121,7 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 	/** Minimal stand-in for $wpdb, recording insert() calls for assertions. */
 	class Dmbc_Test_Wpdb {
 		public string $prefix = 'wp_';
+		public int $last_error = 0;
 
 		public function get_charset_collate(): string {
 			return '';
@@ -118,7 +142,7 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 $GLOBALS['wpdb'] = new Dmbc_Test_Wpdb();
 
 if ( ! function_exists( 'dbDelta' ) ) {
-	function dbDelta( string $sql ): array {
+	function dbDelta( string|array $sql ): array {
 		$GLOBALS['dmbc_test_state']['dbdelta_calls'][] = $sql;
 		return array();
 	}
@@ -547,6 +571,51 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 if ( ! function_exists( 'get_users' ) ) {
 	function get_users( array $args = array() ): array {
 		return $GLOBALS['dmbc_test_state']['users'];
+	}
+}
+
+if ( ! function_exists( 'get_user_by' ) ) {
+	function get_user_by( string $field, $value ) {
+		foreach ( $GLOBALS['dmbc_test_state']['users'] as $user ) {
+			if ( 'email' === $field ) {
+				$email = $user->user_email ?? '';
+				if ( $email === $value ) {
+					return $user;
+				}
+			}
+			if ( 'id' === $field ) {
+				$id = isset( $user->ID ) ? (int) $user->ID : 0;
+				if ( $id === (int) $value ) {
+					return $user;
+				}
+			}
+		}
+		return false;
+	}
+}
+
+if ( ! function_exists( 'wp_insert_user' ) ) {
+	function wp_insert_user( array $userdata ) {
+		$user_id = $GLOBALS['dmbc_test_state']['next_user_id']++;
+		$user    = new WP_User( $user_id, $userdata );
+		$GLOBALS['dmbc_test_state']['users'][] = $user;
+		return $user_id;
+	}
+}
+
+if ( ! function_exists( 'wp_generate_password' ) ) {
+	function wp_generate_password( int $length = 24, bool $special_chars = true, bool $extra_special_chars = false ): string {
+		return 'generated-password';
+	}
+}
+
+if ( ! function_exists( 'clean_user_cache' ) ) {
+	function clean_user_cache( int $user_id ): void {}
+}
+
+if ( ! function_exists( 'update_field' ) ) {
+	function update_field( string $field, $value, $post_id = null ) {
+		return true;
 	}
 }
 

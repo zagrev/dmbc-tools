@@ -327,16 +327,16 @@ class DeluxeCcTransaction {
 			\error_log( 'processing transaction: ' . $transaction_id );
 			$this->handle_new_transaction( $transaction );
 
-			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], '', 'complete' );
+			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], $body, 'complete' );
 			return new \WP_REST_Response( null, 204 );
 
 		} catch ( TransactionException $e ) {
 			$processing_result = 'Transaction Error: ' . $e->getMessage();
-			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], '', $processing_result );
+			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], $body, $processing_result );
 			return new \WP_REST_Response( array( 'error' => $e->getMessage() ), 422 );
 
 		} catch ( \Throwable $e ) {
-			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], '', 'error: ' . $e->getMessage() );
+			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], $body, 'error: ' . $e->getMessage() );
 			return new \WP_REST_Response( array( 'error' => $e->getMessage() ), 500 );
 		}
 	}
