@@ -187,7 +187,7 @@ class DeluxeCcTransaction {
 			'email'          => $customer_email,
 			'tx_date'        => $tx_date,
 			'processed_at'   => current_time( 'mysql' ),
-			'items'          => $items,
+			'items'          => \wp_json_encode( $items ),
 			'total'          => $amount,
 		);
 

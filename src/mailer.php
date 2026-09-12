@@ -113,7 +113,7 @@ class Mailer {
 		// Find the line item template within the message and replace it for each line item.
 		$line_item_regex = '/\{\{ItemList\}\}(.*)\{\{\/ItemList\}\}/';
 
-		$items              = $ticket_data['items'] ?? array();
+		$items              = \json_decode( $ticket_data['items'] ?? '[]', true );
 		$line_item_template = preg_match( $line_item_regex, $message, $matches ) ? $matches[1] : '';
 
 		$rows = array();
