@@ -853,4 +853,19 @@ final class Plugin {
 
 		echo '</div>';
 	}
+
+	/**
+	 *
+	 * Create an email from the given template and send it
+	 * to the
+	 * customer email and copy the
+	 * default email address.
+	 *
+	 * @param string $template_name The name of the email template to use.
+	 * @param array  $ticket_data The data related to the ticket purchase to be used in the email template.
+	 * @return void
+	 */
+	public function send_email_using_template( string $template_name, array $ticket_data ) {
+		$this->mailer->send_email_using_template( $template_name, $ticket_data );
+	}
 }

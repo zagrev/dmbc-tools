@@ -15,7 +15,7 @@ final class DeluxeCcTransactionTest extends DmbcUnitTestBase {
 
 		$calls = $GLOBALS['dmbc_test_state']['dbdelta_calls'];
 		$this->assertNotEmpty( $calls );
-		$this->assertStringContainsString( 'wp_' . DeluxeCcTransaction::TABLE_NAME, end( $calls ) );
+		$this->assertStringContainsString( 'wp_' . DeluxeCcTransaction::NOTIFICATION_TABLE_NAME, end( $calls ) );
 	}
 
 	/**
@@ -28,7 +28,7 @@ final class DeluxeCcTransactionTest extends DmbcUnitTestBase {
 
 		$inserts = $this->get_wpdb_inserts();
 		$this->assertCount( 1, $inserts );
-		$this->assertSame( 'wp_' . DeluxeCcTransaction::TABLE_NAME, $inserts[0]['table'] );
+		$this->assertSame( 'wp_' . DeluxeCcTransaction::NOTIFICATION_TABLE_NAME, $inserts[0]['table'] );
 		$this->assertSame( '{"transaction_id":"abc123"}', $inserts[0]['data']['post_body'] );
 		$this->assertSame( 'success', $inserts[0]['data']['processing_result'] );
 		$this->assertNotEmpty( $inserts[0]['data']['received_at'] );
@@ -58,7 +58,7 @@ final class DeluxeCcTransactionTest extends DmbcUnitTestBase {
 
 		$inserts = $this->get_wpdb_inserts();
 		$this->assertCount( 1, $inserts );
-		$this->assertSame( 'wp_' . DeluxeCcTransaction::TABLE_NAME, $inserts[0]['table'] );
+		$this->assertSame( 'wp_' . DeluxeCcTransaction::NOTIFICATION_TABLE_NAME, $inserts[0]['table'] );
 		$this->assertSame( '{"transaction_id":"abc123"}', $inserts[0]['data']['post_body'] );
 		$this->assertSame( 'success', $inserts[0]['data']['processing_result'] );
 		$this->assertNotEmpty( $inserts[0]['data']['received_at'] );
