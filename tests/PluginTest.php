@@ -2,6 +2,7 @@
 
 use DmbcTools\Plugin;
 use DmbcTools\SongListTable;
+use DmbcTools\DeluxeCcTransaction;
 /**
  * Tests for the DMBC Tools plugin metadata and Plugin class behavior.
  */
@@ -363,5 +364,21 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertStringContainsString( '2024-05-01', $html );
 		$this->assertStringContainsString( 'Song A', $html );
 		$this->assertStringContainsString( 'Bring extra chairs', $html );
+	}
+
+	/**
+	 * Method register_deluxe_cc_notification_route() registers the POST route with the REST API.
+	 *
+	 * @covers \DmbcTools\Plugin::register_deluxe_cc_notification_route
+	 */
+	public function test_register_deluxe_cc_notification_route_registers_expected_route(): void {
+		Plugin::instance()->register_deluxe_cc_notification_route();
+
+		$route = $this->get_registered_rest_route( 'dmbc', '/deluxe_cc_notification' );
+		$this->assertNotNull( $route );
+		$this->assertSame( 'POST', $route['methods'] );
+		$this->assertSame( '__return_true', $route['permission_callback'] );
+		$this->assertInstanceOf( DeluxeCcTransaction::class, $route['callback'][0] );
+		$this->assertSame( 'handle_deluxe_cc_notification', $route['callback'][1] );
 	}
 }

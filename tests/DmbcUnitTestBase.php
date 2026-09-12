@@ -49,6 +49,9 @@ abstract class DmbcUnitTestBase extends TestCase {
 			'submenu_pages'             => array(),
 			'wp_verify_nonce_result'    => true,
 			'flush_rewrite_rules_calls' => 0,
+			'rest_routes'               => array(),
+			'wpdb_inserts'              => array(),
+			'dbdelta_calls'             => array(),
 		);
 	}
 
@@ -111,6 +114,16 @@ abstract class DmbcUnitTestBase extends TestCase {
 		foreach ( $this->get_registered_actions( $hook ) as $callback ) {
 			call_user_func_array( $callback, $args );
 		}
+	}
+
+	/** Get the args registered for a given register_rest_route() namespace/route. */
+	protected function get_registered_rest_route( string $namespace, string $route ): ?array {
+		return $GLOBALS['dmbc_test_state']['rest_routes'][ $namespace . $route ] ?? null;
+	}
+
+	/** Get the rows passed to $wpdb->insert(), in insertion order. */
+	protected function get_wpdb_inserts(): array {
+		return $GLOBALS['dmbc_test_state']['wpdb_inserts'] ?? array();
 	}
 
 	/** Seed the value get_post_meta() returns for a given post/key. */

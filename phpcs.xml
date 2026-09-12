@@ -3,7 +3,15 @@
     <description>Apply WordPress Coding Standards to this project.</description>
     
     <!-- Use the official WordPress standard -->
-    <rule ref="WordPress" />
+    <rule ref="WordPress" >
+        <!-- Disable the class- file naming prefix requirement -->
+        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+        <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+    </rule>
+    <rule ref="Generic.Files.LineEndings">
+        <exclude name="Generic.Files.LineEndings.InvalidEOLChar"/>
+    </rule>
+    
 
     <!-- Check PHP files -->
     <arg name="extensions" value="php" />

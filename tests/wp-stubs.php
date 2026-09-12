@@ -29,6 +29,7 @@ $GLOBALS['dmbc_test_state'] = array(
 	'submenu_pages'           => array(),
 	'wp_verify_nonce_result'  => true,
 	'flush_rewrite_rules_calls' => 0,
+	'rest_routes'             => array(),
 );
 
 /** Simple stand-in for a WP_Role object, backed by the shared test state. */
@@ -61,7 +62,67 @@ if ( ! class_exists( 'WP_Post' ) ) {
 	}
 }
 
+if ( ! class_exists( 'WP_REST_Request' ) ) {
+	/** Minimal stand-in for WP_REST_Request, backed by a settable JSON payload. */
+	class WP_REST_Request {
+		public function __construct( private array $json_params = array(), private string $body = '' ) {}
 
+		public function get_json_params(): array {
+			return $this->json_params;
+		}
+
+		public function get_body(): string {
+			return $this->body;
+		}
+	}
+}
+
+if ( ! class_exists( 'WP_REST_Response' ) ) {
+	/** Minimal stand-in for WP_REST_Response. */
+	class WP_REST_Response {
+		public function __construct( private $data = null, private int $status = 200 ) {}
+
+		public function get_data() {
+			return $this->data;
+		}
+
+		public function get_status(): int {
+			return $this->status;
+		}
+	}
+}
+
+
+
+if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
+	/** Minimal stand-in for $wpdb, recording insert() calls for assertions. */
+	class Dmbc_Test_Wpdb {
+		public string $prefix = 'wp_';
+
+		public function get_charset_collate(): string {
+			return '';
+		}
+
+		public function insert( string $table, array $data, $format = null ) {
+			$GLOBALS['dmbc_test_state']['wpdb_inserts'][] = compact( 'table', 'data', 'format' );
+			return 1;
+		}
+
+		public function update( string $table, array $data, array $where, $format = null, $where_format = null ) {
+			$GLOBALS['dmbc_test_state']['wpdb_updates'][] = compact( 'table', 'data', 'where', 'format', 'where_format' );
+			return 1;
+		}
+	}
+}
+
+$GLOBALS['wpdb'] = new Dmbc_Test_Wpdb();
+
+if ( ! function_exists( 'dbDelta' ) ) {
+	function dbDelta( string $sql ): array {
+		$GLOBALS['dmbc_test_state']['dbdelta_calls'][] = $sql;
+		return array();
+	}
+}
 
 /** Thrown by the wp_die() stub so tests can assert a fatal-abort occurred. */
 class Dmbc_Test_Wp_Die_Exception extends \RuntimeException {}
@@ -346,6 +407,12 @@ if ( ! function_exists( 'submit_button' ) ) {
 if ( ! function_exists( 'add_action' ) ) {
 	function add_action( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {
 		$GLOBALS['dmbc_test_state']['actions'][ $hook ][] = $callback;
+	}
+}
+
+if ( ! function_exists( 'register_rest_route' ) ) {
+	function register_rest_route( string $namespace, string $route, array $args = array() ): void {
+		$GLOBALS['dmbc_test_state']['rest_routes'][ $namespace . $route ] = $args;
 	}
 }
 
