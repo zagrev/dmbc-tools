@@ -86,6 +86,13 @@ final class Plugin {
 	private MemberUpdateView $member_update_view;
 
 	/**
+	 * The ticket view handler.
+	 *
+	 * @var TicketView
+	 */
+	private TicketView $ticket_view;
+
+	/**
 	 * The singleton instance of this plugin
 	 *
 	 * @var self|null
@@ -736,7 +743,24 @@ final class Plugin {
 	}
 
 	/**
-	 * Registers the plugin's admin menu pages .
+	 * Create the ticket transaction view table.
+	 *
+	 * @return void
+	 */
+	public function create_ticket_view(): void {
+		if ( ! class_exists( '\WP_List_Table' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+		}
+		require_once __DIR__ . '/ticket-table.php';
+		require_once __DIR__ . '/ticket-view.php';
+
+		if ( ! isset( $this->ticket_view ) ) {
+			$this->ticket_view = new TicketView();
+		}
+	}
+
+	/**
+	 * Registers the plugin's admin menu pages.
 	 *
 	 * @return void
 	 */
@@ -744,9 +768,10 @@ final class Plugin {
 
 		$this->create_song_list_view();
 		$this->create_member_update_view();
+		$this->create_ticket_view();
 
 		// Remove any left-over rehearsal notes menu page.
-		\remove_menu_page( 'rehearsal-notes' );
+		\remove_menu_page( 'rehearsal-notes', );
 
 		\add_menu_page(
 			__( 'All Rehearsal Song Lists', 'dmbc-tools' ),
@@ -775,6 +800,16 @@ final class Plugin {
 			array( $this->member_update_view, 'render_member_update_table_page' ),
 			'dashicons-megaphone',
 			26
+		);
+
+		\add_menu_page(
+			__( 'Ticket Sales', 'dmbc-tools' ),
+			__( 'Ticket Sales', 'dmbc-tools' ),
+			'read', // self::CAP_VIEW_SONGLISTS, // TODO Set new capability.
+			'dmbc-ticket-sales',
+			array( $this->ticket_view, 'render_ticket_table_page' ),
+			'dashicons-tickets-alt',
+			27
 		);
 
 		// add options page separately.

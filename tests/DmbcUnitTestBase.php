@@ -24,6 +24,7 @@ abstract class DmbcUnitTestBase extends TestCase {
 		$GLOBALS['dmbc_test_state'] = array(
 			'options'                   => array(),
 			'current_user_can'          => true,
+			'next_user_id'              => 1,
 			'wp_roles'                  => array(
 				'administrator' => array( 'name' => 'Administrator' ),
 				'editor'        => array( 'name' => 'Editor' ),
