@@ -136,6 +136,11 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 			$GLOBALS['dmbc_test_state']['wpdb_updates'][] = compact( 'table', 'data', 'where', 'format', 'where_format' );
 			return 1;
 		}
+
+		public function get_results( string $query = '', $output = OBJECT, $y = 0 ) {
+			$GLOBALS['dmbc_test_state']['wpdb_get_results'][] = compact( 'query' );
+			return array();
+		}
 	}
 }
 

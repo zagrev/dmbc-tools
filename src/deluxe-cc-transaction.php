@@ -111,7 +111,7 @@ class DeluxeCcTransaction {
 		$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], '', $processing_result );
 
 		// Add the donor role to the user.
-		$user->add_role( 'um_donor' );
+		$user->add_role( 'Donor' );
 
 		// We want to use the user info even if the transaction is not approved.
 		if ( 'APPROVED' !== $transaction['Status'] ) {
