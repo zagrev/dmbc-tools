@@ -4,8 +4,68 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6f117684149a60ec2a3f307f993122f0",
+    "content-hash": "8e71f73e23a01d12098d393a830ff2af",
     "packages": [
+        {
+            "name": "dg/imap",
+            "version": "v2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/dg/imap.git",
+                "reference": "9a931f126a387475f6b30b74ea683d85c3e0b9f0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/dg/imap/zipball/9a931f126a387475f6b30b74ea683d85c3e0b9f0",
+                "reference": "9a931f126a387475f6b30b74ea683d85c3e0b9f0",
+                "shasum": ""
+            },
+            "require": {
+                "ext-iconv": "*",
+                "ext-mbstring": "*",
+                "ext-openssl": "*",
+                "php": ">=8.1"
+            },
+            "require-dev": {
+                "nette/phpstan-rules": "^1.0",
+                "nette/tester": "^2.5",
+                "phpstan/extension-installer": "^1.4@stable",
+                "phpstan/phpstan": "^2.1@stable"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.0-dev"
+                }
+            },
+            "autoload": {
+                "classmap": [
+                    "src/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "BSD-3-Clause",
+                "GPL-2.0-only",
+                "GPL-3.0-only"
+            ],
+            "authors": [
+                {
+                    "name": "David Grudl",
+                    "homepage": "https://davidgrudl.com"
+                }
+            ],
+            "description": "Retrieval, processing, and manipulation of emails within an IMAP mailbox, implemented in pure PHP",
+            "keywords": [
+                "imap",
+                "mail"
+            ],
+            "support": {
+                "issues": "https://github.com/dg/imap/issues",
+                "source": "https://github.com/dg/imap/tree/v2.0.0"
+            },
+            "time": "2026-08-04T23:59:18+00:00"
+        },
         {
             "name": "monolog/monolog",
             "version": "3.12.0",

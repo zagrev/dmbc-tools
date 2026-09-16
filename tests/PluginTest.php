@@ -45,7 +45,25 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertArrayHasKey( 'dmbc-songlist', $registered );
 		$this->assertSame( 'Song Lists', $registered['dmbc-songlist']['labels']['name'] );
 		$this->assertSame( 'dashicons-playlist-audio', $registered['dmbc-songlist']['menu_icon'] );
+		$this->assertTrue( $registered['dmbc-songlist']['public'] );
 		$this->assertSame( array( 'slug' => 'songlists' ), $registered['dmbc-songlist']['rewrite'] );
+	}
+
+	/**
+	 * Single song-list requests use the plugin's frontend template.
+	 *
+	 * @covers \DmbcTools\Plugin::dmbc_single_songlist_template
+	 */
+	public function test_single_songlist_template_returns_plugin_template_for_songlist_posts(): void {
+		$plugin = Plugin::instance();
+		$this->set_current_singular_post_type( Plugin::SONGLIST_POST_TYPE );
+
+		$template = $plugin->dmbc_single_songlist_template( '/theme/single.php' );
+
+		$this->assertSame(
+			str_replace( '\\', '/', dirname( __DIR__ ) ) . '/src/templates/single-songlist.php',
+			str_replace( '\\', '/', $template )
+		);
 	}
 
 	/**

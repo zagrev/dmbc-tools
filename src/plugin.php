@@ -30,25 +30,28 @@ use DmbcTools\AcfIntegration;
  */
 final class Plugin {
 
-	public const string CAP_EDIT_MEMBER_UPDATES          = 'dmbc_edit_member_updates';
-	public const string CAP_EDIT_SONGLIST                = 'dmbc_edit_songlist';
-	public const string CAP_PUBLISH_MEMBER_UPDATES       = 'dmbc_publish_member_updates';
-	public const string CAP_VIEW_MEMBER_UPDATES          = 'dmbc_view_member_updates';
-	public const string CAP_VIEW_SONGLISTS               = 'dmbc_view_songlist';
-	public const string MEMBER_UPDATE_CRON_HOOK          = 'dmbc_send_member_update_digest';
-	public const string MEMBER_UPDATE_POST_TYPE          = 'dmbc-member-updates';
-	public const string MEMBER_UPDATE_SENT_META_KEY      = '_dmbc_member_update_sent_at';
-	public const string MEMBER_UPDATE_RECIPIENT_META_KEY = '_dmbc_member_update_recipient';
-	public const string NOTES_META_KEY                   = '_dmbc_notes';
-	public const string OPTION_EMAIL_RECIPIENT           = 'member_update_recipient';
-	public const string OPTION_MAX_BCC_PER_EMAIL         = 'max_bcc_recipients_per_email';
-	public const string OPTION_REMOVE_DATA_ON_UNINSTALL  = 'remove_data_on_uninstall';
-	public const string OPTION_VERSION                   = 'dmbc_tools_version';
-	public const string PERFORMANCE_DATE_META_KEY        = '_dmbc_performance_date';
-	public const string SONGLIST_META_NONCE              = 'dmbc_songlist_meta_nonce';
-	public const string SONGLIST_POST_TYPE               = 'dmbc-songlist';
-	public const string SONGS_META_KEY                   = '_dmbc_songs';
-	public const string VERSION                          = '1.1.19';
+	public const string CAP_EDIT_MEMBER_UPDATES           = 'dmbc_edit_member_updates';
+	public const string CAP_EDIT_SONGLIST                 = 'dmbc_edit_songlist';
+	public const string CAP_PUBLISH_MEMBER_UPDATES        = 'dmbc_publish_member_updates';
+	public const string CAP_VIEW_MEMBER_UPDATES           = 'dmbc_view_member_updates';
+	public const string CAP_VIEW_SONGLISTS                = 'dmbc_view_songlist';
+	public const string MEMBER_UPDATE_CRON_HOOK           = 'dmbc_send_member_update_digest';
+	public const string MEMBER_UPDATE_POST_TYPE           = 'dmbc-member-updates';
+	public const string MEMBER_UPDATE_RECIPIENT_META_KEY  = '_dmbc_member_update_recipient';
+	public const string MEMBER_UPDATE_SENT_META_KEY       = '_dmbc_member_update_sent_at';
+	public const string NOTES_META_KEY                    = '_dmbc_notes';
+	public const string OPTION_EMAIL_RECIPIENT            = 'member_update_recipient';
+	public const string OPTION_MAX_BCC_PER_EMAIL          = 'max_bcc_recipients_per_email';
+	public const string OPTION_REMOVE_DATA_ON_UNINSTALL   = 'remove_data_on_uninstall';
+	public const string OPTION_SONGLIST_DIRECTORY         = 'song_library_directory';
+	public const string OPTION_SONGLIST_EXCLUSION_REGEXES = 'song_library_exclusion_regexes';
+	public const string OPTION_SONGLIST_RECIPIENT_ROLES   = 'song_list_recipient_roles';
+	public const string OPTION_VERSION                    = 'dmbc_tools_version';
+	public const string PERFORMANCE_DATE_META_KEY         = '_dmbc_performance_date';
+	public const string SONGLIST_META_NONCE               = 'dmbc_songlist_meta_nonce';
+	public const string SONGLIST_POST_TYPE                = 'dmbc-songlist';
+	public const string SONGS_META_KEY                    = '_dmbc_songs';
+	public const string VERSION                           = '1.1.19';
 
 	/**
 	 *  The settings used by the plugin.
@@ -131,6 +134,8 @@ final class Plugin {
 		\add_action( 'init', array( $this, 'initialize' ) );
 		\add_action( 'admin_init', array( $this, 'handle_admin_init' ) );
 		\add_action( 'admin_menu', array( $this, 'register_admin' ) );
+		\add_action( 'admin_menu', array( $this, 'unregister_old_post_types' ), 99 );
+
 		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
 		\add_action( self::MEMBER_UPDATE_CRON_HOOK, array( $this, 'send_member_update_digest' ) );
@@ -160,6 +165,7 @@ final class Plugin {
 		AcfIntegration::register_acf_fields();
 
 		\add_action( 'wp_dashboard_setup', array( self::instance(), 'register_menu_slugs_dashboard_widget' ) );
+		\add_filter( 'template_include', array( $this, 'dmbc_single_songlist_template' ) );
 
 		\flush_rewrite_rules();
 	}
@@ -254,6 +260,12 @@ final class Plugin {
 
 		\add_option( self::OPTION_VERSION, self::VERSION );
 		\update_option( self::OPTION_VERSION, self::VERSION ); // in case it already exists.
+
+		\add_option( self::OPTION_SONGLIST_DIRECTORY, 'dmbc-song-library' );
+		\add_option( self::OPTION_EMAIL_RECIPIENT, 'dmbc@daytonmetrobarbershopchorus.org' );
+		\add_option( self::OPTION_MAX_BCC_PER_EMAIL, '50' );
+		\add_option( self::OPTION_REMOVE_DATA_ON_UNINSTALL, false );
+		\add_option( self::OPTION_SONGLIST_RECIPIENT_ROLES, 'um_member' );
 	}
 
 	/**
@@ -360,7 +372,7 @@ final class Plugin {
 				'post_status'    => 'publish',
 				'posts_per_page' => -1,
 				'orderby'        => 'modified',
-				'order'          => 'ASC',
+				'order'          => 'DESC',
 			)
 		);
 		$updates = array_values(
@@ -509,7 +521,7 @@ final class Plugin {
 						'add_new_item'  => __( 'Add new Song List', 'dmbc-tools' ),
 						'edit_item'     => __( 'Edit Song List', 'dmbc-tools' ),
 					),
-					'public '      => false,
+					'public'       => true,
 					'show_in_rest' => true,
 					'has_archive'  => true,
 					'rewrite'      => array( 'slug' => 'songlists' ),
@@ -714,13 +726,13 @@ final class Plugin {
 	 */
 	public function create_song_list_view(): void {
 
-		if ( ! class_exists( '\WP_List_Table' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
-		}
-		require_once __DIR__ . '/songlist-table.php';
-		require_once __DIR__ . '/songlist-view.php';
-
 		if ( ! isset( $this->song_list_view ) ) {
+			if ( ! class_exists( '\WP_List_Table' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+			}
+			require_once __DIR__ . '/songlist-table.php';
+			require_once __DIR__ . '/songlist-view.php';
+
 			$this->song_list_view = new SongListView( $this->settings, $this->mailer );
 		}
 	}
@@ -731,13 +743,13 @@ final class Plugin {
 	 * @return void
 	 */
 	public function create_member_update_view(): void {
-		if ( ! class_exists( '\WP_List_Table' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
-		}
-		require_once __DIR__ . '/member-update-table.php';
-		require_once __DIR__ . '/member-update-view.php';
-
 		if ( ! isset( $this->member_update_view ) ) {
+			if ( ! class_exists( '\WP_List_Table' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+			}
+			require_once __DIR__ . '/member-update-table.php';
+			require_once __DIR__ . '/member-update-view.php';
+
 			$this->member_update_view = new MemberUpdateView();
 		}
 	}
@@ -748,14 +760,27 @@ final class Plugin {
 	 * @return void
 	 */
 	public function create_ticket_view(): void {
-		if ( ! class_exists( '\WP_List_Table' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
-		}
-		require_once __DIR__ . '/ticket-table.php';
-		require_once __DIR__ . '/ticket-view.php';
-
 		if ( ! isset( $this->ticket_view ) ) {
+			if ( ! class_exists( '\WP_List_Table' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+			}
+			require_once __DIR__ . '/ticket-table.php';
+			require_once __DIR__ . '/ticket-view.php';
+
 			$this->ticket_view = new TicketView();
+		}
+	}
+
+	/**
+	 * Unregister post types that we used to use but don't use anymore.
+	 *
+	 * @return void
+	 */
+	public function unregister_old_post_types(): void {
+		foreach ( array( 'rehearsal-notes' ) as $post_type ) {
+			// Remove any left-over rehearsal notes menu page.
+			\remove_menu_page( $post_type );
+			\unregister_post_type( $post_type );
 		}
 	}
 
@@ -769,9 +794,6 @@ final class Plugin {
 		$this->create_song_list_view();
 		$this->create_member_update_view();
 		$this->create_ticket_view();
-
-		// Remove any left-over rehearsal notes menu page.
-		\remove_menu_page( 'rehearsal-notes', );
 
 		\add_menu_page(
 			__( 'All Rehearsal Song Lists', 'dmbc-tools' ),
@@ -821,6 +843,17 @@ final class Plugin {
 			'dmbc-tools-settings',
 			array( $this->settings, 'dmbc_render_settings_page' )
 		);
+	}
+
+	/**
+	 * Render the view of a single song list.
+	 *
+	 * @return void
+	 */
+	public function render_songlist_view_page() {
+		$this->create_song_list_view();
+		$list_id = isset( $_REQUEST['song_list_id'] ) ? (int) \sanitize_text_field( \wp_unslash( $_REQUEST['song_list_id'] ) ) : 0;
+		$this->song_list_view->dmbc_render_song_list_view_page( $list_id );
 	}
 
 	/**
@@ -902,5 +935,28 @@ final class Plugin {
 	 */
 	public function send_email_using_template( string $template_name, array $ticket_data ) {
 		$this->mailer->send_email_using_template( $template_name, $ticket_data );
+	}
+
+
+	/**
+	 * Intercepts the theme engine and loads the plugin's custom layout for dmbc-songlist posts.
+	 *
+	 * @param string $template Path to the default theme template file.
+	 * @return string Path to the chosen template file.
+	 */
+	public function dmbc_single_songlist_template( $template ) {
+		// Check if we are viewing a single post of our specific custom post type.
+		if ( \is_singular( self::SONGLIST_POST_TYPE ) ) {
+			// Define the path pointing to the template inside our plugin directory.
+			$plugin_template = plugin_dir_path( __FILE__ ) . 'templates/single-songlist.php';
+
+			// Check if the file actually exists to avoid throwing errors.
+			if ( file_exists( $plugin_template ) ) {
+				return $plugin_template;
+			}
+		}
+
+		// Return the theme's fallback template if our custom one wasn't found.
+		return $template;
 	}
 }
