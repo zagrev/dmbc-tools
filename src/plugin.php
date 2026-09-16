@@ -17,6 +17,7 @@ if ( ! \defined( 'ABSPATH' ) ) {
 require_once __DIR__ . '/admin/settings-edit.php';
 require_once __DIR__ . '/admin/menu.php';
 require_once __DIR__ . '/songlist.php';
+require_once __DIR__ . '/songlist-playlist.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/deluxe-cc-transaction.php';
 require_once __DIR__ . '/acf-integration.php';
@@ -48,6 +49,7 @@ final class Plugin {
 	public const string OPTION_SONGLIST_RECIPIENT_ROLES   = 'song_list_recipient_roles';
 	public const string OPTION_VERSION                    = 'dmbc_tools_version';
 	public const string PERFORMANCE_DATE_META_KEY         = '_dmbc_performance_date';
+	public const string PLAYLIST_META_KEY                 = '_dmbc_playlist';
 	public const string SONGLIST_META_NONCE               = 'dmbc_songlist_meta_nonce';
 	public const string SONGLIST_POST_TYPE                = 'dmbc-songlist';
 	public const string SONGS_META_KEY                    = '_dmbc_songs';
@@ -165,9 +167,26 @@ final class Plugin {
 		AcfIntegration::register_acf_fields();
 
 		\add_action( 'wp_dashboard_setup', array( self::instance(), 'register_menu_slugs_dashboard_widget' ) );
+		\add_action( 'pre_get_posts', array( $this, 'order_songlist_archive_query' ) );
 		\add_filter( 'template_include', array( $this, 'dmbc_single_songlist_template' ) );
 
 		\flush_rewrite_rules();
+	}
+
+	/**
+	 * Order the public song-list archive by rehearsal date, newest first.
+	 *
+	 * @param \WP_Query $query The query being prepared.
+	 * @return void
+	 */
+	public function order_songlist_archive_query( $query ): void {
+		if ( \is_admin() || ! $query->is_main_query() || ! $query->is_post_type_archive( self::SONGLIST_POST_TYPE ) ) {
+			return;
+		}
+
+		$query->set( 'meta_key', self::PERFORMANCE_DATE_META_KEY );
+		$query->set( 'orderby', 'meta_value' );
+		$query->set( 'order', 'DESC' );
 	}
 
 	/**

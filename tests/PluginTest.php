@@ -84,6 +84,36 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * The public song-list archive is ordered by rehearsal date, newest first.
+	 *
+	 * @covers \DmbcTools\Plugin::order_songlist_archive_query
+	 */
+	public function test_order_songlist_archive_query_orders_by_rehearsal_date_descending(): void {
+		$GLOBALS['dmbc_test_state']['is_admin'] = false;
+		$query                                = new class() extends WP_Query {
+			public array $query_vars = array();
+
+			public function is_main_query(): bool {
+				return true;
+			}
+
+			public function is_post_type_archive( $post_types = '' ): bool {
+				return Plugin::SONGLIST_POST_TYPE === $post_types;
+			}
+
+			public function set( $query_var, $value ): void {
+				$this->query_vars[ $query_var ] = $value;
+			}
+		};
+
+		Plugin::instance()->order_songlist_archive_query( $query );
+
+		$this->assertSame( Plugin::PERFORMANCE_DATE_META_KEY, $query->query_vars['meta_key'] );
+		$this->assertSame( 'meta_value', $query->query_vars['orderby'] );
+		$this->assertSame( 'DESC', $query->query_vars['order'] );
+	}
+
+	/**
 	 * Method register_songlist_type() does not re-register the post type when it already exists.
 	 *
 	 * @covers \DmbcTools\Plugin::register_songlist_type

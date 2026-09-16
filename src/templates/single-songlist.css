@@ -26,23 +26,50 @@
 	list-style: none;
 }
 
-.dmbc-songlist-song a,
+.dmbc-songlist-song > a,
+.dmbc-songlist-song-summary,
 .dmbc-songlist-note {
 	display: block;
 	padding: 0.75rem 0.9rem;
 	border-radius: 6px;
 }
 
-.dmbc-songlist-song a {
+.dmbc-songlist-song > a,
+.dmbc-songlist-song-summary {
 	border: 1px solid #d8dce3;
 	background: #f7f9fb;
 	font-weight: 700;
 	text-decoration: none;
 }
 
-.dmbc-songlist-song a:hover,
-.dmbc-songlist-song a:focus {
+.dmbc-songlist-song > a:hover,
+.dmbc-songlist-song > a:focus,
+.dmbc-songlist-song-summary:hover,
+.dmbc-songlist-song-summary:focus {
 	text-decoration: underline;
+}
+
+.dmbc-songlist-song-summary {
+	cursor: pointer;
+}
+
+.dmbc-songlist-song-details[open] .dmbc-songlist-song-summary {
+	border-radius: 6px 6px 0 0;
+}
+
+.dmbc-songlist-song-panel {
+	display: grid;
+	gap: 0.75rem;
+	padding: 0.85rem 1rem 1rem;
+	border-right: 1px solid #d8dce3;
+	border-bottom: 1px solid #d8dce3;
+	border-left: 1px solid #d8dce3;
+	border-radius: 0 0 6px 6px;
+	background: #fff;
+}
+
+.dmbc-songlist-folder-link {
+	font-weight: 700;
 }
 
 .dmbc-songlist-note {
@@ -70,20 +97,32 @@
 	list-style: none;
 }
 
+.dmbc-songlist-archive-item {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1rem;
+	border: 1px solid #d8dce3;
+	border-radius: 6px;
+	background: #f7f9fb;
+}
+
+.dmbc-songlist-archive-entry {
+	flex: 1 1 auto;
+	min-width: 0;
+	text-decoration: none;
+}
+
 .dmbc-songlist-archive-link {
 	display: flex;
 	gap: 1rem;
 	align-items: center;
 	justify-content: flex-start;
-	padding: 1rem;
-	border: 1px solid #d8dce3;
-	border-radius: 6px;
-	background: #f7f9fb;
-	text-decoration: none;
 }
 
-.dmbc-songlist-archive-link:hover,
-.dmbc-songlist-archive-link:focus {
+.dmbc-songlist-archive-entry:hover,
+.dmbc-songlist-archive-entry:focus {
 	text-decoration: underline;
 }
 
@@ -96,7 +135,68 @@
 	color: #444;
 }
 
+.dmbc-songlist-archive-playlist {
+	flex: 0 0 auto;
+}
+
+.dmbc-songlist-downloads {
+	display: grid;
+	gap: 0.75rem;
+	margin-top: 2rem;
+	padding: 0.85rem 1rem 1rem;
+	border: 1px solid #d8dce3;
+	border-radius: 6px;
+	background: #fff;
+}
+
+.dmbc-songlist-downloads-heading {
+	margin: 0;
+	font-size: 1.25rem;
+}
+
+.dmbc-songlist-download-title {
+	margin: 0 0 0.35rem;
+	font-size: 1rem;
+	font-weight: 700;
+}
+
+.dmbc-songlist-download-files {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem 0.85rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.dmbc-songlist-download-files a {
+	font-size: 0.95rem;
+}
+
+.dmbc-songlist-playlist {
+	margin: 2rem 0 0;
+}
+
+.dmbc-songlist-playlist-download {
+	display: inline-block;
+	padding: 0.75rem 1rem;
+	border: 1px solid #2b5d8c;
+	border-radius: 6px;
+	background: #2b5d8c;
+	color: #fff;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.dmbc-songlist-playlist-download:hover,
+.dmbc-songlist-playlist-download:focus {
+	background: #21496f;
+	color: #fff;
+	text-decoration: underline;
+}
+
 @media (max-width: 600px) {
+	.dmbc-songlist-archive-item,
 	.dmbc-songlist-archive-link {
 		align-items: flex-start;
 		flex-direction: column;
