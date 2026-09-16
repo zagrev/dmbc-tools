@@ -32,6 +32,7 @@ $GLOBALS['dmbc_test_state'] = array(
 	'rest_routes'             => array(),
 	'current_post_type'       => 'post',
 	'is_singular'             => false,
+	'is_post_type_archive'    => false,
 );
 
 /** Simple stand-in for a WP_Role object, backed by the shared test state. */
@@ -321,6 +322,20 @@ if ( ! function_exists( 'get_post_type' ) ) {
 if ( ! function_exists( 'is_singular' ) ) {
 	function is_singular( $post_types = '' ): bool {
 		if ( empty( $GLOBALS['dmbc_test_state']['is_singular'] ) ) {
+			return false;
+		}
+
+		if ( '' === $post_types ) {
+			return true;
+		}
+
+		return in_array( get_post_type(), (array) $post_types, true );
+	}
+}
+
+if ( ! function_exists( 'is_post_type_archive' ) ) {
+	function is_post_type_archive( $post_types = '' ): bool {
+		if ( empty( $GLOBALS['dmbc_test_state']['is_post_type_archive'] ) ) {
 			return false;
 		}
 

@@ -57,3 +57,49 @@
 	padding-top: 1.25rem;
 	border-top: 1px solid #d8dce3;
 }
+
+.dmbc-songlist-archive-header {
+	margin-bottom: 1.5rem;
+}
+
+.dmbc-songlist-archive-items {
+	display: grid;
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.dmbc-songlist-archive-link {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+	justify-content: flex-start;
+	padding: 1rem;
+	border: 1px solid #d8dce3;
+	border-radius: 6px;
+	background: #f7f9fb;
+	text-decoration: none;
+}
+
+.dmbc-songlist-archive-link:hover,
+.dmbc-songlist-archive-link:focus {
+	text-decoration: underline;
+}
+
+.dmbc-songlist-archive-title {
+	font-weight: 700;
+}
+
+.dmbc-songlist-archive-date {
+	flex: 0 0 10rem;
+	color: #444;
+}
+
+@media (max-width: 600px) {
+	.dmbc-songlist-archive-link {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+}

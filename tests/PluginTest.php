@@ -67,6 +67,23 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Song-list archive requests use the plugin's member-facing archive template.
+	 *
+	 * @covers \DmbcTools\Plugin::dmbc_single_songlist_template
+	 */
+	public function test_songlist_archive_template_returns_plugin_archive_template(): void {
+		$plugin = Plugin::instance();
+		$this->set_current_post_type_archive( Plugin::SONGLIST_POST_TYPE );
+
+		$template = $plugin->dmbc_single_songlist_template( '/theme/archive.php' );
+
+		$this->assertSame(
+			str_replace( '\\', '/', dirname( __DIR__ ) ) . '/src/templates/archive-songlist.php',
+			str_replace( '\\', '/', $template )
+		);
+	}
+
+	/**
 	 * Method register_songlist_type() does not re-register the post type when it already exists.
 	 *
 	 * @covers \DmbcTools\Plugin::register_songlist_type

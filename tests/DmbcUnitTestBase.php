@@ -55,6 +55,7 @@ abstract class DmbcUnitTestBase extends TestCase {
 			'dbdelta_calls'             => array(),
 			'current_post_type'         => 'post',
 			'is_singular'               => false,
+			'is_post_type_archive'      => false,
 		);
 	}
 
@@ -111,6 +112,12 @@ abstract class DmbcUnitTestBase extends TestCase {
 	protected function set_current_singular_post_type( string $post_type ): void {
 		$GLOBALS['dmbc_test_state']['current_post_type'] = $post_type;
 		$GLOBALS['dmbc_test_state']['is_singular']       = true;
+	}
+
+	/** Control the post type reported for the current archive query. */
+	protected function set_current_post_type_archive( string $post_type ): void {
+		$GLOBALS['dmbc_test_state']['current_post_type']    = $post_type;
+		$GLOBALS['dmbc_test_state']['is_post_type_archive'] = true;
 	}
 
 	/** Get the callbacks registered for a given add_action() hook. */

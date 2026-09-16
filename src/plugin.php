@@ -522,6 +522,7 @@ final class Plugin {
 						'edit_item'     => __( 'Edit Song List', 'dmbc-tools' ),
 					),
 					'public'       => true,
+					'show_ui'      => false,
 					'show_in_rest' => true,
 					'has_archive'  => true,
 					'rewrite'      => array( 'slug' => 'songlists' ),
@@ -551,8 +552,8 @@ final class Plugin {
 					'add_new_item'  => __( 'Add Member Update', 'dmbc-tools' ),
 					'edit_item'     => __( 'Edit Member Update', 'dmbc-tools' ),
 				),
-				'public'          => false,
-				'show_ui'         => true,
+				'public'          => true,
+				'show_ui'         => false,
 				'show_in_menu'    => false,
 				'show_in_rest'    => true,
 				'supports'        => array( 'title', 'editor' ),
@@ -939,12 +940,20 @@ final class Plugin {
 
 
 	/**
-	 * Intercepts the theme engine and loads the plugin's custom layout for dmbc-songlist posts.
+	 * Intercepts the theme engine and loads the plugin's custom layout for dmbc-songlist pages.
 	 *
 	 * @param string $template Path to the default theme template file.
 	 * @return string Path to the chosen template file.
 	 */
 	public function dmbc_single_songlist_template( $template ) {
+		if ( \is_post_type_archive( self::SONGLIST_POST_TYPE ) ) {
+			$plugin_template = plugin_dir_path( __FILE__ ) . 'templates/archive-songlist.php';
+
+			if ( file_exists( $plugin_template ) ) {
+				return $plugin_template;
+			}
+		}
+
 		// Check if we are viewing a single post of our specific custom post type.
 		if ( \is_singular( self::SONGLIST_POST_TYPE ) ) {
 			// Define the path pointing to the template inside our plugin directory.
