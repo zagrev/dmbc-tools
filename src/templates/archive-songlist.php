@@ -8,6 +8,8 @@
 declare(strict_types=1);
 
 use DmbcTools\Plugin;
+use DmbcTools\SongList;
+use DmbcTools\SongListPlaylist;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -20,6 +22,14 @@ wp_enqueue_style(
 	plugin_dir_url( __FILE__ ) . 'single-songlist.css',
 	array(),
 	Plugin::VERSION
+);
+
+wp_enqueue_script(
+	'dmbc-single-songlist',
+	plugin_dir_url( __FILE__ ) . 'single-songlist.js',
+	array(),
+	Plugin::VERSION,
+	true
 );
 
 if ( $dmbc_is_block_theme ) :
@@ -55,16 +65,26 @@ endif;
 				while ( have_posts() ) :
 					the_post();
 
-					$songlist_id    = get_the_ID();
-					$rehearsal_date = (string) get_post_meta( $songlist_id, Plugin::PERFORMANCE_DATE_META_KEY, true );
+					$songlist_id       = get_the_ID();
+					$rehearsal_date    = (string) get_post_meta( $songlist_id, Plugin::PERFORMANCE_DATE_META_KEY, true );
+					$items             = SongList::normalize_items( get_post_meta( $songlist_id, Plugin::SONGS_META_KEY, true ) );
+					$playlist_urls     = SongListPlaylist::get_or_update_playlist( $songlist_id, $items );
+					$playlist_filename = sanitize_file_name( get_the_title() . '.m3u' );
 					?>
 					<li <?php post_class( 'dmbc-songlist-archive-item' ); ?>>
-						<a class="dmbc-songlist-archive-link" href="<?php echo esc_url( get_permalink() ); ?>">
-							<?php if ( ! empty( $rehearsal_date ) ) : ?>
-								<time class="dmbc-songlist-archive-date" datetime="<?php echo esc_attr( $rehearsal_date ); ?>"><?php echo esc_html( $rehearsal_date ); ?></time>
-							<?php endif; ?>
-							<span class="dmbc-songlist-archive-title"><?php echo esc_html( get_the_title() ); ?></span>
+						<a class="dmbc-songlist-archive-entry" href="<?php echo esc_url( get_permalink() ); ?>">
+							<span class="dmbc-songlist-archive-link">
+								<?php if ( ! empty( $rehearsal_date ) ) : ?>
+									<time class="dmbc-songlist-archive-date" datetime="<?php echo esc_attr( $rehearsal_date ); ?>"><?php echo esc_html( $rehearsal_date ); ?></time>
+								<?php endif; ?>
+								<span class="dmbc-songlist-archive-title"><?php echo esc_html( get_the_title() ); ?></span>
+							</span>
 						</a>
+						<?php if ( ! empty( $playlist_urls ) ) : ?>
+							<a class="dmbc-songlist-archive-playlist dmbc-songlist-playlist-download" href="#" download="<?php echo esc_attr( $playlist_filename ); ?>" data-playlist-urls="<?php echo esc_attr( wp_json_encode( $playlist_urls ) ); ?>">
+								<?php esc_html_e( 'Download playlist', 'dmbc-tools' ); ?>
+							</a>
+						<?php endif; ?>
 					</li>
 					<?php
 				endwhile;

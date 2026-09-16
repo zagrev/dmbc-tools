@@ -118,7 +118,11 @@ if ( ! class_exists( 'WP_REST_Response' ) ) {
 	}
 }
 
-
+if ( ! class_exists( 'WP_Query' ) ) {
+	/** Minimal base stand-in for WP_Query. */
+	class WP_Query {
+	}
+}
 
 if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 	/** Minimal stand-in for $wpdb, recording insert() calls for assertions. */
@@ -300,7 +304,7 @@ if ( ! function_exists( 'admin_url' ) ) {
 
 if ( ! function_exists( 'is_admin' ) ) {
 	function is_admin(): bool {
-		return true;
+		return $GLOBALS['dmbc_test_state']['is_admin'] ?? true;
 	}
 }
 
