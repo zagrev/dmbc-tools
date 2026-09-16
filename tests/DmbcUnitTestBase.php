@@ -53,6 +53,9 @@ abstract class DmbcUnitTestBase extends TestCase {
 			'rest_routes'               => array(),
 			'wpdb_inserts'              => array(),
 			'dbdelta_calls'             => array(),
+			'current_post_type'         => 'post',
+			'is_singular'               => false,
+			'is_post_type_archive'      => false,
 		);
 	}
 
@@ -103,6 +106,18 @@ abstract class DmbcUnitTestBase extends TestCase {
 	/** Mark a post type as already registered, for post_type_exists(). */
 	protected function set_existing_post_types( array $post_types ): void {
 		$GLOBALS['dmbc_test_state']['existing_post_types'] = $post_types;
+	}
+
+	/** Control the post type reported for the current singular query. */
+	protected function set_current_singular_post_type( string $post_type ): void {
+		$GLOBALS['dmbc_test_state']['current_post_type'] = $post_type;
+		$GLOBALS['dmbc_test_state']['is_singular']       = true;
+	}
+
+	/** Control the post type reported for the current archive query. */
+	protected function set_current_post_type_archive( string $post_type ): void {
+		$GLOBALS['dmbc_test_state']['current_post_type']    = $post_type;
+		$GLOBALS['dmbc_test_state']['is_post_type_archive'] = true;
 	}
 
 	/** Get the callbacks registered for a given add_action() hook. */

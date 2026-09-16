@@ -35,7 +35,7 @@ class DmbcSettings {
 
 		register_setting(
 			'settings_group',
-			'song_library_directory',
+			Plugin::OPTION_SONGLIST_DIRECTORY,
 			array(
 				'type'              => 'string',
 				'sanitize_callback' => array( $this, 'sanitize_song_library_directory' ),
@@ -44,7 +44,7 @@ class DmbcSettings {
 		);
 		register_setting(
 			'settings_group',
-			'song_library_exclusion_regexes',
+			Plugin::OPTION_SONGLIST_EXCLUSION_REGEXES,
 			array(
 				'type'              => 'array',
 				'sanitize_callback' => array( $this, 'sanitize_song_library_exclusion_regexes' ),
@@ -53,7 +53,7 @@ class DmbcSettings {
 		);
 		register_setting(
 			'settings_group',
-			'song_list_recipient_roles',
+			Plugin::OPTION_SONGLIST_RECIPIENT_ROLES,
 			array(
 				'type'              => 'array',
 				'sanitize_callback' => array( $this, 'sanitize_song_list_recipient_roles' ),
@@ -71,7 +71,7 @@ class DmbcSettings {
 		);
 		register_setting(
 			'settings_group',
-			'remove_data_on_uninstall',
+			Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL,
 			array(
 				'type'              => 'boolean',
 				'sanitize_callback' => array( $this, 'sanitize_remove_data_on_uninstall' ),
@@ -95,21 +95,21 @@ class DmbcSettings {
 			'settings'
 		);
 		add_settings_field(
-			'song_library_directory',
+			Plugin::OPTION_SONGLIST_DIRECTORY,
 			__( 'Song library directory', 'dmbc-tools' ),
 			array( $this, 'render_song_library_directory_field' ),
 			'settings',
 			'general_section'
 		);
 		add_settings_field(
-			'song_library_exclusion_regexes',
+			Plugin::OPTION_SONGLIST_EXCLUSION_REGEXES,
 			__( 'Song library exclusion regexes', 'dmbc-tools' ),
 			array( $this, 'render_song_library_exclusion_regexes_field' ),
 			'settings',
 			'general_section'
 		);
 		add_settings_field(
-			'remove_data_on_uninstall',
+			Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL,
 			__( 'Remove data on uninstall', 'dmbc-tools' ),
 			array( $this, 'render_remove_data_on_uninstall_field' ),
 			'settings',
@@ -129,7 +129,7 @@ class DmbcSettings {
 			'notifications_section'
 		);
 		add_settings_field(
-			'song_list_recipient_roles',
+			Plugin::OPTION_SONGLIST_RECIPIENT_ROLES,
 			__( 'Recipient roles', 'dmbc-tools' ),
 			array( $this, 'render_song_list_recipient_roles_field' ),
 			'settings',
@@ -430,7 +430,7 @@ class DmbcSettings {
 	 */
 	public function get_song_library_directory_option() {
 		return $this->sanitize_song_library_directory(
-			(string) \get_option( 'song_library_directory', 'dmbc-song-library' )
+			(string) \get_option( Plugin::OPTION_SONGLIST_DIRECTORY, 'dmbc-song-library' )
 		);
 	}
 
@@ -477,7 +477,7 @@ class DmbcSettings {
 	 * @return array
 	 */
 	public function get_song_library_exclusion_regexes() {
-		return $this->sanitize_song_library_exclusion_regexes( \get_option( 'song_library_exclusion_regexes', array() ) );
+		return $this->sanitize_song_library_exclusion_regexes( \get_option( Plugin::OPTION_SONGLIST_EXCLUSION_REGEXES, array() ) );
 	}
 
 	/**
@@ -503,7 +503,7 @@ class DmbcSettings {
 	 * @return array
 	 */
 	public function get_song_list_recipient_roles() {
-		$roles = \get_option( 'song_list_recipient_roles', array() );
+		$roles = \get_option( Plugin::OPTION_SONGLIST_RECIPIENT_ROLES, array() );
 
 		return is_array( $roles ) ? $this->sanitize_song_list_recipient_roles( $roles ) : array();
 	}
@@ -570,7 +570,7 @@ class DmbcSettings {
 	 * @return bool
 	 */
 	public function get_remove_data_on_uninstall(): bool {
-		return (bool) \get_option( 'remove_data_on_uninstall', false );
+		return (bool) \get_option( Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL, false );
 	}
 
 	/**

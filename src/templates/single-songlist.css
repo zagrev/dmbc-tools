@@ -1,0 +1,105 @@
+.dmbc-songlist-container {
+	max-width: 840px;
+	margin: 0 auto;
+	padding: 2rem 1rem 3rem;
+}
+
+.dmbc-songlist-article {
+	background: #fff;
+}
+
+.dmbc-songlist-title {
+	margin-bottom: 0.35rem;
+}
+
+.dmbc-songlist-date {
+	margin: 0 0 1.5rem;
+	font-weight: 700;
+	color: #444;
+}
+
+.dmbc-songlist-items {
+	display: grid;
+	gap: 0.65rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.dmbc-songlist-song a,
+.dmbc-songlist-note {
+	display: block;
+	padding: 0.75rem 0.9rem;
+	border-radius: 6px;
+}
+
+.dmbc-songlist-song a {
+	border: 1px solid #d8dce3;
+	background: #f7f9fb;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.dmbc-songlist-song a:hover,
+.dmbc-songlist-song a:focus {
+	text-decoration: underline;
+}
+
+.dmbc-songlist-note {
+	border-left: 4px solid #b88726;
+	background: #fff7e8;
+	color: #5d471f;
+	font-style: italic;
+}
+
+.dmbc-songlist-notes {
+	margin-top: 2rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid #d8dce3;
+}
+
+.dmbc-songlist-archive-header {
+	margin-bottom: 1.5rem;
+}
+
+.dmbc-songlist-archive-items {
+	display: grid;
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.dmbc-songlist-archive-link {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+	justify-content: flex-start;
+	padding: 1rem;
+	border: 1px solid #d8dce3;
+	border-radius: 6px;
+	background: #f7f9fb;
+	text-decoration: none;
+}
+
+.dmbc-songlist-archive-link:hover,
+.dmbc-songlist-archive-link:focus {
+	text-decoration: underline;
+}
+
+.dmbc-songlist-archive-title {
+	font-weight: 700;
+}
+
+.dmbc-songlist-archive-date {
+	flex: 0 0 10rem;
+	color: #444;
+}
+
+@media (max-width: 600px) {
+	.dmbc-songlist-archive-link {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+}

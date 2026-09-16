@@ -14,7 +14,8 @@
   "name": "zagrev/dmbc-tools",
   "require": {
     "monolog/monolog": "^3.10",
-    "yahnis-elsts/plugin-update-checker": "^5.7"
+    "yahnis-elsts/plugin-update-checker": "^5.7",
+    "dg/imap": "^2.0"
   },
   "require-dev": {
     "dealerdirect/phpcodesniffer-composer-installer": "^1.2",

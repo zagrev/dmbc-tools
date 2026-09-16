@@ -30,6 +30,9 @@ $GLOBALS['dmbc_test_state'] = array(
 	'wp_verify_nonce_result'  => true,
 	'flush_rewrite_rules_calls' => 0,
 	'rest_routes'             => array(),
+	'current_post_type'       => 'post',
+	'is_singular'             => false,
+	'is_post_type_archive'    => false,
 );
 
 /** Simple stand-in for a WP_Role object, backed by the shared test state. */
@@ -304,6 +307,49 @@ if ( ! function_exists( 'is_admin' ) ) {
 if ( ! function_exists( 'get_permalink' ) ) {
 	function get_permalink(): string {
 		return 'http://example.test/song-list';
+	}
+}
+
+if ( ! function_exists( 'get_post_type' ) ) {
+	function get_post_type( $post = null ): string {
+		if ( $post instanceof WP_Post ) {
+			return $post->post_type;
+		}
+		return $GLOBALS['dmbc_test_state']['current_post_type'] ?? 'post';
+	}
+}
+
+if ( ! function_exists( 'is_singular' ) ) {
+	function is_singular( $post_types = '' ): bool {
+		if ( empty( $GLOBALS['dmbc_test_state']['is_singular'] ) ) {
+			return false;
+		}
+
+		if ( '' === $post_types ) {
+			return true;
+		}
+
+		return in_array( get_post_type(), (array) $post_types, true );
+	}
+}
+
+if ( ! function_exists( 'is_post_type_archive' ) ) {
+	function is_post_type_archive( $post_types = '' ): bool {
+		if ( empty( $GLOBALS['dmbc_test_state']['is_post_type_archive'] ) ) {
+			return false;
+		}
+
+		if ( '' === $post_types ) {
+			return true;
+		}
+
+		return in_array( get_post_type(), (array) $post_types, true );
+	}
+}
+
+if ( ! function_exists( 'plugin_dir_path' ) ) {
+	function plugin_dir_path( string $file ): string {
+		return rtrim( dirname( $file ), '/\\' ) . '/';
 	}
 }
 

@@ -69,26 +69,16 @@ class SongListTable extends \WP_List_Table {
 	 */
 	public function column_rehearsal_date( WP_Post $item ) {
 		$actions = array();
-		if ( isset( $_REQUEST['_wpnonce'] ) ) {
-			$nonce = \sanitize_text_field( \wp_unslash( $_REQUEST['_wpnonce'] ) );
 
-			if ( \wp_verify_nonce( $nonce, 'edit_song_list_' . $item->ID ) ) {
-				$page = isset( $_REQUEST['page'] ) ? \sanitize_text_field( \wp_unslash( $_REQUEST['page'] ) ) : '';
+		$page = isset( $_REQUEST['page'] ) ? \sanitize_text_field( \wp_unslash( $_REQUEST['page'] ) ) : '';
 
-				$actions['edit']   = sprintf(
-					'<a href="?page=%s&action=%s&song_list_id=%s">Edit</a>',
-					\esc_attr( $page ),
-					'edit',
-					$item->ID
-				);
-				$actions['delete'] = sprintf(
-					'<a href="?page=%s&action=%s&song_list_id=%s">Delete</a>',
-					\esc_attr( $page ),
-					'delete',
-					$item->ID
-				);
-			}
-		}
+		$actions['view']   = '<a href="' . get_permalink( $item->ID ) . '">View</a>';
+		$actions['delete'] = sprintf(
+			'<a href="?page=%s&action=%s&song_list_id=%s">Delete</a>',
+			\esc_attr( $page ),
+			'delete',
+			$item->ID
+		);
 		// Return rehearsal date with row actions.
 		$base_url       = \is_admin() ? \admin_url( 'admin.php?page=dmbc-songlist-edit' ) : \get_permalink();
 		$view_url       = \add_query_arg( array( 'song_list_id' => $item->ID ), $base_url );

@@ -162,37 +162,37 @@ class SongListView {
 
 		ob_start();
 		?>
-	<div class="dmbc-song-list-view">
-		<h1><?php echo esc_html( $song_list_title ); ?> for <?php echo esc_html( $rehearsal_date ); ?></h1>
+		<div class="dmbc-song-list-view">
+			<h1><?php echo esc_html( $song_list_title ); ?> for <?php echo esc_html( $rehearsal_date ); ?></h1>
 
-		<?php if ( ! empty( $items ) ) : ?>
-			<h2>
-			<?php
-			esc_html_e( 'Rehearsal items', 'dmbc-extras' );
-			$song_library_dir  = $this->settings->get_song_library_directory_path();
-			$song_library_path = $this->convert_full_path_to_relative( WP_CONTENT_DIR, $song_library_dir );
-			?>
-			</h2>
-			<ul>
-				<?php foreach ( $items as $item ) : ?>
-					<?php if ( SongList::TYPE_NOTE === $item['type'] ) : ?>
-					<li class="dmbc-rehearsal-note"><?php echo esc_html( $item['value'] ); ?></li>
-					<?php else : ?>
-						<?php
-						$song_path     = $item['value'];
-						$song_url_path = $this->convert_full_path_to_relative( WP_CONTENT_DIR, $song_path );
-						$song_url      = \content_url( "$song_library_path/$song_url_path" );
-						?>
-					<li><a href="<?php echo \esc_url( $song_url ); ?>"><?php echo esc_html( $song_path ); ?></a></li>
-					<?php endif; ?>
-				<?php endforeach; ?>
-			</ul>
-			<?php else : ?>
-			<p><?php esc_html_e( 'No songs selected for this list.', 'dmbc-extras' ); ?></p>
-		<?php endif; ?>
-	</div>
-					<?php
-					return ob_get_clean();
+			<?php if ( ! empty( $items ) ) : ?>
+				<h2>
+				<?php
+				esc_html_e( 'Rehearsal items', 'dmbc-extras' );
+				$song_library_dir  = $this->settings->get_song_library_directory_path();
+				$song_library_path = $this->convert_full_path_to_relative( WP_CONTENT_DIR, $song_library_dir );
+				?>
+				</h2>
+				<ul>
+					<?php foreach ( $items as $item ) : ?>
+						<?php if ( SongList::TYPE_NOTE === $item['type'] ) : ?>
+						<li class="dmbc-rehearsal-note"><?php echo esc_html( $item['value'] ); ?></li>
+						<?php else : ?>
+							<?php
+							$song_path     = $item['value'];
+							$song_url_path = $this->convert_full_path_to_relative( WP_CONTENT_DIR, $song_path );
+							$song_url      = \content_url( "$song_library_path/$song_url_path" );
+							?>
+						<li><a href="<?php echo \esc_url( $song_url ); ?>"><?php echo esc_html( $song_path ); ?></a></li>
+						<?php endif; ?>
+					<?php endforeach; ?>
+				</ul>
+				<?php else : ?>
+				<p><?php esc_html_e( 'No songs selected for this list.', 'dmbc-extras' ); ?></p>
+			<?php endif; ?>
+		</div>
+		<?php
+		return ob_get_clean();
 	}
 
 	/**
