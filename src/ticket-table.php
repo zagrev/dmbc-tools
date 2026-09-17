@@ -51,13 +51,13 @@ class TicketTable extends \WP_List_Table {
 	 */
 	public function get_columns(): array {
 		return array(
-			'transaction_id' => __( 'Transaction ID', 'dmbc-tools' ),
+			'tx_date'        => __( 'Date', 'dmbc-tools' ),
 			'name'           => __( 'Customer Name', 'dmbc-tools' ),
 			'email'          => __( 'Email', 'dmbc-tools' ),
 			'item_count'     => __( 'Items', 'dmbc-tools' ),
 			'items_by_type'  => __( 'Items by Type', 'dmbc-tools' ),
 			'total'          => __( 'Total', 'dmbc-tools' ),
-			'tx_date'        => __( 'Date', 'dmbc-tools' ),
+			'transaction_id' => __( 'Transaction ID', 'dmbc-tools' ),
 		);
 	}
 
@@ -71,8 +71,15 @@ class TicketTable extends \WP_List_Table {
 
 		$this->_column_headers = array( $this->get_columns(), array(), array() );
 		$table_name            = $wpdb->prefix . DeluxeCcTransaction::TICKET_TABLE_NAME;
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$rows                   = $wpdb->get_results( "SELECT * FROM {$table_name} ORDER BY tx_date DESC, id DESC", ARRAY_A );
+		$cache_key             = 'dmbc_ticket_table_rows_' . $table_name;
+
+		$rows = \wp_cache_get( $cache_key, 'dmbc_ticket_table' ) ? \wp_cache_get( $cache_key, 'dmbc_ticket_table' )
+			: $wpdb->get_results(
+				$wpdb->prepare( 'SELECT * FROM %i ORDER BY tx_date DESC, id DESC', $table_name ),
+				ARRAY_A
+			);
+		\wp_cache_set( $cache_key, $rows, 'dmbc_ticket_table', 300 );
+
 		$this->items            = array();
 		$this->grand_total      = 0.0;
 		$this->grand_item_count = 0;

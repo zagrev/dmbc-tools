@@ -195,6 +195,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function handle_admin_init(): void {
+		$this->add_songlist_capabilities();
 		$this->create_song_list_view();
 		$this->song_list_view->handle_song_list_form();
 	}
@@ -488,10 +489,7 @@ final class Plugin {
 		}
 		\add_action(
 			'init',
-			function () {
-				\unregister_post_type( Plugin::MEMBER_UPDATE_POST_TYPE );
-				\unregister_post_type( Plugin::SONGLIST_POST_TYPE );
-			},
+			array( self::class, 'unregister_old_post_types' ),
 			11
 		);
 
@@ -572,19 +570,27 @@ final class Plugin {
 					'edit_item'     => __( 'Edit Member Update', 'dmbc-tools' ),
 				),
 				'public'          => true,
-				'show_ui'         => false,
+				'show_ui'         => true,
 				'show_in_menu'    => false,
 				'show_in_rest'    => true,
 				'supports'        => array( 'title', 'editor' ),
 				'capability_type' => 'post',
 				'map_meta_cap'    => false,
 				'capabilities'    => array(
-					'edit_post'     => self::CAP_EDIT_MEMBER_UPDATES,
-					'read_post'     => self::CAP_VIEW_MEMBER_UPDATES,
-					'delete_post'   => self::CAP_EDIT_MEMBER_UPDATES,
-					'edit_posts'    => self::CAP_EDIT_MEMBER_UPDATES,
-					'publish_posts' => self::CAP_PUBLISH_MEMBER_UPDATES,
-					'create_posts'  => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_post'              => self::CAP_EDIT_MEMBER_UPDATES,
+					'read_post'              => self::CAP_VIEW_MEMBER_UPDATES,
+					'delete_post'            => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_posts'             => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_others_posts'      => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_private_posts'     => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_published_posts'   => self::CAP_EDIT_MEMBER_UPDATES,
+					'publish_posts'          => self::CAP_PUBLISH_MEMBER_UPDATES,
+					'read_private_posts'     => self::CAP_VIEW_MEMBER_UPDATES,
+					'delete_posts'           => self::CAP_EDIT_MEMBER_UPDATES,
+					'delete_others_posts'    => self::CAP_EDIT_MEMBER_UPDATES,
+					'delete_private_posts'   => self::CAP_EDIT_MEMBER_UPDATES,
+					'delete_published_posts' => self::CAP_EDIT_MEMBER_UPDATES,
+					'create_posts'           => self::CAP_EDIT_MEMBER_UPDATES,
 				),
 				'menu_icon'       => 'dashicons-megaphone',
 			)
@@ -796,11 +802,31 @@ final class Plugin {
 	 *
 	 * @return void
 	 */
-	public function unregister_old_post_types(): void {
+	public static function unregister_old_post_types(): void {
 		foreach ( array( 'rehearsal-notes' ) as $post_type ) {
 			// Remove any left-over rehearsal notes menu page.
 			\remove_menu_page( $post_type );
 			\unregister_post_type( $post_type );
+		}
+
+		$legacy_caps = array( 'view-song-lists', 'edit_song_list' );
+		$role_names  = array_keys( \wp_roles()->get_names() );
+		$users       = \get_users();
+
+		foreach ( $role_names as $role_name ) {
+			$role = \get_role( $role_name );
+			if ( ! $role ) {
+				continue;
+			}
+			foreach ( $legacy_caps as $cap ) {
+				$role->remove_cap( $cap );
+			}
+		}
+
+		foreach ( $users as $user ) {
+			foreach ( $legacy_caps as $cap ) {
+				$user->remove_cap( $cap );
+			}
 		}
 	}
 
@@ -956,7 +982,6 @@ final class Plugin {
 	public function send_email_using_template( string $template_name, array $ticket_data ) {
 		$this->mailer->send_email_using_template( $template_name, $ticket_data );
 	}
-
 
 	/**
 	 * Intercepts the theme engine and loads the plugin's custom layout for dmbc-songlist pages.

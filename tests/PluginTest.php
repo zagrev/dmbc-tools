@@ -114,6 +114,30 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Legacy capability cleanup removes stale caps from roles and users and unregisters the old menu type.
+	 *
+	 * @covers \DmbcTools\Plugin::unregister_old_post_types
+	 */
+	public function test_unregister_old_post_types_removes_legacy_caps_and_unregisters_post_type(): void {
+		$GLOBALS['dmbc_test_state']['registered_post_types']['rehearsal-notes'] = array();
+		$GLOBALS['dmbc_test_state']['menu_pages']['rehearsal-notes'] = array( 'slug' => 'rehearsal-notes' );
+		$GLOBALS['dmbc_test_state']['roles']['editor'] = array(
+			'view-song-lists' => true,
+			'edit_song_list'  => true,
+		);
+		$GLOBALS['dmbc_test_state']['users'][] = new WP_User( 7, array( 'caps' => array( 'view-song-lists' => true, 'edit_song_list' => true ) ) );
+
+		Plugin::instance()->unregister_old_post_types();
+
+		$this->assertArrayNotHasKey( 'rehearsal-notes', $GLOBALS['dmbc_test_state']['registered_post_types'] );
+		$this->assertArrayNotHasKey( 'rehearsal-notes', $GLOBALS['dmbc_test_state']['menu_pages'] );
+		$this->assertArrayNotHasKey( 'view-song-lists', $GLOBALS['dmbc_test_state']['roles']['editor'] );
+		$this->assertArrayNotHasKey( 'edit_song_list', $GLOBALS['dmbc_test_state']['roles']['editor'] );
+		$this->assertArrayNotHasKey( 'view-song-lists', $GLOBALS['dmbc_test_state']['users'][0]->caps );
+		$this->assertArrayNotHasKey( 'edit_song_list', $GLOBALS['dmbc_test_state']['users'][0]->caps );
+	}
+
+	/**
 	 * Method register_songlist_type() does not re-register the post type when it already exists.
 	 *
 	 * @covers \DmbcTools\Plugin::register_songlist_type
@@ -141,8 +165,12 @@ final class PluginTest extends DmbcUnitTestBase {
 		$registered = $GLOBALS['dmbc_test_state']['registered_post_types'];
 		$this->assertArrayHasKey( Plugin::MEMBER_UPDATE_POST_TYPE, $registered );
 		$this->assertSame( 'Member Updates', $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['labels']['name'] );
-		$this->assertFalse( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['public'] );
+		$this->assertTrue( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['public'] );
+		$this->assertTrue( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['show_ui'] );
+		$this->assertFalse( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['show_in_menu'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_post'] );
+		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_published_posts'] );
+		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_others_posts'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['create_posts'] );
 	}
 
@@ -160,6 +188,19 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_VIEW_MEMBER_UPDATES ) );
 		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_PUBLISH_MEMBER_UPDATES ) );
 		$this->assertFalse( $this->role_has_cap( 'um_member', Plugin::CAP_EDIT_SONGLIST ) );
+	}
+
+	/**
+	 * Admin initialization refreshes role capabilities before admin screen permission checks.
+	 *
+	 * @covers \DmbcTools\Plugin::run
+	 */
+	public function test_run_registers_admin_capability_refresh(): void {
+		$plugin = Plugin::instance();
+
+		$plugin->run();
+
+		$this->assertContains( array( $plugin, 'handle_admin_init' ), $GLOBALS['dmbc_test_state']['actions']['admin_init'] );
 	}
 
 	/**

@@ -8,6 +8,10 @@
 declare(strict_types=1);
 namespace DmbcTools;
 
+if ( ! \defined( 'ABSPATH' ) ) {
+	print 'ABSPATH is not defined . This file( ' . __FILE__ . ' ) should not be accessed directly . ' . PHP_EOL;
+	exit;
+}
 /**
  * Summary of DmbcSettings class.
  */
@@ -15,10 +19,10 @@ class DmbcSettings {
 	/**
 	 * Determine whether a path is absolute. Stolen from WP-CLI\Utils::is_path_absolute().
 	 *
-	 * @param string $path
+	 * @param string $path The path to check.
 	 * @return bool
 	 */
-	function is_path_absolute( $path ) {
+	public function is_path_absolute( $path ) {
 		// Windows.
 		if ( isset( $path[1] ) && ':' === $path[1] ) {
 			return true;
@@ -31,8 +35,6 @@ class DmbcSettings {
 	 * Registers the settings for this plugin.
 	 */
 	public function register_settings(): void {
-		// \error_log( 'DMBC Settings: register_settings method called.' );
-
 		register_setting(
 			'settings_group',
 			Plugin::OPTION_SONGLIST_DIRECTORY,
@@ -263,22 +265,21 @@ class DmbcSettings {
 			\wp_send_json_error( array( 'message' => \__( 'You do not have permission to browse the server filesystem.', 'dmbc-tools' ) ), 403 );
 		}
 
-		$requested_path = isset( $_POST['path'] ) ? \wp_normalize_path( \wp_unslash( (string) $_POST['path'] ) ) : '';
+		$requested_path = isset( $_POST['path'] ) ? \sanitize_text_field( \wp_unslash( $_POST['path'] ) ) : '';
+		$requested_path = \wp_normalize_path( $requested_path );
 		// if not an absolute path, prepend with WP_CONTENT_DIR, else use as is.
 		if ( ! $this->is_path_absolute( $requested_path ) ) {
 			$requested_path = WP_CONTENT_DIR . '/' . $requested_path;
 		}
-		// \error_log( 'DMBC Ajax: absolute path: ' . $requested_path );
 
 		$real_path = realpath( $requested_path );
-		// \error_log( 'DMBC Ajax: real path: ' . $real_path );
 
 		if ( false === $real_path || ! is_dir( $real_path ) || ! is_readable( $real_path ) ) {
 			\wp_send_json_error( array( 'message' => \__( 'The requested directory could not be found or is not readable.', 'dmbc-tools' ) ), 400 );
 		}
 
 		$current_path = \wp_normalize_path( $real_path );
-		$entries      = @scandir( $current_path );
+		$entries      = \scandir( $current_path );
 
 		if ( false === $entries ) {
 			\wp_send_json_error( array( 'message' => \__( 'Unable to read the requested directory.', 'dmbc-tools' ) ), 400 );

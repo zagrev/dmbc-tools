@@ -57,7 +57,6 @@ class SongListView {
 	 * Creates the song list table instance.
 	 */
 	public function create_song_list_table(): void {
-		// \error_log( 'DMBC SongListView: create_song_list_table method called.' );
 		if ( ! isset( $this->song_list_table ) ) {
 			$this->song_list_table = new SongListTable();
 		}
@@ -69,7 +68,6 @@ class SongListView {
 	 * @return void
 	 */
 	public function dmbc_render_songlist_table_page(): void {
-		// \error_log( 'DMBC SongListView: dmbc_render_songlist_table_page method called.' );
 		echo $this->render_member_song_lists_table_page();
 	}
 
@@ -80,7 +78,6 @@ class SongListView {
 	 * @return void
 	 */
 	public function dmbc_render_songlist_edit_page( $song_list_id = 0 ): void {
-		// \error_log( 'DMBC SongListView: dmbc_render_songlist_edit_page method called.' );
 		if ( 0 === (int) $song_list_id && isset( $_GET['song_list_id'] ) ) {
 			$song_list_id = \absint( \wp_unslash( $_GET['song_list_id'] ) );
 		}
@@ -138,15 +135,26 @@ class SongListView {
 				array(
 					'post_type'      => Plugin::SONGLIST_POST_TYPE,
 					'post_status'    => 'publish',
-					'posts_per_page' => 1,
-					'orderby'        => 'meta_value',
-					'order'          => 'ASC',
-					'meta_key'       => Plugin::PERFORMANCE_DATE_META_KEY,
-					'meta_value'     => \current_time( 'Y-m-d' ),
-					'meta_compare'   => '>=',
+					'posts_per_page' => -1,
 				)
 			);
-			$song_list           = ! empty( $upcoming_song_lists ) ? $upcoming_song_lists[0] : null;
+			$today               = \current_time( 'Y-m-d' );
+			$upcoming_song_lists = array_filter(
+				$upcoming_song_lists,
+				static function ( $candidate ) use ( $today ) {
+					return \get_post_meta( $candidate->ID, Plugin::PERFORMANCE_DATE_META_KEY, true ) >= $today;
+				}
+			);
+			usort(
+				$upcoming_song_lists,
+				static function ( $first, $second ) {
+					$first_date  = \get_post_meta( $first->ID, Plugin::PERFORMANCE_DATE_META_KEY, true );
+					$second_date = \get_post_meta( $second->ID, Plugin::PERFORMANCE_DATE_META_KEY, true );
+
+					return strcmp( $first_date, $second_date );
+				}
+			);
+			$song_list = ! empty( $upcoming_song_lists ) ? $upcoming_song_lists[0] : null;
 		}
 
 		if ( ( ! $song_list || Plugin::SONGLIST_POST_TYPE !== $song_list->post_type ) && ! $date ) {
@@ -254,7 +262,6 @@ class SongListView {
 		} else {
 			return $this->render_member_song_lists_table_page();
 		}
-		return 'unexpected action, not edit/delete but has song_list_id=' . esc_html( $_GET['song_list_id'] );
 	}
 
 	/**
@@ -286,8 +293,10 @@ class SongListView {
 		ob_start();
 		?>
 	<div class="wrap">
-		<?php $action = $edit_id > 0 ? 'Update' : 'Add'; ?>
-		<h1><?php esc_html_e( "$action Rehearsal Song List", 'dmbc-extras' ); ?></h1>
+		<?php
+		$action = $edit_id > 0 ? __( 'Update Rehearsal Song List', 'dmbc-extras' ) : __( 'Add Rehearsal Song List', 'dmbc-extras' );
+		?>
+		<h1><?php echo esc_html( $action ); ?></h1>
 
 		<form method="post" action="" id="dmbc_edit_song_list_form">
 		<?php \wp_nonce_field( 'dmbc_create_song_list', 'dmbc_song_list_nonce' ); ?>
@@ -322,7 +331,10 @@ class SongListView {
 						<td>
 							<?php if ( empty( $song_folders ) ) : ?>
 								<p class="description">
-									<?php echo esc_html( sprintf( __( 'Create folders inside %s to populate this selector.', 'dmbc-extras' ), $this->settings->get_song_library_directory_path() ) ); ?>
+									<?php
+									/* translators: %s: song library directory path. */
+									echo esc_html( sprintf( __( 'Create folders inside %s to populate this selector.', 'dmbc-extras' ), $this->settings->get_song_library_directory_path() ) );
+									?>
 								</p>
 							<?php else : ?>
 								<div style="display:flex; gap:12px; align-items:flex-start;">
@@ -513,8 +525,6 @@ class SongListView {
 	 * @return bool|string
 	 */
 	public function render_member_song_lists_table_page(): string|bool {
-		// \error_log( 'DMBC SongListView: render_member_song_lists_table_page called.' );
-
 		$this->create_song_list_table();
 		$this->song_list_table->prepare_items();
 		ob_start();
@@ -600,6 +610,10 @@ class SongListView {
 			return;
 		}
 
+		if ( ! isset( $_POST['dmbc_song_list_id'] ) ) {
+			return;
+		}
+
 		if ( ! \current_user_can( Plugin::CAP_EDIT_SONGLIST ) && ! \current_user_can( 'manage_options' ) ) {
 			die( 'You do not have permission to delete this song list.' );
 		}
@@ -681,8 +695,11 @@ class SongListView {
 	 * @return void
 	 */
 	public function handle_song_list_form(): void {
-		// \error_log( 'DMBC SongListView: handle_song_list_form.' );
 		if ( isset( $_POST['dmbc_delete_song_list'] ) ) {
+			if ( ! isset( $_POST['dmbc_song_list_delete_nonce'] )
+				|| ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST['dmbc_song_list_delete_nonce'] ) ), 'dmbc_delete_song_list' ) ) {
+				return;
+			}
 			$this->handle_delete_song_list_form();
 			return;
 		}
@@ -706,10 +723,14 @@ class SongListView {
 			}
 		}
 
-		if ( isset( $_POST['dmbc_rehearsal_items'] ) && is_array( $_POST['dmbc_rehearsal_items'] ) ) {
+		$submitted_rehearsal_items = isset( $_POST['dmbc_rehearsal_items'] )
+			? map_deep( wp_unslash( $_POST['dmbc_rehearsal_items'] ), 'sanitize_text_field' )
+			: array();
+
+		if ( ! empty( $submitted_rehearsal_items ) && is_array( $submitted_rehearsal_items ) ) {
 			$song_library_dir = $this->settings->get_song_library_directory_path();
 			$selected_items   = array();
-			foreach ( \wp_unslash( $_POST['dmbc_rehearsal_items'] ) as $raw_item ) {
+			foreach ( $submitted_rehearsal_items as $raw_item ) {
 				if ( ! is_array( $raw_item ) || ! isset( $raw_item['value'] ) ) {
 					continue;
 				}
@@ -778,14 +799,11 @@ class SongListView {
 		\clean_post_cache( $post_id );
 		$this->send_song_list_to_roles( $post_id );
 
-		$action = 'created';
-		if ( $song_list_id > 0 ) {
-			$action = 'updated';
-		}
+		$action = $song_list_id > 0 ? __( 'Rehearsal song list updated successfully.', 'dmbc-extras' ) : __( 'Rehearsal song list created successfully.', 'dmbc-extras' );
 		\add_action(
 			'admin_notices',
 			function () use ( $action ) {
-				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Rehearsal song list ' . $action . ' successfully.', 'dmbc-extras' ) . '</p></div>';
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $action ) . '</p></div>';
 			}
 		);
 	}

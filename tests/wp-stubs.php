@@ -46,6 +46,10 @@ class Dmbc_Test_Wp_Role {
 	public function add_cap( string $cap ): void {
 		$GLOBALS['dmbc_test_state']['roles'][ $this->role_name ][ $cap ] = true;
 	}
+
+	public function remove_cap( string $cap ): void {
+		unset( $GLOBALS['dmbc_test_state']['roles'][ $this->role_name ][ $cap ] );
+	}
 }
 
 if ( ! class_exists( 'WP_Post' ) ) {
@@ -84,6 +88,10 @@ if ( ! class_exists( 'WP_User' ) ) {
 		public function add_role( string $role ): void {
 			$this->roles[] = $role;
 			$this->roles   = array_values( array_unique( $this->roles ) );
+		}
+
+		public function remove_cap( string $cap ): void {
+			unset( $this->caps[ $cap ] );
 		}
 	}
 }
@@ -147,6 +155,12 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 		public function get_results( string $query = '', $output = OBJECT, $y = 0 ) {
 			$GLOBALS['dmbc_test_state']['wpdb_get_results'][] = compact( 'query' );
 			return array();
+		}
+
+		public function prepare( string $query = '', array $args = array() ) {
+			$GLOBALS['dmbc_test_state']['wpdb_prepare'][] = compact( 'query', 'args'
+			 );
+			return $query;
 		}
 	}
 }
@@ -220,12 +234,17 @@ if ( ! class_exists( 'Dmbc_Test_Wp_Roles' ) ) {
 		public function __construct( array $roles ) {
 			$this->roles = $roles;
 		}
+
+		public function get_names(): array {
+			$role_names = array_keys( $this->roles );
+			return array_combine( $role_names, $role_names );
+		}
 	}
 }
 
 if ( ! function_exists( 'wp_roles' ) ) {
 	function wp_roles(): Dmbc_Test_Wp_Roles {
-		return new Dmbc_Test_Wp_Roles( $GLOBALS['dmbc_test_state']['wp_roles'] );
+		return new Dmbc_Test_Wp_Roles( $GLOBALS['dmbc_test_state']['roles'] );
 	}
 }
 
@@ -510,9 +529,26 @@ if ( ! function_exists( 'post_type_exists' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_roles' ) ) {
+	function get_roles(): array {
+		$roles = array();
+		foreach ( $GLOBALS['dmbc_test_state']['roles'] as $role_name => $caps ) {
+			$roles[] = new Dmbc_Test_Wp_Role( $role_name );
+		}
+		return $roles;
+	}
+}
+
 if ( ! function_exists( 'register_post_type' ) ) {
 	function register_post_type( string $post_type, array $args = array() ) {
 		$GLOBALS['dmbc_test_state']['registered_post_types'][ $post_type ] = $args;
+	}
+}
+
+if ( ! function_exists( 'unregister_post_type' ) ) {
+	function unregister_post_type( string $post_type ): bool {
+		unset( $GLOBALS['dmbc_test_state']['registered_post_types'][ $post_type ] );
+		return true;
 	}
 }
 
