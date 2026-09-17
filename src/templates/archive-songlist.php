@@ -6,25 +6,23 @@
  */
 
 declare(strict_types=1);
+namespace DmbcTools;
 
-use DmbcTools\Plugin;
-use DmbcTools\SongList;
-use DmbcTools\SongListPlaylist;
-
-if ( ! defined( 'ABSPATH' ) ) {
+if ( ! \defined( 'ABSPATH' ) ) {
+	print 'ABSPATH is not defined . This file( ' . __FILE__ . ' ) should not be accessed directly . ' . PHP_EOL;
 	exit;
 }
 
 $dmbc_is_block_theme = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
 
-wp_enqueue_style(
+\wp_enqueue_style(
 	'dmbc-single-songlist',
 	plugin_dir_url( __FILE__ ) . 'single-songlist.css',
 	array(),
 	Plugin::VERSION
 );
 
-wp_enqueue_script(
+\wp_enqueue_script(
 	'dmbc-single-songlist',
 	plugin_dir_url( __FILE__ ) . 'single-songlist.js',
 	array(),

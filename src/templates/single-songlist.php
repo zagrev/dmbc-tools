@@ -6,12 +6,10 @@
  */
 
 declare(strict_types=1);
+namespace DmbcTools;
 
-use DmbcTools\Plugin;
-use DmbcTools\SongList;
-use DmbcTools\SongListPlaylist;
-
-if ( ! defined( 'ABSPATH' ) ) {
+if ( ! \defined( 'ABSPATH' ) ) {
+	print 'ABSPATH is not defined . This file( ' . __FILE__ . ' ) should not be accessed directly . ' . PHP_EOL;
 	exit;
 }
 

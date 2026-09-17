@@ -141,7 +141,7 @@ final class PluginTest extends DmbcUnitTestBase {
 		$registered = $GLOBALS['dmbc_test_state']['registered_post_types'];
 		$this->assertArrayHasKey( Plugin::MEMBER_UPDATE_POST_TYPE, $registered );
 		$this->assertSame( 'Member Updates', $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['labels']['name'] );
-		$this->assertFalse( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['public'] );
+		$this->assertTrue( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['public'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_post'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['create_posts'] );
 	}

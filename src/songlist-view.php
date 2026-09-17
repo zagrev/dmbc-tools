@@ -138,15 +138,26 @@ class SongListView {
 				array(
 					'post_type'      => Plugin::SONGLIST_POST_TYPE,
 					'post_status'    => 'publish',
-					'posts_per_page' => 1,
-					'orderby'        => 'meta_value',
-					'order'          => 'ASC',
-					'meta_key'       => Plugin::PERFORMANCE_DATE_META_KEY,
-					'meta_value'     => \current_time( 'Y-m-d' ),
-					'meta_compare'   => '>=',
+					'posts_per_page' => -1,
 				)
 			);
-			$song_list           = ! empty( $upcoming_song_lists ) ? $upcoming_song_lists[0] : null;
+			$today               = \current_time( 'Y-m-d' );
+			$upcoming_song_lists = array_filter(
+				$upcoming_song_lists,
+				static function ( $candidate ) use ( $today ) {
+					return \get_post_meta( $candidate->ID, Plugin::PERFORMANCE_DATE_META_KEY, true ) >= $today;
+				}
+			);
+			usort(
+				$upcoming_song_lists,
+				static function ( $first, $second ) {
+					$first_date  = \get_post_meta( $first->ID, Plugin::PERFORMANCE_DATE_META_KEY, true );
+					$second_date = \get_post_meta( $second->ID, Plugin::PERFORMANCE_DATE_META_KEY, true );
+
+					return strcmp( $first_date, $second_date );
+				}
+			);
+			$song_list = ! empty( $upcoming_song_lists ) ? $upcoming_song_lists[0] : null;
 		}
 
 		if ( ( ! $song_list || Plugin::SONGLIST_POST_TYPE !== $song_list->post_type ) && ! $date ) {
@@ -254,7 +265,6 @@ class SongListView {
 		} else {
 			return $this->render_member_song_lists_table_page();
 		}
-		return 'unexpected action, not edit/delete but has song_list_id=' . esc_html( $_GET['song_list_id'] );
 	}
 
 	/**
@@ -286,8 +296,10 @@ class SongListView {
 		ob_start();
 		?>
 	<div class="wrap">
-		<?php $action = $edit_id > 0 ? 'Update' : 'Add'; ?>
-		<h1><?php esc_html_e( "$action Rehearsal Song List", 'dmbc-extras' ); ?></h1>
+		<?php
+		$action = $edit_id > 0 ? __( 'Update Rehearsal Song List', 'dmbc-extras' ) : __( 'Add Rehearsal Song List', 'dmbc-extras' );
+		?>
+		<h1><?php echo esc_html( $action ); ?></h1>
 
 		<form method="post" action="" id="dmbc_edit_song_list_form">
 		<?php \wp_nonce_field( 'dmbc_create_song_list', 'dmbc_song_list_nonce' ); ?>
@@ -322,7 +334,10 @@ class SongListView {
 						<td>
 							<?php if ( empty( $song_folders ) ) : ?>
 								<p class="description">
-									<?php echo esc_html( sprintf( __( 'Create folders inside %s to populate this selector.', 'dmbc-extras' ), $this->settings->get_song_library_directory_path() ) ); ?>
+									<?php
+									/* translators: %s: song library directory path. */
+									echo esc_html( sprintf( __( 'Create folders inside %s to populate this selector.', 'dmbc-extras' ), $this->settings->get_song_library_directory_path() ) );
+									?>
 								</p>
 							<?php else : ?>
 								<div style="display:flex; gap:12px; align-items:flex-start;">
@@ -778,14 +793,11 @@ class SongListView {
 		\clean_post_cache( $post_id );
 		$this->send_song_list_to_roles( $post_id );
 
-		$action = 'created';
-		if ( $song_list_id > 0 ) {
-			$action = 'updated';
-		}
+		$action = $song_list_id > 0 ? __( 'Rehearsal song list updated successfully.', 'dmbc-extras' ) : __( 'Rehearsal song list created successfully.', 'dmbc-extras' );
 		\add_action(
 			'admin_notices',
 			function () use ( $action ) {
-				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Rehearsal song list ' . $action . ' successfully.', 'dmbc-extras' ) . '</p></div>';
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $action ) . '</p></div>';
 			}
 		);
 	}
