@@ -232,16 +232,12 @@ if ( ! class_exists( 'Dmbc_Test_Wp_Roles' ) ) {
 	class Dmbc_Test_Wp_Roles {
 		public array $roles;
 		public function __construct( array $roles ) {
-			$this->roles = array();
-			foreach ( $roles as $role_name => $caps ) {
-				$role = new Dmbc_Test_Wp_Role( $role_name );
-				foreach ( $caps as $cap => $enabled ) {
-					if ( $enabled ) {
-						$role->add_cap( $cap );
-					}
-				}
-				$this->roles[ $role_name ] = $role;
-			}
+			$this->roles = $roles;
+		}
+
+		public function get_names(): array {
+			$role_names = array_keys( $this->roles );
+			return array_combine( $role_names, $role_names );
 		}
 	}
 }

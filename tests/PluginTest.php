@@ -166,7 +166,11 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertArrayHasKey( Plugin::MEMBER_UPDATE_POST_TYPE, $registered );
 		$this->assertSame( 'Member Updates', $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['labels']['name'] );
 		$this->assertTrue( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['public'] );
+		$this->assertTrue( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['show_ui'] );
+		$this->assertFalse( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['show_in_menu'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_post'] );
+		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_published_posts'] );
+		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_others_posts'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['create_posts'] );
 	}
 
@@ -184,6 +188,19 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_VIEW_MEMBER_UPDATES ) );
 		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_PUBLISH_MEMBER_UPDATES ) );
 		$this->assertFalse( $this->role_has_cap( 'um_member', Plugin::CAP_EDIT_SONGLIST ) );
+	}
+
+	/**
+	 * Admin initialization refreshes role capabilities before admin screen permission checks.
+	 *
+	 * @covers \DmbcTools\Plugin::run
+	 */
+	public function test_run_registers_admin_capability_refresh(): void {
+		$plugin = Plugin::instance();
+
+		$plugin->run();
+
+		$this->assertContains( array( $plugin, 'handle_admin_init' ), $GLOBALS['dmbc_test_state']['actions']['admin_init'] );
 	}
 
 	/**
