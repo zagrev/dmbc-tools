@@ -49,7 +49,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 22 # 1. Downgrade to Node 22 LTS to fix the silent wp-env crash bug
 
       - name: Set up PHP for Composer checks
         uses: shivammathur/setup-php@v2
@@ -74,10 +74,14 @@ jobs:
         run: npm install --global @wordpress/env
 
       - name: Start WordPress test environment
-        run: wp-env start --update
+        # 2. Pin to WordPress 7.1.0 temporarily until the 7.1.1 Git tag sync bug is resolved
+        run: wp-env start --update --core="WordPress/WordPress#7.1.0"
 
       - name: Run PHPUnit in WordPress test container
-        run: wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools vendor/bin/phpunit --colors=never
+        # 3. Wrapping the execution inside bash -c forces the inner container's shell to catch
+        # and throw a clean, non-zero exit status code that GitHub Actions can register.
+        run: |
+          wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools bash -c "vendor/bin/phpunit --colors=never"
 
       - name: Stop WordPress test environment
         if: always()
