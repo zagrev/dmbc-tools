@@ -35,7 +35,7 @@ final class MemberUpdateViewTest extends DmbcUnitTestBase {
 		( new MemberUpdateView() )->render_member_update_table_page();
 		$html = (string) ob_get_clean();
 
-		$this->assertStringContainsString( 'post-new.php?post_type=dmbc-member-updates', $html );
+		$this->assertStringContainsString( 'post-new.php?post_type='.Plugin::MEMBER_UPDATE_POST_TYPE, $html );
 		$this->assertStringContainsString( 'Member Updates', $html );
 		$this->assertStringContainsString( '<form method="post">', $html );
 		$this->assertStringContainsString( 'October update', $html );

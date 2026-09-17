@@ -27,7 +27,6 @@ class SongListTable extends \WP_List_Table {
 	 * Constructor.
 	 */
 	public function __construct() {
-		// \error_log( 'DMBC SongListTable: SongListTable constructor.' );
 		parent::__construct(
 			array(
 				'singular' => __( 'Song List', 'dmbc-extras' ),
@@ -42,7 +41,6 @@ class SongListTable extends \WP_List_Table {
 	 * @return array
 	 */
 	public function get_columns() {
-		// \error_log( 'DMBC SongListTable: get_columns.' );
 		return array(
 			'cb'             => '<input type="checkbox" />',
 			'rehearsal_date' => __( 'Rehearsal Date', 'dmbc-extras' ),

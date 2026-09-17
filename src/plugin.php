@@ -489,8 +489,7 @@ final class Plugin {
 		\add_action(
 			'init',
 			function () {
-				\unregister_post_type( Plugin::MEMBER_UPDATE_POST_TYPE );
-				\unregister_post_type( Plugin::SONGLIST_POST_TYPE );
+				\unregister_post_type( 'rehearsal-notes' );
 			},
 			11
 		);
@@ -802,6 +801,22 @@ final class Plugin {
 			\remove_menu_page( $post_type );
 			\unregister_post_type( $post_type );
 		}
+
+		$legacy_caps = array( 'view-song-lists', 'edit_song_list' );
+		$roles       = \wp_roles()->roles;
+		$users       = \get_users();
+
+		foreach ( $roles as $role ) {
+			foreach ( $legacy_caps as $cap ) {
+				$role->remove_cap( $cap );
+			}
+		}
+
+		foreach ( $users as $user ) {
+			foreach ( $legacy_caps as $cap ) {
+				$user->remove_cap( $cap );
+			}
+		}
 	}
 
 	/**
@@ -956,7 +971,6 @@ final class Plugin {
 	public function send_email_using_template( string $template_name, array $ticket_data ) {
 		$this->mailer->send_email_using_template( $template_name, $ticket_data );
 	}
-
 
 	/**
 	 * Intercepts the theme engine and loads the plugin's custom layout for dmbc-songlist pages.

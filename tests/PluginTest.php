@@ -114,6 +114,30 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Legacy capability cleanup removes stale caps from roles and users and unregisters the old menu type.
+	 *
+	 * @covers \DmbcTools\Plugin::unregister_old_post_types
+	 */
+	public function test_unregister_old_post_types_removes_legacy_caps_and_unregisters_post_type(): void {
+		$GLOBALS['dmbc_test_state']['registered_post_types']['rehearsal-notes'] = array();
+		$GLOBALS['dmbc_test_state']['menu_pages']['rehearsal-notes'] = array( 'slug' => 'rehearsal-notes' );
+		$GLOBALS['dmbc_test_state']['roles']['editor'] = array(
+			'view-song-lists' => true,
+			'edit_song_list'  => true,
+		);
+		$GLOBALS['dmbc_test_state']['users'][] = new WP_User( 7, array( 'caps' => array( 'view-song-lists' => true, 'edit_song_list' => true ) ) );
+
+		Plugin::instance()->unregister_old_post_types();
+
+		$this->assertArrayNotHasKey( 'rehearsal-notes', $GLOBALS['dmbc_test_state']['registered_post_types'] );
+		$this->assertArrayNotHasKey( 'rehearsal-notes', $GLOBALS['dmbc_test_state']['menu_pages'] );
+		$this->assertArrayNotHasKey( 'view-song-lists', $GLOBALS['dmbc_test_state']['roles']['editor'] );
+		$this->assertArrayNotHasKey( 'edit_song_list', $GLOBALS['dmbc_test_state']['roles']['editor'] );
+		$this->assertArrayNotHasKey( 'view-song-lists', $GLOBALS['dmbc_test_state']['users'][0]->caps );
+		$this->assertArrayNotHasKey( 'edit_song_list', $GLOBALS['dmbc_test_state']['users'][0]->caps );
+	}
+
+	/**
 	 * Method register_songlist_type() does not re-register the post type when it already exists.
 	 *
 	 * @covers \DmbcTools\Plugin::register_songlist_type

@@ -57,7 +57,6 @@ class SongListView {
 	 * Creates the song list table instance.
 	 */
 	public function create_song_list_table(): void {
-		// \error_log( 'DMBC SongListView: create_song_list_table method called.' );
 		if ( ! isset( $this->song_list_table ) ) {
 			$this->song_list_table = new SongListTable();
 		}
@@ -69,7 +68,6 @@ class SongListView {
 	 * @return void
 	 */
 	public function dmbc_render_songlist_table_page(): void {
-		// \error_log( 'DMBC SongListView: dmbc_render_songlist_table_page method called.' );
 		echo $this->render_member_song_lists_table_page();
 	}
 
@@ -80,7 +78,6 @@ class SongListView {
 	 * @return void
 	 */
 	public function dmbc_render_songlist_edit_page( $song_list_id = 0 ): void {
-		// \error_log( 'DMBC SongListView: dmbc_render_songlist_edit_page method called.' );
 		if ( 0 === (int) $song_list_id && isset( $_GET['song_list_id'] ) ) {
 			$song_list_id = \absint( \wp_unslash( $_GET['song_list_id'] ) );
 		}
@@ -528,8 +525,6 @@ class SongListView {
 	 * @return bool|string
 	 */
 	public function render_member_song_lists_table_page(): string|bool {
-		// \error_log( 'DMBC SongListView: render_member_song_lists_table_page called.' );
-
 		$this->create_song_list_table();
 		$this->song_list_table->prepare_items();
 		ob_start();
@@ -615,6 +610,10 @@ class SongListView {
 			return;
 		}
 
+		if ( ! isset( $_POST['dmbc_song_list_id'] ) ) {
+			return;
+		}
+
 		if ( ! \current_user_can( Plugin::CAP_EDIT_SONGLIST ) && ! \current_user_can( 'manage_options' ) ) {
 			die( 'You do not have permission to delete this song list.' );
 		}
@@ -696,8 +695,11 @@ class SongListView {
 	 * @return void
 	 */
 	public function handle_song_list_form(): void {
-		// \error_log( 'DMBC SongListView: handle_song_list_form.' );
 		if ( isset( $_POST['dmbc_delete_song_list'] ) ) {
+			if ( ! isset( $_POST['dmbc_song_list_delete_nonce'] )
+				|| ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST['dmbc_song_list_delete_nonce'] ) ), 'dmbc_delete_song_list' ) ) {
+				return;
+			}
 			$this->handle_delete_song_list_form();
 			return;
 		}
@@ -721,10 +723,14 @@ class SongListView {
 			}
 		}
 
-		if ( isset( $_POST['dmbc_rehearsal_items'] ) && is_array( $_POST['dmbc_rehearsal_items'] ) ) {
+		$submitted_rehearsal_items = isset( $_POST['dmbc_rehearsal_items'] )
+			? map_deep( wp_unslash( $_POST['dmbc_rehearsal_items'] ), 'sanitize_text_field' )
+			: array();
+
+		if ( ! empty( $submitted_rehearsal_items ) && is_array( $submitted_rehearsal_items ) ) {
 			$song_library_dir = $this->settings->get_song_library_directory_path();
 			$selected_items   = array();
-			foreach ( \wp_unslash( $_POST['dmbc_rehearsal_items'] ) as $raw_item ) {
+			foreach ( $submitted_rehearsal_items as $raw_item ) {
 				if ( ! is_array( $raw_item ) || ! isset( $raw_item['value'] ) ) {
 					continue;
 				}

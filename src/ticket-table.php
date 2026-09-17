@@ -73,9 +73,11 @@ class TicketTable extends \WP_List_Table {
 		$table_name            = $wpdb->prefix . DeluxeCcTransaction::TICKET_TABLE_NAME;
 		$cache_key             = 'dmbc_ticket_table_rows_' . $table_name;
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = \wp_cache_get( $cache_key, 'dmbc_ticket_table' ) ? \wp_cache_get( $cache_key, 'dmbc_ticket_table' )
-			: $wpdb->get_results( "SELECT * FROM {$table_name} ORDER BY tx_date DESC, id DESC", ARRAY_A );
+			: $wpdb->get_results(
+				$wpdb->prepare( 'SELECT * FROM %i ORDER BY tx_date DESC, id DESC', $table_name ),
+				ARRAY_A
+			);
 		\wp_cache_set( $cache_key, $rows, 'dmbc_ticket_table', 300 );
 
 		$this->items            = array();
