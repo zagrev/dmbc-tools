@@ -96,6 +96,7 @@ abstract class DmbcUnitTestBase extends TestCase {
 	/** Declare a role known to get_role(), with an optional starting set of capabilities. */
 	protected function define_role( string $role_name, array $caps = array() ): void {
 		$GLOBALS['dmbc_test_state']['roles'][ $role_name ] = $caps;
+		$GLOBALS['dmbc_test_state']['wp_roles'][ $role_name ] = array( 'name' => $role_name );
 	}
 
 	/** Whether the given role currently has the given capability. */

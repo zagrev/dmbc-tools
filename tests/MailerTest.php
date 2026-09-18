@@ -34,9 +34,7 @@ final class MailerTest extends DmbcUnitTestBase {
 	 * @covers \DmbcTools\Mailer::send_email
 	 */
 	public function test_send_email_returns_empty_array_when_no_recipient_configured(): void {
-		$GLOBALS['dmbc_test_state']['users'] = array(
-			(object) array( 'user_email' => 'member@example.com' ),
-		);
+		$GLOBALS['dmbc_test_state']['users'] = array();
 
 		$recipients = $this->make_mailer()->send_email( 'Subject', 'Body', array( 'um_member' ) );
 
@@ -51,8 +49,8 @@ final class MailerTest extends DmbcUnitTestBase {
 	 */
 	public function test_send_email_sends_to_configured_recipient_and_bccs_deduplicated_valid_roles(): void {
 		$GLOBALS['dmbc_test_state']['users'] = array(
-			(object) array( 'user_email' => 'member@example.com' ),
-			(object) array( 'user_email' => 'member@example.com' ),
+			(object) array( 'user_email' => 'member@example.com', 'ID' => 11111),
+			(object) array( 'user_email' => 'member@example.com' , 'ID' => 22222),
 			(object) array( 'user_email' => 'not-an-email' ),
 		);
 		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'admin@example.com' );

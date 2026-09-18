@@ -8,6 +8,8 @@
 declare(strict_types=1);
 namespace DmbcTools;
 
+use WP_User;
+
 if ( ! \defined( 'ABSPATH' ) ) {
 	print 'ABSPATH is not defined. This file (' . __FILE__ . ') should not be accessed directly.' . PHP_EOL;
 	exit;
@@ -42,38 +44,38 @@ class Mailer {
 	 * @return array<string> The recipients who were emailed.
 	 */
 	public function send_email( string $subject, string $message, array|null $roles = null ): array {
-		$roles      = null === $roles ? $this->settings->get_song_list_recipient_roles() : (array) $roles;
-		$recipients = array_values(
-			array_unique(
-				array_filter(
-					array_map(
-						fn( $user ) => isset( $user->user_email ) ? $user->user_email : '',
-						(array) \get_users( array( 'role__in' => $roles ) )
-					),
-					fn( string $email ): bool => \is_email( $email ) !== false
-				)
-			)
+		$roles  = null === $roles ? $this->settings->get_song_list_recipient_roles() : (array) $roles;
+		$users  = (array) \get_users( array( 'role__in' => $roles ) );
+		$emails = array_map(
+			fn ( $user ) => $user->user_email ?? '',
+			$users,
 		);
 
-		if ( empty( $recipients ) ) {
-			return array();
+		$valid_emails = array_filter(
+			$emails,
+			fn( string $email ): bool => \is_email( $email ) !== false
+		);
+		\error_log( 'found valid emails = ' . implode( ', ', (array) $valid_emails ) );
+
+		$recipients = array_values( array_unique( $valid_emails ) );
+		\error_log( 'sending email to ' . implode( ', ', $recipients ) );
+
+		if ( ! empty( $recipients ) ) {
+
+			// This can never return empty, so no need to check the result.
+			$recipient = $this->settings->get_email_recipient();
+
+			foreach ( array_chunk( $recipients, $this->settings->get_max_bcc_per_email() ) as $bcc_batch ) {
+				$headers = array(
+					'Bcc: ' . implode( ', ', $bcc_batch ),
+					'Content - Type: text / html; charset              = UTF - 8',
+				);
+
+				\wp_mail( $recipient, $subject, $message, $headers );
+			}
 		}
-
-		// This can never return empty, so no need to check the result.
-		$recipient = $this->settings->get_email_recipient();
-
-		foreach ( array_chunk( $recipients, $this->settings->get_max_bcc_per_email() ) as $bcc_batch ) {
-			$headers = array(
-				'Bcc: ' . implode( ',', $bcc_batch ),
-				'Content-Type: text/html; charset=UTF-8',
-			);
-
-			\wp_mail( $recipient, $subject, $message, $headers );
-		}
-
 		return $recipients;
 	}
-
 
 	/**
 	 *
@@ -111,7 +113,9 @@ class Mailer {
 		$message       = apply_filters( 'the_content', $template_post->post_content );
 
 		// Find the line item template within the message and replace it for each line item.
-		$line_item_regex = '/\{\{ItemList\}\}(.*)\{\{\/ItemList\}\}/';
+		$line_item_regex = ' / \{\{ItemList\}\}( . * ) { \{\{\ / ItemList\}\
+	}
+} / ';
 
 		$items              = \json_decode( $ticket_data['items'] ?? '[]', true );
 		$line_item_template = preg_match( $line_item_regex, $message, $matches ) ? $matches[1] : '';
@@ -134,8 +138,8 @@ class Mailer {
 		);
 
 		$cc = 'Cc: ' . $this->settings->get_email_recipient();
-		if ( ! \wp_mail( $to, $subject, $message, array( $cc, 'Content-Type: text/html; charset=UTF-8' ) ) ) {
-			\error_log( 'Failed to send ticket purchase ($transaction: ' . ( $ticket_data['transaction_id'] ?? '' ) . ') confirmation email to: ' . $to );
+		if ( ! \wp_mail( $to, $subject, $message, array( $cc, 'Content - Type: text / html; charset = UTF - 8' ) ) ) {
+			\error_log( 'Failed to send ticket purchase( $transaction: ' . ( $ticket_data['transaction_id'] ?? '' ) . ' ) confirmation email to: ' . $to );
 		}
 	}
 }
