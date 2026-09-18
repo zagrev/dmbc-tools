@@ -724,7 +724,7 @@ class SongListView {
 		}
 
 		$submitted_rehearsal_items = isset( $_POST['dmbc_rehearsal_items'] )
-			? map_deep( wp_unslash( $_POST['dmbc_rehearsal_items'] ), 'sanitize_text_field' )
+			? \map_deep( \wp_unslash( $_POST['dmbc_rehearsal_items'] ), 'sanitize_text_field' )
 			: array();
 
 		if ( ! empty( $submitted_rehearsal_items ) && is_array( $submitted_rehearsal_items ) ) {

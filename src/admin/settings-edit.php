@@ -488,14 +488,15 @@ class DmbcSettings {
 	 * @return array
 	 */
 	public function sanitize_song_list_recipient_roles( string|array $value ) {
-		$value = is_array( $value ) ? $value : array();
-		$roles = function_exists( 'wp_roles' ) ? array_keys( \wp_roles()->roles ) : array();
-		$value = array_map(
+		$value      = is_array( $value ) ? $value : array( $value );
+		$roles      = function_exists( 'wp_roles' ) ? \wp_roles()->roles : array();
+		$role_slugs = array_keys( $roles );
+		$value      = array_map(
 			fn ( $role ) => function_exists( 'sanitize_key' ) ? \sanitize_key( $role ) : (string) $role,
 			$value
 		);
 
-		return array_values( array_intersect( $value, $roles ) );
+		return array_values( array_intersect( $value, $role_slugs ) );
 	}
 
 	/**

@@ -244,7 +244,7 @@ if ( ! class_exists( 'Dmbc_Test_Wp_Roles' ) ) {
 
 if ( ! function_exists( 'wp_roles' ) ) {
 	function wp_roles(): Dmbc_Test_Wp_Roles {
-		return new Dmbc_Test_Wp_Roles( $GLOBALS['dmbc_test_state']['roles'] );
+		return new Dmbc_Test_Wp_Roles( $GLOBALS['dmbc_test_state']['wp_roles'] );
 	}
 }
 
@@ -667,6 +667,7 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 
 if ( ! function_exists( 'get_users' ) ) {
 	function get_users( array $args = array() ): array {
+		\error_log("get_users MOCK called with args = " . \wp_json_encode( $args ) . ", returning " . \wp_json_encode( $GLOBALS['dmbc_test_state']['users'] ) );
 		return $GLOBALS['dmbc_test_state']['users'];
 	}
 }
@@ -883,3 +884,20 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 		// 	}
 	}
 }
+
+if (! function_exists('map_deep')) {
+	function map_deep($value, $callback) {
+		if (is_array($value)) {
+			foreach ($value as $key => $item) {
+				$value[$key] = map_deep($item, $callback);
+			}
+		} elseif (is_object($value)) {
+			foreach ($value as $key => $item) {
+				$value->$key = map_deep($item, $callback);
+			}
+		} else {
+			$value = call_user_func($callback, $value);
+		}
+		return $value;
+	}
+}	

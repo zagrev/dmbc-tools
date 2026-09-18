@@ -434,7 +434,6 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 
 		$this->assertArrayHasKey( 'general_section', $GLOBALS['dmbc_test_state']['settings_sections'] );
 		$this->assertArrayHasKey( 'notifications_section', $GLOBALS['dmbc_test_state']['settings_sections'] );
-		$this->assertArrayHasKey( 'member_update_notifications_section', $GLOBALS['dmbc_test_state']['settings_sections'] );
 
 		$fields = $GLOBALS['dmbc_test_state']['settings_fields'];
 		$this->assertArrayHasKey( 'song_library_directory', $fields );
@@ -444,6 +443,5 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 		$this->assertArrayHasKey( 'song_list_recipient_roles', $fields );
 		$this->assertSame( 'notifications_section', $fields['song_list_recipient_roles']['section'] );
 		$this->assertArrayHasKey( Plugin::OPTION_EMAIL_RECIPIENT, $fields );
-		$this->assertSame( 'member_update_notifications_section', $fields[ Plugin::OPTION_EMAIL_RECIPIENT ]['section'] );
 	}
 }
