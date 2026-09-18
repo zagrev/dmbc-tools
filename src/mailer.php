@@ -113,9 +113,7 @@ class Mailer {
 		$message       = apply_filters( 'the_content', $template_post->post_content );
 
 		// Find the line item template within the message and replace it for each line item.
-		$line_item_regex = ' / \{\{ItemList\}\}( . * ) { \{\{\ / ItemList\}\
-	}
-} / ';
+		$line_item_regex = '/\{\{ItemList\}\}(.*)\{\{\/ItemList\}\}/';
 
 		$items              = \json_decode( $ticket_data['items'] ?? '[]', true );
 		$line_item_template = preg_match( $line_item_regex, $message, $matches ) ? $matches[1] : '';
@@ -138,7 +136,7 @@ class Mailer {
 		);
 
 		$cc = 'Cc: ' . $this->settings->get_email_recipient();
-		if ( ! \wp_mail( $to, $subject, $message, array( $cc, 'Content - Type: text / html; charset = UTF - 8' ) ) ) {
+		if ( ! \wp_mail( $to, $subject, $message, array( $cc, 'Content-Type: text/html; charset=UTF-8' ) ) ) {
 			\error_log( 'Failed to send ticket purchase( $transaction: ' . ( $ticket_data['transaction_id'] ?? '' ) . ' ) confirmation email to: ' . $to );
 		}
 	}
