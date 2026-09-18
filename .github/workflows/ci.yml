@@ -81,7 +81,7 @@ jobs:
         # 3. Wrapping the execution inside bash -c forces the inner container's shell to catch
         # and throw a clean, non-zero exit status code that GitHub Actions can register.
         run: |
-          wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools bash -c "set -e; vendor/bin/phpunit --colors=never"
+          wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools bash -e -c "vendor/bin/phpunit --colors=never"
 
       - name: Stop WordPress test environment
         if: always()
