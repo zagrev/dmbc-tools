@@ -204,6 +204,96 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Runtime hook registration wires plugin callbacks without flushing rewrite rules on every request.
+	 *
+	 * @covers \DmbcTools\Plugin::run
+	 */
+	public function test_run_registers_core_hooks_without_flushing_rewrite_rules(): void {
+		$plugin = Plugin::instance();
+
+		$plugin->run();
+
+		$this->assertContains( array( $plugin, 'initialize' ), $GLOBALS['dmbc_test_state']['actions']['init'] );
+		$this->assertContains( array( $plugin, 'register_admin' ), $GLOBALS['dmbc_test_state']['actions']['admin_menu'] );
+		$this->assertContains( array( $plugin, 'send_member_update_digest' ), $GLOBALS['dmbc_test_state']['actions'][ Plugin::MEMBER_UPDATE_CRON_HOOK ] );
+		$this->assertContains( array( $plugin, 'register_deluxe_cc_notification_route' ), $GLOBALS['dmbc_test_state']['actions']['rest_api_init'] );
+		$this->assertSame( 0, $GLOBALS['dmbc_test_state']['flush_rewrite_rules_calls'] );
+	}
+
+	/**
+	 * Initialization registers core plugin objects without flushing rewrite rules on every request.
+	 *
+	 * @covers \DmbcTools\Plugin::initialize
+	 */
+	public function test_initialize_registers_content_and_runtime_hooks_without_flushing_rewrite_rules(): void {
+		$plugin = Plugin::instance();
+
+		$plugin->initialize();
+
+		$this->assertArrayHasKey( Plugin::SONGLIST_POST_TYPE, $GLOBALS['dmbc_test_state']['registered_post_types'] );
+		$this->assertArrayHasKey( Plugin::MEMBER_UPDATE_POST_TYPE, $GLOBALS['dmbc_test_state']['registered_post_types'] );
+		$this->assertSame( Plugin::VERSION, get_option( Plugin::OPTION_VERSION ) );
+		$this->assertArrayHasKey( Plugin::MEMBER_UPDATE_CRON_HOOK, $GLOBALS['dmbc_test_state']['cron_events'] );
+		$this->assertContains( array( $plugin, 'order_songlist_archive_query' ), $GLOBALS['dmbc_test_state']['actions']['pre_get_posts'] );
+		$this->assertSame( 0, $GLOBALS['dmbc_test_state']['flush_rewrite_rules_calls'] );
+	}
+
+	/**
+	 * The user capabilities dashboard widget is registered with the expected callback.
+	 *
+	 * @covers \DmbcTools\Plugin::register_user_capabilities_dashboard_widget
+	 */
+	public function test_register_user_capabilities_dashboard_widget_registers_widget(): void {
+		$plugin = Plugin::instance();
+
+		$plugin->register_user_capabilities_dashboard_widget();
+
+		$this->assertArrayHasKey( 'wp_user_capabilities_widget', $GLOBALS['dmbc_test_state']['dashboard_widgets'] );
+		$this->assertSame( 'Your Current Capabilities', $GLOBALS['dmbc_test_state']['dashboard_widgets']['wp_user_capabilities_widget']['widget_name'] );
+		$this->assertSame( array( $plugin, 'render_user_capabilities_widget' ), $GLOBALS['dmbc_test_state']['dashboard_widgets']['wp_user_capabilities_widget']['callback'] );
+	}
+
+	/**
+	 * The dashboard widget reports when no user is logged in.
+	 *
+	 * @covers \DmbcTools\Plugin::render_user_capabilities_widget
+	 */
+	public function test_render_user_capabilities_widget_handles_logged_out_user(): void {
+		$GLOBALS['dmbc_test_state']['current_user'] = new WP_User();
+
+		ob_start();
+		Plugin::instance()->render_user_capabilities_widget();
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'No user logged in.', $html );
+	}
+
+	/**
+	 * The dashboard widget renders active capabilities and hides disabled caps.
+	 *
+	 * @covers \DmbcTools\Plugin::render_user_capabilities_widget
+	 */
+	public function test_render_user_capabilities_widget_lists_active_capabilities(): void {
+		$user             = new WP_User( 9 );
+		$user->user_login = 'member-one';
+		$user->roles      = array( 'um_member' );
+		$user->allcaps    = array(
+			Plugin::CAP_VIEW_MEMBER_UPDATES => true,
+			'disabled_capability'           => false,
+		);
+		$GLOBALS['dmbc_test_state']['current_user'] = $user;
+
+		ob_start();
+		Plugin::instance()->render_user_capabilities_widget();
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'member-one', $html );
+		$this->assertStringContainsString( 'um_member', $html );
+		$this->assertStringContainsString( Plugin::CAP_VIEW_MEMBER_UPDATES, $html );
+		$this->assertStringNotContainsString( 'disabled_capability', $html );
+	}
+
+	/**
 	 * Method register_options() adds the plugin's version option with its default value.
 	 *
 	 * @covers \DmbcTools\Plugin::register_options

@@ -68,7 +68,7 @@ class Mailer {
 			foreach ( array_chunk( $recipients, $this->settings->get_max_bcc_per_email() ) as $bcc_batch ) {
 				$headers = array(
 					'Bcc: ' . implode( ', ', $bcc_batch ),
-					'Content - Type: text / html; charset              = UTF - 8',
+					'Content-Type: text/html; charset=UTF-8',
 				);
 
 				\wp_mail( $recipient, $subject, $message, $headers );

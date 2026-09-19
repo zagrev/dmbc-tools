@@ -83,6 +83,17 @@ jobs:
         run: |
           wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools bash -e -c "vendor/bin/phpunit --colors=never"
 
+      - name: Run PHPUnit with Coverage
+        env:
+          XDEBUG_MODE: coverage
+        run: |
+          wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools bash -e -c "vendor/bin/phpunit --coverage-clover coverage.xml"
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./coverage.xml
+
       - name: Stop WordPress test environment
         if: always()
         run: wp-env stop

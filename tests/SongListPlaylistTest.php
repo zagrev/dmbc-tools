@@ -6,6 +6,36 @@ use DmbcTools\SongListPlaylist;
 
 /** @covers \DmbcTools\SongListPlaylist */
 final class SongListPlaylistTest extends DmbcUnitTestBase {
+	/**
+	 * The member check is based on the current logged-in user's role slugs.
+	 *
+	 * @covers \DmbcTools\SongListPlaylist::current_user_is_member
+	 */
+	public function test_current_user_is_member_matches_logged_in_member_roles(): void {
+		$cases = array(
+			'logged out user with member role' => array( false, array( 'um_member' ), false ),
+			'logged in user with no roles'     => array( true, array(), false ),
+			'ultimate member role'            => array( true, array( 'um_member' ), true ),
+			'legacy member role'              => array( true, array( 'member' ), true ),
+			'ordinary subscriber role'        => array( true, array( 'subscriber' ), false ),
+			'mixed roles including member'    => array( true, array( 'subscriber', 'um_member' ), true ),
+		);
+
+		foreach ( $cases as $label => $case ) {
+			$logged_in = $case[0];
+			$roles     = $case[1];
+			$expected  = $case[2];
+
+			$GLOBALS['dmbc_test_state']['logged_in'] = $logged_in;
+			$GLOBALS['dmbc_test_state']['current_user'] = new WP_User(
+				$logged_in ? 15 : 0,
+				array( 'roles' => $roles )
+			);
+
+			$this->assertSame( $expected, SongListPlaylist::current_user_is_member(), $label );
+		}
+	}
+
 	public function test_get_or_update_playlist_stores_urls_in_song_list_order(): void {
 		$library = $this->create_temp_directory();
 		$this->make_directory_tree(

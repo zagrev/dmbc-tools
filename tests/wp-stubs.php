@@ -154,10 +154,10 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 
 		public function get_results( string $query = '', $output = OBJECT, $y = 0 ) {
 			$GLOBALS['dmbc_test_state']['wpdb_get_results'][] = compact( 'query' );
-			return array();
+			return $GLOBALS['dmbc_test_state']['wpdb_results'] ?? array();
 		}
 
-		public function prepare( string $query = '', array $args = array() ) {
+		public function prepare( string $query = '', ...$args ) {
 			$GLOBALS['dmbc_test_state']['wpdb_prepare'][] = compact( 'query', 'args'
 			 );
 			return $query;
@@ -502,8 +502,39 @@ if ( ! function_exists( 'submit_button' ) ) {
 	function submit_button(): void {}
 }
 
+if ( ! function_exists( 'wp_add_dashboard_widget' ) ) {
+	function wp_add_dashboard_widget( string $widget_id, string $widget_name, $callback ): void {
+		$GLOBALS['dmbc_test_state']['dashboard_widgets'][ $widget_id ] = compact( 'widget_name', 'callback' );
+	}
+}
+
+if ( ! function_exists( 'wp_get_current_user' ) ) {
+	function wp_get_current_user(): WP_User {
+		return $GLOBALS['dmbc_test_state']['current_user'];
+	}
+}
+
+if ( ! function_exists( 'wp_cache_get' ) ) {
+	function wp_cache_get( string $key, string $group = '' ) {
+		return $GLOBALS['dmbc_test_state']['cache'][ $group ][ $key ] ?? false;
+	}
+}
+
+if ( ! function_exists( 'wp_cache_set' ) ) {
+	function wp_cache_set( string $key, $data, string $group = '', int $expire = 0 ): bool {
+		$GLOBALS['dmbc_test_state']['cache'][ $group ][ $key ] = $data;
+		return true;
+	}
+}
+
 if ( ! function_exists( 'add_action' ) ) {
 	function add_action( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {
+		$GLOBALS['dmbc_test_state']['actions'][ $hook ][] = $callback;
+	}
+}
+
+if ( ! function_exists( 'add_filter' ) ) {
+	function add_filter( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {
 		$GLOBALS['dmbc_test_state']['actions'][ $hook ][] = $callback;
 	}
 }
@@ -667,7 +698,6 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 
 if ( ! function_exists( 'get_users' ) ) {
 	function get_users( array $args = array() ): array {
-		\error_log("get_users MOCK called with args = " . \wp_json_encode( $args ) . ", returning " . \wp_json_encode( $GLOBALS['dmbc_test_state']['users'] ) );
 		return $GLOBALS['dmbc_test_state']['users'];
 	}
 }

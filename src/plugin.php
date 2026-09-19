@@ -145,8 +145,6 @@ final class Plugin {
 
 		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
 		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
-
-		\flush_rewrite_rules();
 	}
 
 	// init -------------------------------------------------------------------------------.
@@ -169,8 +167,6 @@ final class Plugin {
 		\add_action( 'wp_dashboard_setup', array( self::instance(), 'register_menu_slugs_dashboard_widget' ) );
 		\add_action( 'pre_get_posts', array( $this, 'order_songlist_archive_query' ) );
 		\add_filter( 'template_include', array( $this, 'dmbc_single_songlist_template' ) );
-
-		\flush_rewrite_rules();
 	}
 
 	/**
@@ -295,64 +291,45 @@ final class Plugin {
 	 */
 	public function add_songlist_capabilities() {
 
-		foreach ( $this->get_roles_with_edit_cap() as $role_name ) {
-			$role = \get_role( $role_name );
-			if ( $role && ! $role->has_cap( self::CAP_EDIT_SONGLIST ) ) {
-				$role->add_cap( self::CAP_EDIT_SONGLIST );
-				$role->add_cap( self::CAP_VIEW_SONGLISTS );
-			}
-		}
-		foreach ( $this->get_roles_with_member_update_edit_cap() as $role_name ) {
+		foreach ( $this->get_role_capability_grants() as $role_name => $capabilities ) {
 			$role = \get_role( $role_name );
 			if ( ! $role ) {
 				continue;
 			}
-			if ( ! $role->has_cap( self::CAP_EDIT_MEMBER_UPDATES ) ) {
-				$role->add_cap( self::CAP_EDIT_MEMBER_UPDATES );
-			}
-			if ( ! $role->has_cap( self::CAP_VIEW_MEMBER_UPDATES ) ) {
-				$role->add_cap( self::CAP_VIEW_MEMBER_UPDATES );
-			}
-			if ( ! $role->has_cap( self::CAP_PUBLISH_MEMBER_UPDATES ) ) {
-				$role->add_cap( self::CAP_PUBLISH_MEMBER_UPDATES );
-			}
-		}
-		foreach ( $this->get_roles_with_view_cap() as $role_name ) {
-			$role = \get_role( $role_name );
-			if ( $role && ! $role->has_cap( self::CAP_VIEW_SONGLISTS ) ) {
-				$role->add_cap( self::CAP_VIEW_SONGLISTS );
-			}
-			if ( $role && ! $role->has_cap( self::CAP_VIEW_MEMBER_UPDATES ) ) {
-				$role->add_cap( self::CAP_VIEW_MEMBER_UPDATES );
+
+			foreach ( $capabilities as $capability ) {
+				if ( ! $role->has_cap( $capability ) ) {
+					$role->add_cap( $capability );
+				}
 			}
 		}
 	}
 
 	/**
-	 * Get the roles that can edit song lists.
+	 * Get the capabilities this plugin grants to each managed role.
 	 *
-	 * @return string[]
+	 * @return array<string, string[]>
 	 */
-	private function get_roles_with_edit_cap(): array {
-		return array( 'administrator', 'editor', 'um_director' );
-	}
+	private function get_role_capability_grants(): array {
+		$editor_capabilities = array(
+			self::CAP_EDIT_SONGLIST,
+			self::CAP_VIEW_SONGLISTS,
+			self::CAP_EDIT_MEMBER_UPDATES,
+			self::CAP_VIEW_MEMBER_UPDATES,
+			self::CAP_PUBLISH_MEMBER_UPDATES,
+		);
 
-	/**
-	 * Get the roles that can create and modify member updates.
-	 *
-	 * @return string[]
-	 */
-	private function get_roles_with_member_update_edit_cap(): array {
-		return array( 'administrator', 'editor', 'um_director', 'um_member' );
-	}
-
-	/**
-	 * Get the roles that can view song lists.
-	 *
-	 * @return string[]
-	 */
-	private function get_roles_with_view_cap(): array {
-		return array( 'um_member' );
+		return array(
+			'administrator' => $editor_capabilities,
+			'editor'        => $editor_capabilities,
+			'um_director'   => $editor_capabilities,
+			'um_member'     => array(
+				self::CAP_EDIT_MEMBER_UPDATES,
+				self::CAP_VIEW_MEMBER_UPDATES,
+				self::CAP_PUBLISH_MEMBER_UPDATES,
+				self::CAP_VIEW_SONGLISTS,
+			),
+		);
 	}
 
 	// Plugin deactivation and uninstall --------------------------------------------------.
@@ -753,13 +730,22 @@ final class Plugin {
 	public function create_song_list_view(): void {
 
 		if ( ! isset( $this->song_list_view ) ) {
-			if ( ! class_exists( '\WP_List_Table' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
-			}
+			$this->ensure_wp_list_table_available();
 			require_once __DIR__ . '/songlist-table.php';
 			require_once __DIR__ . '/songlist-view.php';
 
 			$this->song_list_view = new SongListView( $this->settings, $this->mailer );
+		}
+	}
+
+	/**
+	 * Load the WordPress list table base class before creating admin tables.
+	 *
+	 * @return void
+	 */
+	private function ensure_wp_list_table_available(): void {
+		if ( ! class_exists( '\WP_List_Table' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
 		}
 	}
 
@@ -770,9 +756,7 @@ final class Plugin {
 	 */
 	public function create_member_update_view(): void {
 		if ( ! isset( $this->member_update_view ) ) {
-			if ( ! class_exists( '\WP_List_Table' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
-			}
+			$this->ensure_wp_list_table_available();
 			require_once __DIR__ . '/member-update-table.php';
 			require_once __DIR__ . '/member-update-view.php';
 
@@ -787,9 +771,7 @@ final class Plugin {
 	 */
 	public function create_ticket_view(): void {
 		if ( ! isset( $this->ticket_view ) ) {
-			if ( ! class_exists( '\WP_List_Table' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
-			}
+			$this->ensure_wp_list_table_available();
 			require_once __DIR__ . '/ticket-table.php';
 			require_once __DIR__ . '/ticket-view.php';
 
