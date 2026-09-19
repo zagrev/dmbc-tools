@@ -21,6 +21,7 @@ require_once __DIR__ . '/songlist-playlist.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/deluxe-cc-transaction.php';
 require_once __DIR__ . '/acf-integration.php';
+require_once __DIR__ . '/logger.php';
 
 use DmbcTools\SongListView;
 use DmbcTools\DmbcSettings;
@@ -105,13 +106,20 @@ final class Plugin {
 	private static ?self $instance = null;
 
 	/**
+	 * The application logger for this plugin.
+	 *
+	 * @var DmbcLogger
+	 */
+	private DmbcLogger $logger;
+
+	/**
 	 * Private constructor to prevent direct instantiation.
 	 */
 	private function __construct() {
-
 		$this->settings              = new DmbcSettings();
 		$this->mailer                = new Mailer( $this->settings );
 		$this->deluxe_cc_transaction = new DeluxeCcTransaction();
+		$this->logger                = new DmbcLogger( 'dmbc-tools' );
 	}
 
 	/**
@@ -125,6 +133,15 @@ final class Plugin {
 		}
 
 		return self::$instance;
+	}
+
+	/**
+	 * Return the application logger.
+	 *
+	 * @return DmbcLogger
+	 */
+	public function logger(): DmbcLogger {
+		return $this->logger;
 	}
 
 	/**

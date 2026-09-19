@@ -310,13 +310,17 @@ final class PluginTest extends DmbcUnitTestBase {
 	 * Method uninstall() preserves plugin data unless cleanup is explicitly enabled.
 	 *
 	 * @covers \DmbcTools\Plugin::uninstall
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
 	 */
 	public function test_uninstall_preserves_version_option_when_cleanup_is_disabled(): void {
 		$this->set_option( Plugin::OPTION_VERSION, '0.1.0' );
 		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'updates@example.com' );
 		$this->set_option( Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL, false );
 
-		\define( 'WP_UNINSTALL_PLUGIN', true );
+		if (! \defined( 'WP_UNINSTALL_PLUGIN' )) {
+			\define( 'WP_UNINSTALL_PLUGIN', true );
+		}
 		Plugin::uninstall();
 
 		$this->assertSame( '0.1.0', get_option( Plugin::OPTION_VERSION, false ) );
@@ -328,13 +332,17 @@ final class PluginTest extends DmbcUnitTestBase {
 	 * Method uninstall() removes plugin options when cleanup is explicitly enabled.
 	 *
 	 * @covers \DmbcTools\Plugin::uninstall
-	 */
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
 	public function test_uninstall_removes_plugin_options_when_cleanup_is_enabled(): void {
 		$this->set_option( Plugin::OPTION_VERSION, '0.1.0' );
 		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'updates@example.com' );
 		$this->set_option( Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL, true );
 
-		\define( 'WP_UNINSTALL_PLUGIN', true );
+		if (! \defined( 'WP_UNINSTALL_PLUGIN' )) {
+			\define( 'WP_UNINSTALL_PLUGIN', true );
+		}
 		Plugin::uninstall();
 
 		$this->assertFalse( get_option( Plugin::OPTION_VERSION, false ) );
