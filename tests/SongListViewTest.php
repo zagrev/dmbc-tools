@@ -167,7 +167,7 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$this->make_post();
 		$view = $this->make_view();
 
-		$this->assertStringContainsString( 'Rehearsal Song Lists', $view->render_member_song_lists_table_page() );
+		$this->assertStringContainsString( 'Rehearsal Song Lists', $view->generate_member_song_lists_table_page() );
 		$this->assertStringContainsString( 'Rehearsal Song Lists', $view->render_song_list_table_page() );
 		ob_start();
 		$view->dmbc_render_songlist_table_page();

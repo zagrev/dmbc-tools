@@ -44,21 +44,17 @@ class Mailer {
 	 * @return array<string> The recipients who were emailed.
 	 */
 	public function send_email( string $subject, string $message, array|null $roles = null ): array {
-		$roles  = null === $roles ? $this->settings->get_song_list_recipient_roles() : (array) $roles;
-		$users  = (array) \get_users( array( 'role__in' => $roles ) );
-		$emails = array_map(
+		$roles        = null === $roles ? $this->settings->get_song_list_recipient_roles() : (array) $roles;
+		$users        = (array) \get_users( array( 'role__in' => $roles ) );
+		$emails       = array_map(
 			fn ( $user ) => $user->user_email ?? '',
 			$users,
 		);
-
 		$valid_emails = array_filter(
 			$emails,
 			fn( string $email ): bool => \is_email( $email ) !== false
 		);
-		\error_log( 'found valid emails = ' . implode( ', ', (array) $valid_emails ) );
-
-		$recipients = array_values( array_unique( $valid_emails ) );
-		\error_log( 'sending email to ' . implode( ', ', $recipients ) );
+		$recipients   = array_values( array_unique( $valid_emails ) );
 
 		if ( ! empty( $recipients ) ) {
 

@@ -354,7 +354,7 @@ class DeluxeCcTransaction {
 	 * @param string              $processing_result The result of processing the notification.
 	 * @return void
 	 */
-	private function log_cc_notification( string $transaction_id, string|array $post_body, string $processing_result ): void {
+	public function log_cc_notification( string $transaction_id, string|array $post_body, string $processing_result ): void {
 		global $wpdb;
 
 		if ( is_array( $post_body ) ) {

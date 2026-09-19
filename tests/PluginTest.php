@@ -316,6 +316,7 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'updates@example.com' );
 		$this->set_option( Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL, false );
 
+		\define( 'WP_UNINSTALL_PLUGIN', true );
 		Plugin::uninstall();
 
 		$this->assertSame( '0.1.0', get_option( Plugin::OPTION_VERSION, false ) );
@@ -333,6 +334,7 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'updates@example.com' );
 		$this->set_option( Plugin::OPTION_REMOVE_DATA_ON_UNINSTALL, true );
 
+		\define( 'WP_UNINSTALL_PLUGIN', true );
 		Plugin::uninstall();
 
 		$this->assertFalse( get_option( Plugin::OPTION_VERSION, false ) );

@@ -441,7 +441,7 @@ final class Plugin {
 
 		// If uninstall.php is not called by WordPress, die immediately.
 		if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
-			die;
+			exit();
 		}
 		if ( ! (bool) \get_option( self::OPTION_REMOVE_DATA_ON_UNINSTALL, false ) ) {
 			return;
