@@ -77,6 +77,10 @@ jobs:
         # 2. Pin to WordPress 7.1.0 temporarily until the 7.1.1 Git tag sync bug is resolved
         run: wp-env start --update --core="WordPress/WordPress#7.1.0"
 
+      - name: Install Xdebug in WordPress test container
+        run: |
+          wp-env run tests-cli bash -e -c 'if ! php -m | grep -qi "^xdebug$"; then apt-get update && apt-get install -y --no-install-recommends $PHPIZE_DEPS && pecl install xdebug && docker-php-ext-enable xdebug; fi; php -m | grep -i xdebug'
+
       - name: Run PHPUnit in WordPress test container
         # 3. Wrapping the execution inside bash -c forces the inner container's shell to catch
         # and throw a clean, non-zero exit status code that GitHub Actions can register.
@@ -87,7 +91,7 @@ jobs:
         env:
           XDEBUG_MODE: coverage
         run: |
-          wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools bash -e -c "vendor/bin/phpunit --coverage-clover coverage.xml"
+          wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools bash -e -c "XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-clover coverage.xml"
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v7
