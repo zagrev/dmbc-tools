@@ -21,6 +21,7 @@ require_once __DIR__ . '/songlist-playlist.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/deluxe-cc-transaction.php';
 require_once __DIR__ . '/acf-integration.php';
+require_once __DIR__ . '/logger.php';
 
 use DmbcTools\SongListView;
 use DmbcTools\DmbcSettings;
@@ -105,13 +106,25 @@ final class Plugin {
 	private static ?self $instance = null;
 
 	/**
+	 * The application logger for this plugin.
+	 *
+	 * @var DmbcLogger
+	 */
+	private DmbcLogger $logger;
+
+	/**
 	 * Private constructor to prevent direct instantiation.
 	 */
 	private function __construct() {
-
 		$this->settings              = new DmbcSettings();
 		$this->mailer                = new Mailer( $this->settings );
 		$this->deluxe_cc_transaction = new DeluxeCcTransaction();
+		if ( \defined( 'PHPUNIT_COMPOSER_INSTALL' ) || \defined( '__PHPUNIT_PHAR__' ) ) {
+			// Application is running in a PHPUnit test environment.
+			$this->logger = new DmbcLogger( 'dmbc-tools', DmbcLogger::LEVEL_OFF );
+		} else {
+			$this->logger = new DmbcLogger( 'dmbc-tools' );
+		}
 	}
 
 	/**
@@ -128,6 +141,15 @@ final class Plugin {
 	}
 
 	/**
+	 * Return the application logger.
+	 *
+	 * @return DmbcLogger
+	 */
+	public function logger(): DmbcLogger {
+		return $this->logger;
+	}
+
+	/**
 	 * Register the hooks that start the plugin.
 	 *
 	 * @return void
@@ -137,6 +159,7 @@ final class Plugin {
 		\add_action( 'admin_init', array( $this, 'handle_admin_init' ) );
 		\add_action( 'admin_menu', array( $this, 'register_admin' ) );
 		\add_action( 'admin_menu', array( $this, 'unregister_old_post_types' ), 99 );
+		\add_shortcode( 'dmbc_songlist', array( $this, 'render_songlist_shortcode' ) );
 
 		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
@@ -145,8 +168,6 @@ final class Plugin {
 
 		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
 		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
-
-		\flush_rewrite_rules();
 	}
 
 	// init -------------------------------------------------------------------------------.
@@ -169,8 +190,6 @@ final class Plugin {
 		\add_action( 'wp_dashboard_setup', array( self::instance(), 'register_menu_slugs_dashboard_widget' ) );
 		\add_action( 'pre_get_posts', array( $this, 'order_songlist_archive_query' ) );
 		\add_filter( 'template_include', array( $this, 'dmbc_single_songlist_template' ) );
-
-		\flush_rewrite_rules();
 	}
 
 	/**
@@ -295,64 +314,45 @@ final class Plugin {
 	 */
 	public function add_songlist_capabilities() {
 
-		foreach ( $this->get_roles_with_edit_cap() as $role_name ) {
-			$role = \get_role( $role_name );
-			if ( $role && ! $role->has_cap( self::CAP_EDIT_SONGLIST ) ) {
-				$role->add_cap( self::CAP_EDIT_SONGLIST );
-				$role->add_cap( self::CAP_VIEW_SONGLISTS );
-			}
-		}
-		foreach ( $this->get_roles_with_member_update_edit_cap() as $role_name ) {
+		foreach ( $this->get_role_capability_grants() as $role_name => $capabilities ) {
 			$role = \get_role( $role_name );
 			if ( ! $role ) {
 				continue;
 			}
-			if ( ! $role->has_cap( self::CAP_EDIT_MEMBER_UPDATES ) ) {
-				$role->add_cap( self::CAP_EDIT_MEMBER_UPDATES );
-			}
-			if ( ! $role->has_cap( self::CAP_VIEW_MEMBER_UPDATES ) ) {
-				$role->add_cap( self::CAP_VIEW_MEMBER_UPDATES );
-			}
-			if ( ! $role->has_cap( self::CAP_PUBLISH_MEMBER_UPDATES ) ) {
-				$role->add_cap( self::CAP_PUBLISH_MEMBER_UPDATES );
-			}
-		}
-		foreach ( $this->get_roles_with_view_cap() as $role_name ) {
-			$role = \get_role( $role_name );
-			if ( $role && ! $role->has_cap( self::CAP_VIEW_SONGLISTS ) ) {
-				$role->add_cap( self::CAP_VIEW_SONGLISTS );
-			}
-			if ( $role && ! $role->has_cap( self::CAP_VIEW_MEMBER_UPDATES ) ) {
-				$role->add_cap( self::CAP_VIEW_MEMBER_UPDATES );
+
+			foreach ( $capabilities as $capability ) {
+				if ( ! $role->has_cap( $capability ) ) {
+					$role->add_cap( $capability );
+				}
 			}
 		}
 	}
 
 	/**
-	 * Get the roles that can edit song lists.
+	 * Get the capabilities this plugin grants to each managed role.
 	 *
-	 * @return string[]
+	 * @return array<string, string[]>
 	 */
-	private function get_roles_with_edit_cap(): array {
-		return array( 'administrator', 'editor', 'um_director' );
-	}
+	private function get_role_capability_grants(): array {
+		$editor_capabilities = array(
+			self::CAP_EDIT_SONGLIST,
+			self::CAP_VIEW_SONGLISTS,
+			self::CAP_EDIT_MEMBER_UPDATES,
+			self::CAP_VIEW_MEMBER_UPDATES,
+			self::CAP_PUBLISH_MEMBER_UPDATES,
+		);
 
-	/**
-	 * Get the roles that can create and modify member updates.
-	 *
-	 * @return string[]
-	 */
-	private function get_roles_with_member_update_edit_cap(): array {
-		return array( 'administrator', 'editor', 'um_director', 'um_member' );
-	}
-
-	/**
-	 * Get the roles that can view song lists.
-	 *
-	 * @return string[]
-	 */
-	private function get_roles_with_view_cap(): array {
-		return array( 'um_member' );
+		return array(
+			'administrator' => $editor_capabilities,
+			'editor'        => $editor_capabilities,
+			'um_director'   => $editor_capabilities,
+			'um_member'     => array(
+				self::CAP_EDIT_MEMBER_UPDATES,
+				self::CAP_VIEW_MEMBER_UPDATES,
+				self::CAP_PUBLISH_MEMBER_UPDATES,
+				self::CAP_VIEW_SONGLISTS,
+			),
+		);
 	}
 
 	// Plugin deactivation and uninstall --------------------------------------------------.
@@ -464,7 +464,7 @@ final class Plugin {
 
 		// If uninstall.php is not called by WordPress, die immediately.
 		if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
-			die;
+			exit();
 		}
 		if ( ! (bool) \get_option( self::OPTION_REMOVE_DATA_ON_UNINSTALL, false ) ) {
 			return;
@@ -548,6 +548,8 @@ final class Plugin {
 				),
 			);
 		}
+
+		add_filter( 'pre_get_block_templates', array( $this, 'register_songlist_templates' ), 10, 3 );
 	}
 
 	/**
@@ -573,6 +575,8 @@ final class Plugin {
 				'show_ui'         => true,
 				'show_in_menu'    => false,
 				'show_in_rest'    => true,
+				'has_archive'     => true,
+				'rewrite'         => array( 'slug' => 'member-updates' ),
 				'supports'        => array( 'title', 'editor' ),
 				'capability_type' => 'post',
 				'map_meta_cap'    => false,
@@ -595,6 +599,8 @@ final class Plugin {
 				'menu_icon'       => 'dashicons-megaphone',
 			)
 		);
+
+		add_filter( 'pre_get_block_templates', array( $this, 'register_member_update_templates' ), 10, 3 );
 	}
 
 	/**
@@ -753,13 +759,22 @@ final class Plugin {
 	public function create_song_list_view(): void {
 
 		if ( ! isset( $this->song_list_view ) ) {
-			if ( ! class_exists( '\WP_List_Table' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
-			}
+			$this->ensure_wp_list_table_available();
 			require_once __DIR__ . '/songlist-table.php';
 			require_once __DIR__ . '/songlist-view.php';
 
 			$this->song_list_view = new SongListView( $this->settings, $this->mailer );
+		}
+	}
+
+	/**
+	 * Load the WordPress list table base class before creating admin tables.
+	 *
+	 * @return void
+	 */
+	private function ensure_wp_list_table_available(): void {
+		if ( ! class_exists( '\WP_List_Table' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
 		}
 	}
 
@@ -770,9 +785,7 @@ final class Plugin {
 	 */
 	public function create_member_update_view(): void {
 		if ( ! isset( $this->member_update_view ) ) {
-			if ( ! class_exists( '\WP_List_Table' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
-			}
+			$this->ensure_wp_list_table_available();
 			require_once __DIR__ . '/member-update-table.php';
 			require_once __DIR__ . '/member-update-view.php';
 
@@ -787,9 +800,7 @@ final class Plugin {
 	 */
 	public function create_ticket_view(): void {
 		if ( ! isset( $this->ticket_view ) ) {
-			if ( ! class_exists( '\WP_List_Table' ) ) {
-				require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
-			}
+			$this->ensure_wp_list_table_available();
 			require_once __DIR__ . '/ticket-table.php';
 			require_once __DIR__ . '/ticket-view.php';
 
@@ -998,9 +1009,7 @@ final class Plugin {
 			}
 		}
 
-		// Check if we are viewing a single post of our specific custom post type.
 		if ( \is_singular( self::SONGLIST_POST_TYPE ) ) {
-			// Define the path pointing to the template inside our plugin directory.
 			$plugin_template = plugin_dir_path( __FILE__ ) . 'templates/single-songlist.php';
 
 			// Check if the file actually exists to avoid throwing errors.
@@ -1009,7 +1018,264 @@ final class Plugin {
 			}
 		}
 
-		// Return the theme's fallback template if our custom one wasn't found.
 		return $template;
+	}
+
+	/**
+	 * Register the custom templates for the songlist post type.
+	 *
+	 * @param array  $query_result The current array of block templates.
+	 * @param array  $query The query.
+	 * @param string $template_type The template type requested.
+	 */
+	public function register_songlist_templates( $query_result, $query, $template_type ) {
+		// We only want to handle regular block templates (not template parts).
+		if ( 'wp_template' !== $template_type ) {
+			return $query_result;
+		}
+
+		// Check if WordPress is looking for our specific templates.
+		$slugs = isset( $query['slug__in'] ) ? $query['slug__in'] : array();
+
+		$templates = array(
+			'single-songlist'       => array(
+				'file'  => 'single-songlist.html',
+				'title' => 'Single Songlist',
+			),
+			'single-dmbc-songlist'  => array(
+				'file'  => 'single-songlist.html',
+				'title' => 'Single Songlist',
+			),
+			'archive-songlist'      => array(
+				'file'  => 'archive-songlist.html',
+				'title' => 'Songlist Archive',
+			),
+			'archive-dmbc-songlist' => array(
+				'file'  => 'archive-songlist.html',
+				'title' => 'Songlist Archive',
+			),
+		);
+
+		foreach ( $slugs as $slug ) {
+			$slug = self::normalize_block_template_slug( (string) $slug );
+			if ( isset( $templates[ $slug ] ) ) {
+				$template_file = plugin_dir_path( __FILE__ ) . 'templates/' . $templates[ $slug ]['file'];
+
+				if ( file_exists( $template_file ) ) {
+					$template        = new \WP_Block_Template();
+					$template->type  = 'wp_template';
+					$template->theme = get_stylesheet();
+					$template->slug  = $slug;
+					$template->id    = get_stylesheet() . '//' . $slug;
+					$template->title = $templates[ $slug ]['title'];
+					ob_start();
+					include $template_file;
+					$template->content   = (string) ob_get_clean();
+					$template->source    = 'plugin';
+					$template->status    = 'publish';
+					$template->is_custom = true;
+
+					// Return it inside an array as WordPress expects.
+					return array( $template );
+				}
+			}
+		}
+
+		return $query_result;
+	}
+
+
+	/**
+	 * Register the custom templates for the member update post type.
+	 *
+	 * @param array  $query_result The current array of block templates.
+	 * @param array  $query The query.
+	 * @param string $template_type The template type requested.
+	 */
+	public function register_member_update_templates( $query_result, $query, $template_type ) {
+		// We only want to handle regular block templates (not template parts).
+		if ( 'wp_template' !== $template_type ) {
+			return $query_result;
+		}
+
+		// Check if WordPress is looking for our specific templates.
+		$slugs = isset( $query['slug__in'] ) ? $query['slug__in'] : array();
+
+		$templates = array(
+			'single-member-update'        => array(
+				'file'  => 'single-member-update.html',
+				'title' => 'Single Member Update',
+			),
+			'single-dmbc-member-updates'  => array(
+				'file'  => 'single-member-update.html',
+				'title' => 'Single Member Update',
+			),
+			'archive-member-update'       => array(
+				'file'  => 'archive-member-update.html',
+				'title' => 'Member Update Archive',
+			),
+			'archive-dmbc-member-updates' => array(
+				'file'  => 'archive-member-update.html',
+				'title' => 'Member Update Archive',
+			),
+		);
+
+		foreach ( $slugs as $slug ) {
+			$slug = self::normalize_block_template_slug( (string) $slug );
+			if ( isset( $templates[ $slug ] ) ) {
+				$template_file = plugin_dir_path( __FILE__ ) . 'templates/' . $templates[ $slug ]['file'];
+
+				if ( file_exists( $template_file ) ) {
+					$template        = new \WP_Block_Template();
+					$template->type  = 'wp_template';
+					$template->theme = get_stylesheet();
+					$template->slug  = $slug;
+					$template->id    = get_stylesheet() . '//' . $slug;
+					$template->title = $templates[ $slug ]['title'];
+					ob_start();
+					include $template_file;
+					$template->content   = (string) ob_get_clean();
+					$template->source    = 'plugin';
+					$template->status    = 'publish';
+					$template->is_custom = true;
+
+					// Return it inside an array as WordPress expects.
+					return array( $template );
+				}
+			}
+		}
+
+		return $query_result;
+	}
+
+	/**
+	 * Normalize template lookup slugs that may arrive as theme-qualified IDs.
+	 *
+	 * @param string $slug Template slug or template ID.
+	 * @return string Unqualified template slug.
+	 */
+	private static function normalize_block_template_slug( string $slug ): string {
+		$slug = trim( str_replace( '//', '/', $slug ), '/' );
+
+		if ( str_contains( $slug, '/' ) ) {
+			$parts = explode( '/', $slug );
+			return (string) end( $parts );
+		}
+
+		return $slug;
+	}
+
+	/**
+	 * Render the current song-list post for block templates.
+	 *
+	 * @return string Song-list HTML.
+	 */
+	public function render_songlist_shortcode(): string {
+		$songlist_id = \get_the_ID();
+
+		if ( ! $songlist_id || self::SONGLIST_POST_TYPE !== \get_post_type( $songlist_id ) ) {
+			return '';
+		}
+
+		$rehearsal_date = (string) \get_post_meta( $songlist_id, self::PERFORMANCE_DATE_META_KEY, true );
+
+		ob_start();
+		?>
+		<article id="post-<?php echo \esc_attr( (string) $songlist_id ); ?>" class="dmbc-songlist-article">
+			<header class="dmbc-songlist-header">
+				<h1 class="dmbc-songlist-title"><?php echo \esc_html( \get_the_title( $songlist_id ) ); ?></h1>
+				<?php if ( ! empty( $rehearsal_date ) ) : ?>
+					<p class="dmbc-songlist-date">
+						<?php \esc_html_e( 'Rehearsal date:', 'dmbc-tools' ); ?>
+						<time datetime="<?php echo \esc_attr( $rehearsal_date ); ?>"><?php echo \esc_html( $rehearsal_date ); ?></time>
+					</p>
+				<?php endif; ?>
+			</header>
+
+			<?php
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- render_songlist_post() escapes dynamic values and returns plugin-owned markup.
+			echo self::render_songlist_post( (int) $songlist_id );
+			?>
+		</article>
+		<?php
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Render the song-list details for a single post.
+	 *
+	 * @param int $songlist_id Song-list post ID.
+	 * @return string Song-list HTML.
+	 */
+	public static function render_songlist_post( int $songlist_id ): string {
+		$dmbc_is_member          = SongListPlaylist::current_user_is_member();
+		$items                   = SongList::normalize_items( \get_post_meta( $songlist_id, self::SONGS_META_KEY, true ) );
+		$notes                   = (string) \get_post_meta( $songlist_id, self::NOTES_META_KEY, true );
+		$download_groups         = $dmbc_is_member ? SongListPlaylist::get_download_groups( $items ) : array();
+		$download_groups_by_song = array();
+
+		foreach ( $download_groups as $download_group ) {
+			$download_groups_by_song[ $download_group['song'] ] = $download_group;
+		}
+
+		$playlist_file_urls = $dmbc_is_member ? SongListPlaylist::get_or_update_playlist_from_download_groups( $songlist_id, $download_groups ) : array();
+		$playlist_filename  = \sanitize_file_name( \get_the_title( $songlist_id ) . '.m3u' );
+
+		ob_start();
+		?>
+		<div class="dmbc-songlist-content">
+			<?php if ( ! empty( $items ) ) : ?>
+				<ul class="dmbc-songlist-items">
+					<?php foreach ( $items as $item ) : ?>
+						<?php if ( SongList::TYPE_NOTE === $item['type'] ) : ?>
+							<li class="dmbc-songlist-note"><?php echo \esc_html( $item['value'] ); ?></li>
+						<?php else : ?>
+							<?php
+							$song_path      = \wp_normalize_path( (string) $item['value'] );
+							$song_url       = SongListPlaylist::get_song_folder_url( $song_path );
+							$download_group = $download_groups_by_song[ $song_path ] ?? null;
+							?>
+							<li class="dmbc-songlist-song">
+								<?php if ( ! empty( $download_group ) ) : ?>
+									<details class="dmbc-songlist-song-details">
+										<summary class="dmbc-songlist-song-summary"><?php echo \esc_html( $song_path ); ?></summary>
+										<div class="dmbc-songlist-song-panel">
+											<a class="dmbc-songlist-folder-link" href="<?php echo \esc_url( $song_url ); ?>"><?php \esc_html_e( 'Open song folder', 'dmbc-tools' ); ?></a>
+											<ul class="dmbc-songlist-download-files">
+												<?php foreach ( $download_group['files'] as $download_file ) : ?>
+													<li>
+														<a href="<?php echo \esc_url( $download_file['url'] ); ?>" download><?php echo \esc_html( $download_file['name'] ); ?></a>
+													</li>
+												<?php endforeach; ?>
+											</ul>
+										</div>
+									</details>
+								<?php else : ?>
+									<a href="<?php echo \esc_url( $song_url ); ?>"><?php echo \esc_html( $song_path ); ?></a>
+								<?php endif; ?>
+							</li>
+						<?php endif; ?>
+					<?php endforeach; ?>
+				</ul>
+			<?php else : ?>
+				<p><?php \esc_html_e( 'No songs selected for this list.', 'dmbc-tools' ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( ! empty( $notes ) ) : ?>
+				<section class="dmbc-songlist-notes" aria-label="<?php \esc_attr_e( 'Song list notes', 'dmbc-tools' ); ?>">
+					<?php echo \wp_kses_post( \wpautop( $notes ) ); ?>
+				</section>
+			<?php endif; ?>
+
+			<?php if ( ! empty( $playlist_file_urls ) ) : ?>
+				<p class="dmbc-songlist-playlist">
+					<a class="dmbc-songlist-playlist-download" href="#" download="<?php echo \esc_attr( $playlist_filename ); ?>" data-playlist-urls="<?php echo \esc_attr( \wp_json_encode( $playlist_file_urls ) ); ?>">
+						<?php \esc_html_e( 'Download playlist', 'dmbc-tools' ); ?>
+					</a>
+				</p>
+			<?php endif; ?>
+		</div>
+		<?php
+		return (string) ob_get_clean();
 	}
 }

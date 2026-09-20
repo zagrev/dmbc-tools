@@ -87,4 +87,65 @@ final class MailerTest extends DmbcUnitTestBase {
 		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
 		$this->assertSame( 'site-admin@example.com', $GLOBALS['dmbc_test_state']['mail_calls'][0]['recipients'] );
 	}
+
+	/**
+	 * BCC recipients are split into batches using the configured maximum.
+	 *
+	 * @covers \DmbcTools\Mailer::send_email
+	 */
+	public function test_send_email_splits_bcc_recipients_into_configured_batches(): void {
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array( 'user_email' => 'one@example.com' ),
+			(object) array( 'user_email' => 'two@example.com' ),
+			(object) array( 'user_email' => 'three@example.com' ),
+		);
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'admin@example.com' );
+		$this->set_option( Plugin::OPTION_MAX_BCC_PER_EMAIL, 2 );
+
+		$recipients = $this->make_mailer()->send_email( 'Subject', '<p>Body</p>', array( 'um_member' ) );
+
+		$this->assertSame( array( 'one@example.com', 'two@example.com', 'three@example.com' ), $recipients );
+		$this->assertCount( 2, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertSame( 'Bcc: one@example.com, two@example.com', $GLOBALS['dmbc_test_state']['mail_calls'][0]['headers'][0] );
+		$this->assertSame( 'Bcc: three@example.com', $GLOBALS['dmbc_test_state']['mail_calls'][1]['headers'][0] );
+	}
+
+	/**
+	 * Missing template posts abort template email sending without calling wp_mail().
+	 *
+	 * @covers \DmbcTools\Mailer::send_email_using_template
+	 */
+	public function test_send_email_using_template_returns_without_template_post(): void {
+		$this->make_mailer()->send_email_using_template(
+			'Ticket Purchase Confirmation Email',
+			array(
+				'transaction_id' => 'tx-missing-template',
+				'email'          => 'buyer@example.com',
+			)
+		);
+
+		$this->assertCount( 0, $GLOBALS['dmbc_test_state']['mail_calls'] );
+	}
+
+	/**
+	 * Template emails abort before wp_mail() when ticket data has no recipient.
+	 *
+	 * @covers \DmbcTools\Mailer::send_email_using_template
+	 */
+	public function test_send_email_using_template_returns_without_recipient_email(): void {
+		$template               = new WP_Post( 51 );
+		$template->post_title   = 'Ticket Purchase Confirmation Email';
+		$template->post_content = '<p>Thanks</p>';
+		$GLOBALS['dmbc_test_state']['posts'][51] = $template;
+
+		$this->make_mailer()->send_email_using_template(
+			'Ticket Purchase Confirmation Email',
+			array(
+				'transaction_id' => 'tx-missing-email',
+				'email'          => '',
+			)
+		);
+
+		$this->assertCount( 0, $GLOBALS['dmbc_test_state']['mail_calls'] );
+	}
 }

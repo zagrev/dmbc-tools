@@ -13,6 +13,14 @@ if ( ! defined( 'WP_CONTENT_DIR' ) ) {
 	define( 'WP_CONTENT_DIR', str_replace( '\\', '/', sys_get_temp_dir() ) . '/dmbc-tools-test-wp-content' );
 }
 
+if ( ! defined( 'ARRAY_A' ) ) {
+	define( 'ARRAY_A', 'ARRAY_A' );
+}
+
+if ( ! defined( 'OBJECT' ) ) {
+	define( 'OBJECT', 'OBJECT' );
+}
+
 require_once dirname( __DIR__ ) . '/src/plugin.php';
 
 // Fixture layout shared by tests that rely on the default WP_CONTENT_DIR / song library location.

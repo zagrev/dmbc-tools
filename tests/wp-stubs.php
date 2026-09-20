@@ -14,14 +14,15 @@ $GLOBALS['dmbc_test_state'] = array(
 	'settings_sections'       => array(),
 	'settings_fields'         => array(),
 	'actions'                 => array(),
+	'shortcodes'              => array(),
 	'post_meta'               => array(),
 	'posts'                   => array(),
 	'logged_in'               => true,
 	'last_get_posts_args'     => array(),
 	'mail_calls'              => array(),
-		'users'                   => array(),
-		'cron_events'             => array(),
-	'next_post_id'            => 1,
+	'users'                   => array(),
+	'cron_events'             => array(), 
+	'next_post_id'            => 1, 
 	'roles'                   => array(),
 	'registered_post_types'   => array(),
 	'existing_post_types'     => array(),
@@ -62,6 +63,7 @@ if ( ! class_exists( 'WP_Post' ) ) {
 		public string $post_modified_gmt = '';
 		public string $post_excerpt = '';
 		public string $dmbc_song_list_rehearsal_date = '';
+		public string $post_status = '';
 
 		public function __construct( int $id ) {
 			$this->ID = $id;
@@ -132,6 +134,20 @@ if ( ! class_exists( 'WP_Query' ) ) {
 	}
 }
 
+if ( ! class_exists( 'WP_Block_Template' ) ) {
+	class WP_Block_Template {
+		public string $type = '';
+		public string $theme = '';
+		public string $slug = '';
+		public string $id = '';
+		public string $title = '';
+		public string $content = '';
+		public string $source = '';
+		public string $status = '';
+		public bool $is_custom = false;
+	}
+}
+
 if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 	/** Minimal stand-in for $wpdb, recording insert() calls for assertions. */
 	class Dmbc_Test_Wpdb {
@@ -154,10 +170,10 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 
 		public function get_results( string $query = '', $output = OBJECT, $y = 0 ) {
 			$GLOBALS['dmbc_test_state']['wpdb_get_results'][] = compact( 'query' );
-			return array();
+			return $GLOBALS['dmbc_test_state']['wpdb_results'] ?? array();
 		}
 
-		public function prepare( string $query = '', array $args = array() ) {
+		public function prepare( string $query = '', ...$args ) {
 			$GLOBALS['dmbc_test_state']['wpdb_prepare'][] = compact( 'query', 'args'
 			 );
 			return $query;
@@ -272,6 +288,12 @@ if ( ! function_exists( 'esc_html_e' ) ) {
 	}
 }
 
+if ( ! function_exists( 'esc_attr_e' ) ) {
+	function esc_attr_e( string $text, string $domain = 'default' ): void {
+		echo esc_attr( $text );
+	}
+}
+
 if ( ! function_exists( 'esc_attr' ) ) {
 	function esc_attr( $text ): string {
 		return htmlspecialchars( (string) $text, ENT_QUOTES );
@@ -333,12 +355,38 @@ if ( ! function_exists( 'get_permalink' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_stylesheet' ) ) {
+	function get_stylesheet(): string {
+		return 'dmbc-tools';
+	}
+}
+
 if ( ! function_exists( 'get_post_type' ) ) {
 	function get_post_type( $post = null ): string {
 		if ( $post instanceof WP_Post ) {
 			return $post->post_type;
 		}
 		return $GLOBALS['dmbc_test_state']['current_post_type'] ?? 'post';
+	}
+}
+
+if ( ! function_exists( 'get_post_status_object' ) ) {
+	function get_post_status_object( string|null $post_status ): stdClass|null {
+		$display_status = 'Unknown';
+		$labels = array(
+			'publish' => 'Published',
+			'draft'   => 'Draft',
+			'pending' => 'Pending',
+			'private' => 'Private',
+			'future'  => 'Scheduled',
+			'trash'   => 'Trash',
+		);
+
+		if ( isset( $labels[ $post_status ] ) ) {
+			$display_status = $labels[ $post_status ];
+		}
+
+		return (object) array( 'label' => $display_status );
 	}
 }
 
@@ -502,9 +550,46 @@ if ( ! function_exists( 'submit_button' ) ) {
 	function submit_button(): void {}
 }
 
+if ( ! function_exists( 'wp_add_dashboard_widget' ) ) {
+	function wp_add_dashboard_widget( string $widget_id, string $widget_name, $callback ): void {
+		$GLOBALS['dmbc_test_state']['dashboard_widgets'][ $widget_id ] = compact( 'widget_name', 'callback' );
+	}
+}
+
+if ( ! function_exists( 'wp_get_current_user' ) ) {
+	function wp_get_current_user(): WP_User {
+		return $GLOBALS['dmbc_test_state']['current_user'];
+	}
+}
+
+if ( ! function_exists( 'wp_cache_get' ) ) {
+	function wp_cache_get( string $key, string $group = '' ) {
+		return $GLOBALS['dmbc_test_state']['cache'][ $group ][ $key ] ?? false;
+	}
+}
+
+if ( ! function_exists( 'wp_cache_set' ) ) {
+	function wp_cache_set( string $key, $data, string $group = '', int $expire = 0 ): bool {
+		$GLOBALS['dmbc_test_state']['cache'][ $group ][ $key ] = $data;
+		return true;
+	}
+}
+
 if ( ! function_exists( 'add_action' ) ) {
 	function add_action( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {
 		$GLOBALS['dmbc_test_state']['actions'][ $hook ][] = $callback;
+	}
+}
+
+if ( ! function_exists( 'add_filter' ) ) {
+	function add_filter( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {
+		$GLOBALS['dmbc_test_state']['actions'][ $hook ][] = $callback;
+	}
+}
+
+if ( ! function_exists( 'add_shortcode' ) ) {
+	function add_shortcode( string $tag, $callback ): void {
+		$GLOBALS['dmbc_test_state']['shortcodes'][ $tag ] = $callback;
 	}
 }
 
@@ -610,9 +695,24 @@ if ( ! function_exists( 'clean_post_cache' ) ) {
 	function clean_post_cache( int $post_id ): void {}
 }
 
+
 if ( ! function_exists( 'get_the_title' ) ) {
-	function get_the_title( WP_Post $post ): string {
+	function get_the_title( $post ): string {
+		if ( is_int( $post ) ) {
+			$post = get_post( $post );
+		}
+
+		if ( ! $post instanceof WP_Post ) {
+			return '';
+		}
+
 		return $post->post_title;
+	}
+}
+
+if ( ! function_exists( 'get_the_ID' ) ) {
+	function get_the_ID(): int {
+		return $GLOBALS['dmbc_test_state']['current_post_id'] ?? 0;
 	}
 }
 
@@ -665,9 +765,14 @@ if ( ! function_exists( 'wp_kses_post' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wpautop' ) ) {
+	function wpautop( string $text ): string {
+		return '<p>' . str_replace( "\n\n", '</p><p>', trim( $text ) ) . '</p>';
+	}
+}
+
 if ( ! function_exists( 'get_users' ) ) {
 	function get_users( array $args = array() ): array {
-		\error_log("get_users MOCK called with args = " . \wp_json_encode( $args ) . ", returning " . \wp_json_encode( $GLOBALS['dmbc_test_state']['users'] ) );
 		return $GLOBALS['dmbc_test_state']['users'];
 	}
 }

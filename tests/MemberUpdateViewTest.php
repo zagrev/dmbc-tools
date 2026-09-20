@@ -29,6 +29,7 @@ final class MemberUpdateViewTest extends DmbcUnitTestBase {
 		$post->post_type  = Plugin::MEMBER_UPDATE_POST_TYPE;
 		$post->post_title = 'October update';
 		$post->post_date  = '2026-10-01 09:00:00';
+		$post->post_status = 'publish';
 		$GLOBALS['dmbc_test_state']['posts'][24] = $post;
 
 		ob_start();

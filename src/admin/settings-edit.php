@@ -396,18 +396,8 @@ class DmbcSettings {
 		if ( ! \current_user_can( 'manage_options' ) && ! \current_user_can( Plugin::CAP_EDIT_SONGLIST ) ) {
 			\wp_die( \esc_html__( 'You do not have permission to access this page.', 'dmbc-tools' ) );
 		}
-		?>
-		<div class="wrap">
-			<h1><?php esc_html_e( 'DMBC Tools Settings', 'dmbc-tools' ); ?></h1>
-			<form method="post" action="options.php">
-			<?php
-			settings_fields( 'settings_group' );
-			do_settings_sections( 'settings' );
-			submit_button();
-			?>
-			</form>
-		</div>
-		<?php
+
+		require dirname( __DIR__ ) . '/templates/admin/settings-page.php';
 	}
 
 	/**

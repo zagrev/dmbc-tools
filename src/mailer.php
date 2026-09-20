@@ -44,21 +44,17 @@ class Mailer {
 	 * @return array<string> The recipients who were emailed.
 	 */
 	public function send_email( string $subject, string $message, array|null $roles = null ): array {
-		$roles  = null === $roles ? $this->settings->get_song_list_recipient_roles() : (array) $roles;
-		$users  = (array) \get_users( array( 'role__in' => $roles ) );
-		$emails = array_map(
+		$roles        = null === $roles ? $this->settings->get_song_list_recipient_roles() : (array) $roles;
+		$users        = (array) \get_users( array( 'role__in' => $roles ) );
+		$emails       = array_map(
 			fn ( $user ) => $user->user_email ?? '',
 			$users,
 		);
-
 		$valid_emails = array_filter(
 			$emails,
 			fn( string $email ): bool => \is_email( $email ) !== false
 		);
-		\error_log( 'found valid emails = ' . implode( ', ', (array) $valid_emails ) );
-
-		$recipients = array_values( array_unique( $valid_emails ) );
-		\error_log( 'sending email to ' . implode( ', ', $recipients ) );
+		$recipients   = array_values( array_unique( $valid_emails ) );
 
 		if ( ! empty( $recipients ) ) {
 
@@ -68,7 +64,7 @@ class Mailer {
 			foreach ( array_chunk( $recipients, $this->settings->get_max_bcc_per_email() ) as $bcc_batch ) {
 				$headers = array(
 					'Bcc: ' . implode( ', ', $bcc_batch ),
-					'Content - Type: text / html; charset              = UTF - 8',
+					'Content-Type: text/html; charset=UTF-8',
 				);
 
 				\wp_mail( $recipient, $subject, $message, $headers );
@@ -89,6 +85,7 @@ class Mailer {
 	 * @return void
 	 */
 	public function send_email_using_template( string $template_name, array $ticket_data ) {
+		$logger   = Plugin::instance()->logger();
 		$template = \get_posts(
 			array(
 				'title'       => $template_name,
@@ -97,13 +94,13 @@ class Mailer {
 			)
 		);
 		if ( false === $template || empty( $template ) ) {
-			\error_log( 'Email template not found: ' . $template_name . ' for transaction ' . ( $ticket_data['transaction_id'] ?? '' ) );
+			$logger->error( 'Email template not found: ' . $template_name . ' for transaction ' . ( $ticket_data['transaction_id'] ?? '' ) );
 			return;
 		}
 
 		$to = $ticket_data['email'];
 		if ( empty( $to ) ) {
-			\error_log( 'No recipient email found in ticket data for transaction ' . $ticket_data['transaction_id'] ?? '' );
+			$logger->error( 'No recipient email found in ticket data for transaction ' . $ticket_data['transaction_id'] ?? '' );
 			return;
 		}
 
@@ -137,7 +134,7 @@ class Mailer {
 
 		$cc = 'Cc: ' . $this->settings->get_email_recipient();
 		if ( ! \wp_mail( $to, $subject, $message, array( $cc, 'Content-Type: text/html; charset=UTF-8' ) ) ) {
-			\error_log( 'Failed to send ticket purchase( $transaction: ' . ( $ticket_data['transaction_id'] ?? '' ) . ' ) confirmation email to: ' . $to );
+			$logger->error( 'Failed to send ticket purchase( $transaction: ' . ( $ticket_data['transaction_id'] ?? '' ) . ' ) confirmation email to: ' . $to );
 		}
 	}
 }
