@@ -371,7 +371,8 @@ if ( ! function_exists( 'get_post_type' ) ) {
 }
 
 if ( ! function_exists( 'get_post_status_object' ) ) {
-	function get_post_status_object( string $post_status ) {
+	function get_post_status_object( string|null $post_status ): stdClass|null {
+		$display_status = 'Unknown';
 		$labels = array(
 			'publish' => 'Published',
 			'draft'   => 'Draft',
@@ -381,11 +382,11 @@ if ( ! function_exists( 'get_post_status_object' ) ) {
 			'trash'   => 'Trash',
 		);
 
-		if ( ! isset( $labels[ $post_status ] ) ) {
-			return null;
+		if ( isset( $labels[ $post_status ] ) ) {
+			$display_status = $labels[ $post_status ];
 		}
 
-		return (object) array( 'label' => $labels[ $post_status ] );
+		return (object) array( 'label' => $display_status );
 	}
 }
 
