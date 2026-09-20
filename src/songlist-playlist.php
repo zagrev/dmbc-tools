@@ -166,7 +166,7 @@ final class SongListPlaylist {
 	 * @return string
 	 */
 	private static function get_song_library_directory(): string {
-		$directory = trim( str_replace( '\\', '/', (string) \get_option( Plugin::OPTION_SONGLIST_DIRECTORY, 'dmbc-song-library' ) ), '/' );
+		$directory = rtrim( trim( str_replace( '\\', '/', (string) \get_option( Plugin::OPTION_SONGLIST_DIRECTORY, 'dmbc-song-library' ) ) ), '/' );
 		if ( '' === $directory ) {
 			$directory = 'dmbc-song-library';
 		}

@@ -75,4 +75,35 @@ final class SongListPlaylistTest extends DmbcUnitTestBase {
 		$this->assertSame( $expected, $playlist );
 		$this->assertSame( $expected, $this->get_stored_post_meta( 55, Plugin::PLAYLIST_META_KEY ) );
 	}
+
+	public function test_get_or_update_playlist_accepts_absolute_library_and_windows_style_song_paths(): void {
+		$library = $this->create_temp_directory();
+		$this->make_directory_tree(
+			$library,
+			array(
+				'Song C' => array(
+					'Learning Tracks' => array(),
+				),
+			)
+		);
+		file_put_contents( $library . '/Song C/Learning Tracks/tenor.mp3', 'test' );
+		$this->set_option( Plugin::OPTION_SONGLIST_DIRECTORY, $library );
+
+		$playlist = SongListPlaylist::get_or_update_playlist(
+			66,
+			array(
+				array(
+					'type'  => SongList::TYPE_SONG,
+					'value' => 'Song C\\Learning Tracks',
+				),
+			)
+		);
+
+		$expected = array(
+			'http://example.test/wp-content/' . str_replace( array( 'C:', 'Song C', 'Learning Tracks' ), array( 'C%3A', 'Song%20C', 'Learning%20Tracks' ), ltrim( $library . '/Song C/Learning Tracks/tenor.mp3', '/' ) ),
+		);
+
+		$this->assertSame( $expected, $playlist );
+		$this->assertSame( $expected, $this->get_stored_post_meta( 66, Plugin::PLAYLIST_META_KEY ) );
+	}
 }
