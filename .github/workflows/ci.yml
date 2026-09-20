@@ -79,7 +79,14 @@ jobs:
 
       - name: Install Xdebug in WordPress test container
         run: |
-          wp-env run tests-cli bash -e -c '
+          tests_cli_container="$(docker ps --format '{{.ID}} {{.Names}}' | awk '/tests-cli/ { print $1; exit }')"
+          if [ -z "$tests_cli_container" ]; then
+            echo "Could not find the wp-env tests-cli container." >&2
+            docker ps --format '{{.Names}}'
+            exit 1
+          fi
+
+          docker exec --user root "$tests_cli_container" sh -e -c '
             if ! php -m | grep -qi "^xdebug$"; then
               if command -v apt-get >/dev/null 2>&1; then
                 apt-get update
@@ -94,9 +101,9 @@ jobs:
               pecl install xdebug
               docker-php-ext-enable xdebug
             fi
-
-            php -m | grep -i xdebug
           '
+
+          wp-env run tests-cli php -m | grep -i xdebug
 
       - name: Run PHPUnit in WordPress test container
         # 3. Wrapping the execution inside bash -c forces the inner container's shell to catch
