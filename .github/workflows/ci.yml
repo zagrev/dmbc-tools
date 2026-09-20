@@ -75,7 +75,7 @@ jobs:
 
       - name: Start WordPress test environment
         # 2. Pin to WordPress 7.1.0 temporarily until the 7.1.1 Git tag sync bug is resolved
-        run: wp-env start --update --core="WordPress/WordPress#7.1.0"
+        run: wp-env start --xdebug=coverasge --update --core="WordPress/WordPress#7.1.0"
 
       - name: Run PHPUnit in WordPress test container
         # 3. Wrapping the execution inside bash -c forces the inner container's shell to catch
