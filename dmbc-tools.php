@@ -29,15 +29,19 @@ if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
 }
 
 
-use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
-use YahnisElsts\PluginUpdateChecker\v5p7\Vcs\Api;
+use YahnisElsts\PluginUpdateChecker\v5p7\Vcs\PluginUpdateChecker;
+use YahnisElsts\PluginUpdateChecker\v5p7\Vcs\GitHubApi;
 
-$update_checker = PucFactory::buildUpdateChecker(
-	'https://github.com/zagrev/dmbc-tools',
-	__FILE__,
-	'dmbc-tools'
+$github_api = new GitHubApi( 'https://github.com/zagrev/dmbc-tools' );
+
+// 2. Explicitly enable your release asset preferences natively
+$github_api->enableReleaseAssets();
+
+// 3. Inject it straight into the VCS PluginUpdateChecker container
+$update_checker = new PluginUpdateChecker(
+	$github_api,
+	__FILE__
 );
-$update_checker->getVcsApi()->setStrategyFilterName( Api::STRATEGY_LATEST_RELEASE );
 
 require_once __DIR__ . '/src/plugin.php';
 Plugin::instance()->run();
