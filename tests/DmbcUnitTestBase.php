@@ -35,6 +35,7 @@ abstract class DmbcUnitTestBase extends TestCase {
 			'settings_sections'         => array(),
 			'settings_fields'           => array(),
 			'actions'                   => array(),
+			'shortcodes'                => array(),
 			'post_meta'                 => array(),
 			'posts'                     => array(),
 			'logged_in'                 => true,

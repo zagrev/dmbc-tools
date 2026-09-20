@@ -21,24 +21,41 @@ if ( ! \defined( 'ABSPATH' ) ) {
  * Lightweight application logger inspired by Log4j levels.
  */
 final class DmbcLogger {
-	public const string LEVEL_DEBUG = 'DEBUG';
-	public const string LEVEL_INFO  = 'INFO';
-	public const string LEVEL_WARN  = 'WARN';
-	public const string LEVEL_ERROR = 'ERROR';
-
+	public const int LEVEL_OFF   = 0;
+	public const int LEVEL_FATAL = 10;
+	public const int LEVEL_ERROR = 20;
+	public const int LEVEL_WARN  = 30;
+	public const int LEVEL_INFO  = 40;
+	public const int LEVEL_DEBUG = 50;
+	public const int LEVEL_ALL   = 10000;
+	/**
+	 * The channel is the logger name (or object or filename)
+	 *
+	 * @var string
+	 */
 	private string $channel;
-	private bool $enabled;
-	private $handler = null;
+	/**
+	 * The current log level.
+	 *
+	 * @var int
+	 */
+	private int $log_level;
+	/**
+	 * The custom handler for log records.
+	 *
+	 * @var \Closure|null
+	 */
+	private ?\Closure $handler = null;
 
 	/**
 	 * Create a logger instance.
 	 *
 	 * @param string $channel Logical channel for the log output.
-	 * @param bool   $enabled Whether logging is enabled.
+	 * @param int    $log_level The initial log level.
 	 */
-	public function __construct( string $channel = 'dmbc-tools', bool $enabled = true ) {
-		$this->channel = trim( $channel ) !== '' ? trim( $channel ) : 'dmbc-tools';
-		$this->enabled = $enabled;
+	public function __construct( string $channel = 'dmbc-tools', int $log_level = self::LEVEL_WARN ) {
+		$this->channel   = trim( $channel ) !== '' ? trim( $channel ) : 'dmbc-tools';
+		$this->log_level = $log_level;
 	}
 
 	/**
@@ -98,34 +115,50 @@ final class DmbcLogger {
 	/**
 	 * Log a message at the given level.
 	 *
-	 * @param string $level Log level.
+	 * @param int    $level Log level.
 	 * @param string $message Message text.
 	 * @param array  $context Structured context values.
 	 * @return void
 	 */
-	public function log( string $level, string $message, array $context = array() ): void {
-		if ( ! $this->enabled ) {
-			return;
+	public function log( int $level, string $message, array $context = array() ): void {
+		// If the requested log level is more important (or equally important) to the log level, then log it.
+		if ( $this->log_level >= $level ) {
+
+			$entry = array(
+				'time'    => gmdate( 'c' ),
+				'channel' => $this->channel,
+				'level'   => $this->level_to_string( $level ),
+				'message' => $this->interpolate( $message, $context ),
+				'context' => $context,
+			);
+
+			if ( is_callable( $this->handler ) ) {
+				( $this->handler )( $entry );
+			}
+
+			$this->write_to_wordpress( $entry );
 		}
+	}
 
-		$normalized_level = strtoupper( trim( $level ) );
-		if ( ! in_array( $normalized_level, array( self::LEVEL_DEBUG, self::LEVEL_INFO, self::LEVEL_WARN, self::LEVEL_ERROR ), true ) ) {
-			$normalized_level = self::LEVEL_INFO;
+	/**
+	 * Convert the log level to a human readable string.
+	 *
+	 * @param int $level Log level.
+	 * @return string Human readable log level.
+	 */
+	private function level_to_string( int $level ): string {
+		switch ( $level ) {
+			case self::LEVEL_DEBUG:
+				return 'Debug';
+			case self::LEVEL_INFO:
+				return 'Info';
+			case self::LEVEL_WARN:
+				return 'Warning';
+			case self::LEVEL_ERROR:
+				return 'Error';
+			default:
+				return '';
 		}
-
-		$entry = array(
-			'time'    => gmdate( 'c' ),
-			'channel' => $this->channel,
-			'level'   => $normalized_level,
-			'message' => $this->interpolate( $message, $context ),
-			'context' => $context,
-		);
-
-		if ( is_callable( $this->handler ) ) {
-			call_user_func( $this->handler, $entry );
-		}
-
-		$this->write_to_wordpress( $entry );
 	}
 
 	/**
@@ -170,7 +203,7 @@ final class DmbcLogger {
 				wc_get_logger()->log( $this->to_wc_level( $entry['level'] ), $message, array( 'source' => $this->channel ) );
 				return;
 			} catch ( \Throwable $exception ) {
-				// Fall back to PHP error_log and WordPress debug logging.
+				// Catch and ignore exceptions. Fall back to PHP error_log and WordPress debug logging.
 			}
 		}
 

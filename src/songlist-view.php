@@ -393,7 +393,7 @@ class SongListView {
 
 		$song_list = \get_post( $song_list_id );
 		if ( ! $song_list || Plugin::SONGLIST_POST_TYPE !== $song_list->post_type ) {
-			\error_log( 'DMBC SongListView: Cannot send song list to roles. Invalid song list ID ' . $song_list_id );
+			Plugin::instance()->logger()->error( 'DMBC SongListView: Cannot send song list to roles. Invalid song list ID ' . $song_list_id );
 			return array();
 		}
 

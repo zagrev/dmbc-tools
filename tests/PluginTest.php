@@ -168,10 +168,73 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertTrue( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['public'] );
 		$this->assertTrue( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['show_ui'] );
 		$this->assertFalse( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['show_in_menu'] );
+		$this->assertTrue( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['has_archive'] );
+		$this->assertSame( array( 'slug' => 'member-updates' ), $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['rewrite'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_post'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_published_posts'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['edit_others_posts'] );
 		$this->assertSame( Plugin::CAP_EDIT_MEMBER_UPDATES, $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['capabilities']['create_posts'] );
+	}
+
+	/**
+	 * Song-list block templates are loaded from Gutenberg HTML template files.
+	 *
+	 * @covers \DmbcTools\Plugin::register_songlist_templates
+	 */
+	public function test_register_songlist_templates_loads_html_templates_for_canonical_slug(): void {
+		$templates = Plugin::instance()->register_songlist_templates( array(), array( 'slug__in' => array( 'single-dmbc-songlist' ) ), 'wp_template' );
+
+		$this->assertCount( 1, $templates );
+		$this->assertSame( 'single-dmbc-songlist', $templates[0]->slug );
+		$this->assertSame( 'Single Songlist', $templates[0]->title );
+		$this->assertStringContainsString( '[dmbc_songlist]', $templates[0]->content );
+	}
+
+	/**
+	 * Song-list templates tolerate theme-qualified lookup keys.
+	 *
+	 * @covers \DmbcTools\Plugin::register_songlist_templates
+	 */
+	public function test_register_songlist_templates_loads_html_templates_for_theme_qualified_slug(): void {
+		$templates = Plugin::instance()->register_songlist_templates( array(), array( 'slug__in' => array( 'dmbc-tools/single-songlist' ) ), 'wp_template' );
+
+		$this->assertCount( 1, $templates );
+		$this->assertSame( 'single-songlist', $templates[0]->slug );
+		$this->assertSame( 'dmbc-tools//single-songlist', $templates[0]->id );
+	}
+
+	/**
+	 * Member-update block templates are loaded from Gutenberg HTML template files.
+	 *
+	 * @covers \DmbcTools\Plugin::register_member_update_templates
+	 */
+	public function test_register_member_update_templates_loads_html_templates_for_canonical_slug(): void {
+		$templates = Plugin::instance()->register_member_update_templates( array(), array( 'slug__in' => array( 'single-dmbc-member-updates' ) ), 'wp_template' );
+
+		$this->assertCount( 1, $templates );
+		$this->assertSame( 'single-dmbc-member-updates', $templates[0]->slug );
+		$this->assertSame( 'Single Member Update', $templates[0]->title );
+		$this->assertStringContainsString( '<main class="wp-block-group dmbc-member-update-container">', $templates[0]->content );
+	}
+
+	/**
+	 * Member-update templates tolerate theme-qualified lookup keys.
+	 *
+	 * @covers \DmbcTools\Plugin::register_member_update_templates
+	 */
+	public function test_register_member_update_templates_loads_html_templates_for_theme_qualified_slugs(): void {
+		$single_template = Plugin::instance()->register_member_update_templates( array(), array( 'slug__in' => array( 'dmbc-tools/single-member-update' ) ), 'wp_template' );
+		$archive_template = Plugin::instance()->register_member_update_templates( array(), array( 'slug__in' => array( 'dmbc-tools/archive-member-update' ) ), 'wp_template' );
+
+		$this->assertCount( 1, $single_template );
+		$this->assertSame( 'single-member-update', $single_template[0]->slug );
+		$this->assertSame( 'dmbc-tools//single-member-update', $single_template[0]->id );
+		$this->assertStringContainsString( '<main class="wp-block-group dmbc-member-update-container">', $single_template[0]->content );
+
+		$this->assertCount( 1, $archive_template );
+		$this->assertSame( 'archive-member-update', $archive_template[0]->slug );
+		$this->assertSame( 'dmbc-tools//archive-member-update', $archive_template[0]->id );
+		$this->assertStringContainsString( '<main class="wp-block-group dmbc-member-update-archive">', $archive_template[0]->content );
 	}
 
 	/**
@@ -217,6 +280,7 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertContains( array( $plugin, 'register_admin' ), $GLOBALS['dmbc_test_state']['actions']['admin_menu'] );
 		$this->assertContains( array( $plugin, 'send_member_update_digest' ), $GLOBALS['dmbc_test_state']['actions'][ Plugin::MEMBER_UPDATE_CRON_HOOK ] );
 		$this->assertContains( array( $plugin, 'register_deluxe_cc_notification_route' ), $GLOBALS['dmbc_test_state']['actions']['rest_api_init'] );
+		$this->assertSame( array( $plugin, 'render_songlist_shortcode' ), $GLOBALS['dmbc_test_state']['shortcodes']['dmbc_songlist'] );
 		$this->assertSame( 0, $GLOBALS['dmbc_test_state']['flush_rewrite_rules_calls'] );
 	}
 

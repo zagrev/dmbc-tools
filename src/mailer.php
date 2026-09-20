@@ -85,6 +85,7 @@ class Mailer {
 	 * @return void
 	 */
 	public function send_email_using_template( string $template_name, array $ticket_data ) {
+		$logger   = Plugin::instance()->logger();
 		$template = \get_posts(
 			array(
 				'title'       => $template_name,
@@ -93,13 +94,13 @@ class Mailer {
 			)
 		);
 		if ( false === $template || empty( $template ) ) {
-			\error_log( 'Email template not found: ' . $template_name . ' for transaction ' . ( $ticket_data['transaction_id'] ?? '' ) );
+			$logger->error( 'Email template not found: ' . $template_name . ' for transaction ' . ( $ticket_data['transaction_id'] ?? '' ) );
 			return;
 		}
 
 		$to = $ticket_data['email'];
 		if ( empty( $to ) ) {
-			\error_log( 'No recipient email found in ticket data for transaction ' . $ticket_data['transaction_id'] ?? '' );
+			$logger->error( 'No recipient email found in ticket data for transaction ' . $ticket_data['transaction_id'] ?? '' );
 			return;
 		}
 
@@ -133,7 +134,7 @@ class Mailer {
 
 		$cc = 'Cc: ' . $this->settings->get_email_recipient();
 		if ( ! \wp_mail( $to, $subject, $message, array( $cc, 'Content-Type: text/html; charset=UTF-8' ) ) ) {
-			\error_log( 'Failed to send ticket purchase( $transaction: ' . ( $ticket_data['transaction_id'] ?? '' ) . ' ) confirmation email to: ' . $to );
+			$logger->error( 'Failed to send ticket purchase( $transaction: ' . ( $ticket_data['transaction_id'] ?? '' ) . ' ) confirmation email to: ' . $to );
 		}
 	}
 }

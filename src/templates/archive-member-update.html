@@ -1,0 +1,21 @@
+<!-- wp:template-part {"slug":"header","theme":"dmbc-tools"} /-->
+
+<!-- wp:group {"tagName":"main","className":"dmbc-member-update-archive","layout":{"type":"constrained"}} -->
+<main class="wp-block-group dmbc-member-update-archive">
+	<!-- wp:heading {"level":1} -->
+	<h1>Member Updates</h1>
+	<!-- /wp:heading -->
+
+	<!-- wp:query {"queryId":1,"query":{"perPage":10,"pages":0,"offset":0,"postType":"dmbc-member-updates","order":"desc","orderby":"date"},"displayLayout":{"type":"list","columns":1}} -->
+	<div class="wp-block-query">
+		<!-- wp:post-template -->
+			<!-- wp:post-title {"isLink":true,"level":2} /-->
+			<!-- wp:post-date {"format":"F j, Y"} /-->
+			<!-- wp:post-excerpt {"moreText":"Read more"} /-->
+		<!-- /wp:post-template -->
+	</div>
+	<!-- /wp:query -->
+</main>
+<!-- /wp:group -->
+
+<!-- wp:template-part {"slug":"footer","theme":"dmbc-tools"} /-->

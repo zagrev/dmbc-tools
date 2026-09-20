@@ -39,9 +39,10 @@ class MemberUpdateTable extends \WP_List_Table {
 	 */
 	public function get_columns(): array {
 		return array(
-			'title' => __( 'Title', 'dmbc-tools' ),
-			'date'  => __( 'Published', 'dmbc-tools' ),
-			'sent'  => __( 'Sent', 'dmbc-tools' ),
+			'title'  => __( 'Title', 'dmbc-tools' ),
+			'status' => __( 'Status', 'dmbc-tools' ),
+			'date'   => __( 'Published', 'dmbc-tools' ),
+			'sent'   => __( 'Sent', 'dmbc-tools' ),
 		);
 	}
 
@@ -70,6 +71,19 @@ class MemberUpdateTable extends \WP_List_Table {
 	 */
 	public function column_date( WP_Post $item ): string {
 		return \esc_html( $item->post_date );
+	}
+
+	/**
+	 * Render the post status.
+	 *
+	 * @param WP_Post $item The current update.
+	 * @return string
+	 */
+	public function column_status( WP_Post $item ): string {
+		$status_object = \get_post_status_object( $item->post_status );
+		$status_label  = $status_object ? $status_object->label : ucfirst( (string) $item->post_status );
+
+		return \esc_html( $status_label );
 	}
 
 	/**

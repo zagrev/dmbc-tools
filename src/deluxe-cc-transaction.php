@@ -163,7 +163,9 @@ class DeluxeCcTransaction {
 	public function log_ticket_purchase( array $transaction ): array {
 		global $wpdb;
 
-		\error_log( 'Handling the ticket purchase. Transaction ID: ' . $transaction[ self::FIELD_TX_ID ] );
+		$logger = Plugin::instance()->logger();
+
+		$logger->info( 'Handling the ticket purchase. Transaction ID: ' . $transaction[ self::FIELD_TX_ID ] );
 
 		// Record the ticket purchase (types of tickets, counts, update total?).
 		$transaction_id = $transaction[ self::FIELD_TX_ID ];
@@ -322,14 +324,14 @@ class DeluxeCcTransaction {
 	 * @return \WP_REST_Response
 	 */
 	public function handle_deluxe_cc_notification( \WP_REST_Request $request ): \WP_REST_Response {
-		\error_log( 'Handling Deluxe CC notification' );
 		try {
 			$body           = (string) $request->get_body();
 			$transaction    = $request->get_json_params();
 			$transaction_id = $transaction[ self::FIELD_TX_ID ];
 			$this->log_cc_notification( $transaction_id, $body, 'starting' );
 
-			\error_log( 'processing transaction: ' . $transaction_id );
+			$logger = Plugin::instance()->logger();
+			$logger->info( 'processing transaction: ' . $transaction_id );
 			$this->handle_new_transaction( $transaction );
 
 			$this->log_cc_notification( $transaction_id, $body, 'complete' );
@@ -363,15 +365,18 @@ class DeluxeCcTransaction {
 			$content = $post_body;
 		}
 
+		$data = array(
+			'tx_id'             => $transaction_id,
+			'post_body'         => $content,
+			'received_at'       => \wp_date( 'Y-m-d H:i:s.v', null, new DateTimeZone( 'UTC' ) ),
+			'processing_result' => $processing_result,
+		);
+
 		$wpdb->insert(
 			$wpdb->prefix . self::NOTIFICATION_TABLE_NAME,
-			array(
-				'tx_id'             => $transaction_id,
-				'post_body'         => $content,
-				'received_at'       => \wp_date( 'Y-m-d H:i:s.v', null, new DateTimeZone( 'UTC' ) ),
-				'processing_result' => $processing_result,
-			),
+			$data,
 			array( '%s', '%s', '%s', '%s' )
 		);
+		Plugin::instance()->logger()->info( 'Transaction ID:' . $transaction_id . ', Result: ' . $processing_result );
 	}
 }
