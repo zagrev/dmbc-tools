@@ -16,9 +16,9 @@ final class MemberUpdateTableTest extends DmbcUnitTestBase {
 		$this->assertSame(
 			array(
 				'title'  => 'Title',
-				'status' => 'Status',
 				'date'   => 'Published',
 				'sent'   => 'Sent',
+				'status' => 'Status',
 			),
 			$table->get_columns()
 		);

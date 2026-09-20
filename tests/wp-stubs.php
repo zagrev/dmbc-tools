@@ -63,6 +63,7 @@ if ( ! class_exists( 'WP_Post' ) ) {
 		public string $post_modified_gmt = '';
 		public string $post_excerpt = '';
 		public string $dmbc_song_list_rehearsal_date = '';
+		public string $post_status = '';
 
 		public function __construct( int $id ) {
 			$this->ID = $id;

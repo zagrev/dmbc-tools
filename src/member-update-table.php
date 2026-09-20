@@ -40,9 +40,9 @@ class MemberUpdateTable extends \WP_List_Table {
 	public function get_columns(): array {
 		return array(
 			'title'  => __( 'Title', 'dmbc-tools' ),
-			'status' => __( 'Status', 'dmbc-tools' ),
 			'date'   => __( 'Published', 'dmbc-tools' ),
 			'sent'   => __( 'Sent', 'dmbc-tools' ),
+			'status' => __( 'Status', 'dmbc-tools' ),
 		);
 	}
 
