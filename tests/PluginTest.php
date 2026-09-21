@@ -285,6 +285,112 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Song-list shortcode renders the current song-list article for block templates.
+	 *
+	 * @covers \DmbcTools\Plugin::render_songlist_shortcode
+	 * @covers \DmbcTools\Plugin::render_songlist_post
+	 */
+	public function test_render_songlist_shortcode_renders_current_songlist_article(): void {
+		$post             = new WP_Post( 207 );
+		$post->post_type  = Plugin::SONGLIST_POST_TYPE;
+		$post->post_title = 'October Rehearsal';
+
+		$GLOBALS['dmbc_test_state']['posts'][207] = $post;
+		$GLOBALS['dmbc_test_state']['current_post_id'] = 207;
+		$GLOBALS['dmbc_test_state']['current_post_type'] = Plugin::SONGLIST_POST_TYPE;
+
+		$this->set_post_meta( 207, Plugin::PERFORMANCE_DATE_META_KEY, '2026-10-04' );
+		$this->set_post_meta(
+			207,
+			Plugin::SONGS_META_KEY,
+			array(
+				array(
+					'type'  => 'song',
+					'value' => 'Deasfinado (Slightly Out of Time)',
+				),
+				array(
+					'type'  => 'note',
+					'value' => 'Bring chart copies',
+				),
+			)
+		);
+		$this->set_post_meta( 207, Plugin::NOTES_META_KEY, 'Review the bridge.' );
+
+		$html = Plugin::instance()->render_songlist_shortcode();
+
+		$this->assertStringContainsString( 'id="post-207"', $html );
+		$this->assertStringContainsString( 'dmbc-songlist-article', $html );
+		$this->assertStringContainsString( 'October Rehearsal', $html );
+		$this->assertStringContainsString( 'datetime="2026-10-04"', $html );
+		$this->assertStringContainsString( 'Deasfinado (Slightly Out of Time)', $html );
+		$this->assertStringContainsString( 'Bring chart copies', $html );
+		$this->assertStringContainsString( 'Review the bridge.', $html );
+	}
+
+	/**
+	 * Song-list shortcode renders every file in a song folder for members.
+	 *
+	 * @covers \DmbcTools\Plugin::render_songlist_shortcode
+	 * @covers \DmbcTools\Plugin::render_songlist_post
+	 */
+	public function test_render_songlist_shortcode_renders_all_song_folder_files_for_um_member(): void {
+		$library = $this->create_temp_directory();
+		$this->make_directory_tree(
+			$library,
+			array(
+				'Deasfinado (Slightly Out of Time)' => array(
+					'Tracks' => array(),
+				),
+			)
+		);
+		file_put_contents( $library . '/Deasfinado (Slightly Out of Time)/01-chart.pdf', 'test' );
+		file_put_contents( $library . '/Deasfinado (Slightly Out of Time)/02-learning-track.mp3', 'test' );
+		file_put_contents( $library . '/Deasfinado (Slightly Out of Time)/Tracks/03-tenor.mp3', 'test' );
+
+		$post             = new WP_Post( 208 );
+		$post->post_type  = Plugin::SONGLIST_POST_TYPE;
+		$post->post_title = 'Member Rehearsal';
+
+		$GLOBALS['dmbc_test_state']['posts'][208]        = $post;
+		$GLOBALS['dmbc_test_state']['current_post_id']   = 208;
+		$GLOBALS['dmbc_test_state']['current_post_type'] = Plugin::SONGLIST_POST_TYPE;
+		$GLOBALS['dmbc_test_state']['current_user']      = new WP_User( 42, array( 'roles' => array( 'um_member' ) ) );
+		$GLOBALS['dmbc_test_state']['logged_in']         = true;
+
+		$this->set_option( Plugin::OPTION_SONGLIST_DIRECTORY, $library );
+		$this->set_post_meta(
+			208,
+			Plugin::SONGS_META_KEY,
+			array(
+				array(
+					'type'  => 'song',
+					'value' => 'Deasfinado (Slightly Out of Time)',
+				),
+			)
+		);
+
+		$html = Plugin::instance()->render_songlist_shortcode();
+
+		$this->assertStringContainsString( 'dmbc-songlist-song-details', $html );
+		$this->assertStringContainsString( '01-chart.pdf', $html );
+		$this->assertStringContainsString( '02-learning-track.mp3', $html );
+		$this->assertStringContainsString( '03-tenor.mp3', $html );
+		$this->assertStringContainsString( 'Download playlist', $html );
+	}
+
+	/**
+	 * Song-list shortcode stays empty outside song-list posts.
+	 *
+	 * @covers \DmbcTools\Plugin::render_songlist_shortcode
+	 */
+	public function test_render_songlist_shortcode_returns_empty_string_for_non_songlist_context(): void {
+		$GLOBALS['dmbc_test_state']['current_post_id'] = 301;
+		$GLOBALS['dmbc_test_state']['current_post_type'] = 'post';
+
+		$this->assertSame( '', Plugin::instance()->render_songlist_shortcode() );
+	}
+
+	/**
 	 * Initialization registers core plugin objects without flushing rewrite rules on every request.
 	 *
 	 * @covers \DmbcTools\Plugin::initialize

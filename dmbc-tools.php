@@ -1,4 +1,10 @@
 <?php
+/**
+ * DMBC Tools main plugin file.
+ *
+ * @package DmbcTools
+ */
+
 declare(strict_types=1);
 namespace DmbcTools;
 

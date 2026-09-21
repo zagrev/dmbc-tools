@@ -18,7 +18,8 @@ final class SongListPlaylistTest extends DmbcUnitTestBase {
 			'ultimate member role'            => array( true, array( 'um_member' ), true ),
 			'legacy member role'              => array( true, array( 'member' ), true ),
 			'ordinary subscriber role'        => array( true, array( 'subscriber' ), false ),
-			'mixed roles including member'    => array( true, array( 'subscriber', 'um_member' ), true ),
+			'um member role after another role' => array( true, array( 'subscriber', 'um_member' ), true ),
+			'mixed roles including legacy member' => array( true, array( 'subscriber', 'member' ), true ),
 		);
 
 		foreach ( $cases as $label => $case ) {
