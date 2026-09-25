@@ -21,6 +21,7 @@ require_once __DIR__ . '/songlist-playlist.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/deluxe-cc-transaction.php';
 require_once __DIR__ . '/acf-integration.php';
+require_once __DIR__ . '/mailster-integration.php';
 require_once __DIR__ . '/logger.php';
 
 use DmbcTools\SongListView;
@@ -164,10 +165,14 @@ final class Plugin {
 		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
 		\add_action( self::MEMBER_UPDATE_CRON_HOOK, array( $this, 'send_member_update_digest' ) );
+		\add_action( MailsterIntegration::CRON_HOOK, array( MailsterIntegration::class, 'sync_members_to_group' ) );
 		\add_action( 'rest_api_init', array( $this, 'register_deluxe_cc_notification_route' ) );
 
 		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
 		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
+
+		\add_action( 'wp_ajax_run_member_updates', array( $this->settings, 'ajax_run_member_updates' ) );
+		\add_action( 'wp_ajax_run_member_groups_sync', array( $this->settings, 'ajax_run_member_groups_sync' ) );
 	}
 
 	// init -------------------------------------------------------------------------------.
@@ -184,6 +189,7 @@ final class Plugin {
 		$this->register_options();
 		$this->add_songlist_capabilities();
 		$this->schedule_member_update_digest();
+		$this->schedule_mailster_member_sync();
 		DeluxeCcTransaction::create_table();
 		AcfIntegration::register_acf_fields();
 
@@ -367,6 +373,7 @@ final class Plugin {
 	public function deactivate(): void {
 
 		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
+		\wp_clear_scheduled_hook( MailsterIntegration::CRON_HOOK );
 
 		\flush_rewrite_rules();
 	}
@@ -379,6 +386,17 @@ final class Plugin {
 	public function schedule_member_update_digest(): void {
 		if ( ! \wp_next_scheduled( self::MEMBER_UPDATE_CRON_HOOK ) ) {
 			\wp_schedule_event( \time(), 'daily', self::MEMBER_UPDATE_CRON_HOOK );
+		}
+	}
+
+	/**
+	 * Schedule the recurring synchronization of member-role users into the WP Mailster group.
+	 *
+	 * @return void
+	 */
+	public function schedule_mailster_member_sync(): void {
+		if ( ! \wp_next_scheduled( MailsterIntegration::CRON_HOOK ) ) {
+			\wp_schedule_event( \time(), 'daily', MailsterIntegration::CRON_HOOK );
 		}
 	}
 

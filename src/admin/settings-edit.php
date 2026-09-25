@@ -90,6 +90,7 @@ class DmbcSettings {
 			)
 		);
 
+		// General section.
 		add_settings_section(
 			'general_section',
 			__( 'General', 'dmbc-tools' ),
@@ -117,6 +118,8 @@ class DmbcSettings {
 			'settings',
 			'general_section'
 		);
+
+		// Notifications section.
 		add_settings_section(
 			'notifications_section',
 			__( 'DMBC Tools notifications', 'dmbc-tools' ),
@@ -143,6 +146,14 @@ class DmbcSettings {
 			array( $this, 'render_song_list_default_recipient_field' ),
 			'settings',
 			'notifications_section'
+		);
+
+		// Tools section.
+		add_settings_section(
+			'tools_section',
+			__( 'Tools', 'dmbc-tools' ),
+			array( $this, 'render_tools_section' ),
+			'settings'
 		);
 	}
 
@@ -238,20 +249,47 @@ class DmbcSettings {
 				if (currentPath) {
 					const normalizeSlashes = path => path.replace(/[\\/]+/g, '/');
 					currentPath = normalizeSlashes(currentPath);
-					<?php
-						$normalized_content_dir = \wp_normalize_path( WP_CONTENT_DIR . '/' );
-					?>
+				<?php
+					$normalized_content_dir = \wp_normalize_path( WP_CONTENT_DIR . '/' );
+				?>
 					// if the current path is within the content directory, store it as a relative path
 					if (currentPath.startsWith('<?php echo \esc_html( $normalized_content_dir ); ?>')) {
 						currentPath = currentPath.replace('<?php echo \esc_html( $normalized_content_dir ); ?>', '');
 					}
-					$('#song_library_directory').val(currentPath);
 				}
 				$('#dmbc_folder_browser_modal').hide();
 			});
+
+			$('#run_member_updates').on('click', function () {
+				const nonce = $(this).data('nonce');
+				// Add your AJAX call for running member groups sync here, using the nonce
+				$.post(ajaxUrl, {
+					action: 'run_member_updates',
+					nonce: nonce
+				}).done(function (response) {
+					if (!response.success) {
+						$('#dmbc_tools_section_message').text(response.data && response.data.message ? response.data.message : <?php echo \wp_json_encode( \__( 'Unable to browse this directory.', 'dmbc-tools' ) ); ?>);
+						return;
+					}
+				})
+			});
+
+			$('#run_member_groups_sync').on('click', function () {
+				const nonce = $(this).data('nonce');
+				// Add your AJAX call for running member groups sync here, using the nonce
+				$.post(ajaxUrl, {
+					action: 'run_member_groups_sync',
+					nonce: nonce
+				}).done(function (response) {
+					if (!response.success) {
+						$('#dmbc_tools_section_message').text(response.data && response.data.message ? response.data.message : <?php echo \wp_json_encode( \__( 'Unable to browse this directory.', 'dmbc-tools' ) ); ?>);
+						return;
+					}
+				});
+			});
 		});
 		</script>
-		<?php
+			<?php
 	}
 
 	/**
@@ -318,7 +356,7 @@ class DmbcSettings {
 		<textarea name="song_library_exclusion_regexes" id="song_library_exclusion_regexes" rows="5"
 			class="large-text code"><?php echo esc_textarea( $value ); ?></textarea>
 		<p class="description">
-			<?php esc_html_e( 'Enter one regular expression per line. Do not include the delimiters (leading and trailing slashes). Matching song folders are excluded from the song selector.', 'dmbc-tools' ); ?>
+		<?php esc_html_e( 'Enter one regular expression per line. Do not include the delimiters (leading and trailing slashes). Matching song folders are excluded from the song selector.', 'dmbc-tools' ); ?>
 		</p>
 		<?php
 	}
@@ -332,7 +370,7 @@ class DmbcSettings {
 		?>
 		<label>
 			<input type="checkbox" name="remove_data_on_uninstall" value="1" <?php checked( $this->get_remove_data_on_uninstall() ); ?> />
-			<?php esc_html_e( 'Permanently delete all DMBC Tools settings and content when this plugin is uninstalled.', 'dmbc-tools' ); ?>
+		<?php esc_html_e( 'Permanently delete all DMBC Tools settings and content when this plugin is uninstalled.', 'dmbc-tools' ); ?>
 		</label>
 		<?php
 	}
@@ -347,7 +385,7 @@ class DmbcSettings {
 			id="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" 
 			value="<?php echo esc_attr( (string) $this->get_max_bcc_per_email() ); ?>" class="small-text" />
 		<p class="description">
-			<?php esc_html_e( 'The maximum number of addresses to bcc in a single email. Larger recipient lists are split across multiple emails. Certain email providers may have their own limits, such as a max of 50 using AWS SES.', 'dmbc-tools' ); ?>
+		<?php esc_html_e( 'The maximum number of addresses to bcc in a single email. Larger recipient lists are split across multiple emails. Certain email providers may have their own limits, such as a max of 50 using AWS SES.', 'dmbc-tools' ); ?>
 		</p>
 		<?php
 	}
@@ -363,13 +401,13 @@ class DmbcSettings {
 			?>
 			<label>
 				<input type="checkbox" name="song_list_recipient_roles[]" value="<?php echo esc_attr( $role_slug ); ?>" <?php checked( in_array( $role_slug, $selected_roles, true ) ); ?> />
-				<?php echo esc_html( $role_name ); ?>
+			<?php echo esc_html( $role_name ); ?>
 			</label><br />
 			<?php
 		}
 		?>
 		<p class="description">
-			<?php \esc_html_e( 'Users with these roles will receive an email when a rehearsal song list is created or updated.', 'dmbc-tools' ); ?>
+		<?php \esc_html_e( 'Users with these roles will receive an email when a rehearsal song list is created or updated.', 'dmbc-tools' ); ?>
 		</p>
 		<?php
 	}
@@ -382,7 +420,7 @@ class DmbcSettings {
 		<input type="email" name="song_list_default_recipient" id="song_list_default_recipient" value="<?php echo \esc_attr( $this->get_email_recipient() ); ?>"
 			class="regular-text" />
 		<p class="description">
-			<?php esc_html_e( 'This address receives the email in addition to selected role members. It defaults to the site administrator email.', 'dmbc-tools' ); ?>
+		<?php esc_html_e( 'This address receives the email in addition to selected role members. It defaults to the site administrator email.', 'dmbc-tools' ); ?>
 		</p>
 		<?php
 	}
@@ -602,5 +640,61 @@ class DmbcSettings {
 		ksort( $choices, SORT_NATURAL | SORT_FLAG_CASE );
 
 		return $choices;
+	}
+
+	/**
+	 * Render the buttons that run the cron jobs.
+	 *
+	 * @return void
+	 */
+	public function render_tools_section() {
+		echo '<p>' . esc_html__( 'Tools for managing the plugin.', 'dmbc-tools' ) . '</p>';
+		$nonce_run_member_updates     = \wp_create_nonce( 'dmbc_run_member_updates' );
+		$nonce_run_member_groups_sync = \wp_create_nonce( 'dmbc_run_member_groups_sync' );
+		?>
+		<div id="dmbc_tools_section_message" style="color:#a00; margin-bottom:8px;"></div>
+
+		<!-- Run Member Updates -->
+		<button type="button" class="button" id="run_member_updates" data-nonce="<?php echo \esc_attr( $nonce_run_member_updates ); ?>">
+		<?php \esc_html_e( 'Run Member Updates', 'dmbc-tools' ); ?>
+		</button>
+
+		<!-- Run Member Groups Sync -->
+		<button type="button" class="button" id="run_member_groups_sync" data-nonce="<?php echo \esc_attr( $nonce_run_member_groups_sync ); ?>">
+		<?php \esc_html_e( 'Run Member Groups Sync', 'dmbc-tools' ); ?>
+		</button>
+		<?php
+	}
+
+	/**
+	 * Summary of ajax_run_member_updates
+	 *
+	 * @return void
+	 */
+	public function ajax_run_member_updates() {
+		\check_ajax_referer( 'dmbc_run_member_updates', 'nonce' );
+
+		if ( ! \current_user_can( 'manage_options' ) ) {
+			\wp_send_json_error( array( 'message' => \__( 'You do not have permission to send out Member Updates.', 'dmbc-tools' ) ), 403 );
+		}
+
+		\wp_send_json_error( array( 'message' => \__( 'Not implemented.', 'dmbc-tools' ) ), 403 );
+	}
+
+	/**
+	 * Run the member groups sync function.
+	 *
+	 * @return never
+	 */
+	public function ajax_run_member_groups_sync(): void {
+		Plugin::instance()->logger()->info( 'Running member groups sync via AJAX.' );
+		\check_ajax_referer( 'dmbc_run_member_groups_sync', 'nonce' );
+
+		if ( ! \current_user_can( 'manage_options' ) ) {
+			\wp_send_json_error( array( 'message' => \__( 'You do not have permission to synchronize member groups.', 'dmbc-tools' ) ), 403 );
+		}
+
+		$added = MailsterIntegration::sync_members_to_group();
+		\wp_send_json_success( array( 'added' => $added ) );
 	}
 }

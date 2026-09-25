@@ -173,6 +173,16 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 			return $GLOBALS['dmbc_test_state']['wpdb_results'] ?? array();
 		}
 
+		public function get_var( string $query = '', $x = 0, $y = 0 ) {
+			$GLOBALS['dmbc_test_state']['wpdb_get_var'][] = compact( 'query' );
+			return $GLOBALS['dmbc_test_state']['wpdb_var'] ?? null;
+		}
+
+		public function get_col( string $query = '', $x = 0 ) {
+			$GLOBALS['dmbc_test_state']['wpdb_get_col'][] = compact( 'query' );
+			return $GLOBALS['dmbc_test_state']['wpdb_col'] ?? array();
+		}
+
 		public function prepare( string $query = '', ...$args ) {
 			$GLOBALS['dmbc_test_state']['wpdb_prepare'][] = compact( 'query', 'args'
 			 );
@@ -773,7 +783,14 @@ if ( ! function_exists( 'wpautop' ) ) {
 
 if ( ! function_exists( 'get_users' ) ) {
 	function get_users( array $args = array() ): array {
-		return $GLOBALS['dmbc_test_state']['users'];
+		$GLOBALS['dmbc_test_state']['last_get_users_args'] = $args;
+		$users = $GLOBALS['dmbc_test_state']['users'];
+
+		if ( 'ID' === ( $args['fields'] ?? '' ) ) {
+			return array_map( fn( $user ) => $user->ID ?? 0, $users );
+		}
+
+		return $users;
 	}
 }
 

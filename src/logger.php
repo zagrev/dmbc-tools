@@ -187,7 +187,7 @@ final class DmbcLogger {
 	 * @return void
 	 */
 	private function write_to_wordpress( array $entry ): void {
-		$level_string = $this->level_to_string( $entry['level'] );
+		$level_string = $entry['level'];
 		$message      = sprintf(
 			'[%s] [%s] %s',
 			$this->channel,
