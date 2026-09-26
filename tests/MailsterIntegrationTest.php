@@ -94,14 +94,14 @@ final class MailsterIntegrationTest extends DmbcUnitTestBase {
 	 *
 	 * @covers \DmbcTools\MailsterIntegration::sync_members_to_group
 	 */
-	public function test_sync_queries_users_by_member_roles(): void {
+	public function test_sync_queries_users_by_user_roles(): void {
 		$GLOBALS['dmbc_test_state']['wpdb_var'] = 7;
 		$this->set_member_users( 11 );
 
 		MailsterIntegration::sync_members_to_group();
 
 		$args = $GLOBALS['dmbc_test_state']['last_get_users_args'];
-		$this->assertSame( array( 'members' ), $args['role__in'] );
+		$this->assertSame( MailsterIntegration::DEFAULT_USER_MEMBER_ROLES , $args['role__in'] );
 		$this->assertSame( 'ID', $args['fields'] );
 	}
 
@@ -109,10 +109,11 @@ final class MailsterIntegrationTest extends DmbcUnitTestBase {
 	 * The group name and roles fall back to the member defaults.
 	 *
 	 * @covers \DmbcTools\MailsterIntegration::group_name
-	 * @covers \DmbcTools\MailsterIntegration::member_roles
+	 * @covers \DmbcTools\MailsterIntegration::user_roles
 	 */
 	public function test_group_name_and_roles_default_to_members(): void {
-		$this->assertSame( 'members', MailsterIntegration::group_name() );
-		$this->assertSame( array( 'members' ), MailsterIntegration::member_roles() );
+
+		$this->assertSame( MailsterIntegration::DEFAULT_MAILSTR_GROUP_NAME, MailsterIntegration::mailstr_group_name() );
+		$this->assertSame( MailsterIntegration::DEFAULT_USER_MEMBER_ROLES, MailsterIntegration::user_roles() );
 	}
 }

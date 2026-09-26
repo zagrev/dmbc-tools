@@ -9,6 +9,8 @@
          beStrictAboutTestsThatDoNotTestAnything="true"
          failOnRisky="true"
          failOnWarning="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnPhpunitDeprecations="true"
          colors="true">
     
     <!-- Define where your tests live -->

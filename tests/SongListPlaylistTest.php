@@ -11,7 +11,7 @@ final class SongListPlaylistTest extends DmbcUnitTestBase {
 	 *
 	 * @covers \DmbcTools\SongListPlaylist::current_user_is_member
 	 */
-	public function test_current_user_is_member_matches_logged_in_member_roles(): void {
+	public function test_current_user_is_member_matches_logged_in_user_roles(): void {
 		$cases = array(
 			'logged out user with member role' => array( false, array( 'um_member' ), false ),
 			'logged in user with no roles'     => array( true, array(), false ),

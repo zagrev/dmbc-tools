@@ -26,24 +26,27 @@ final class MailsterIntegration {
 	/**
 	 * The WP Mailster group that member-role users are added to.
 	 */
-	public const string DEFAULT_GROUP_NAME = 'members';
+	public const string DEFAULT_MAILSTR_GROUP_NAME = 'members';
 
 	/**
 	 * The WordPress roles treated as chorus members.
 	 *
 	 * @var string[]
 	 */
-	private const DEFAULT_MEMBER_ROLES = array( 'um_member' );
+	public const DEFAULT_USER_MEMBER_ROLES = array( 'um_member' );
 
 	/**
 	 * Get the name of the WP Mailster group to synchronize.
 	 *
 	 * @return string
 	 */
-	public static function group_name(): string {
-		$name = \apply_filters( 'dmbc_mailster_member_group_name', self::DEFAULT_GROUP_NAME );
+	public static function mailstr_group_name(): string {
+		$name = \apply_filters(
+			'dmbc_mailster_group_name',
+			self::DEFAULT_MAILSTR_GROUP_NAME
+		);
 
-		return \is_string( $name ) ? trim( $name ) : self::DEFAULT_GROUP_NAME;
+		return \is_string( $name ) ? trim( $name ) : self::DEFAULT_MAILSTR_GROUP_NAME;
 	}
 
 	/**
@@ -51,8 +54,8 @@ final class MailsterIntegration {
 	 *
 	 * @return string[]
 	 */
-	public static function member_roles(): array {
-		$roles = \apply_filters( 'dmbc_mailster_member_roles', self::DEFAULT_MEMBER_ROLES );
+	public static function user_roles(): array {
+		$roles = \apply_filters( 'dmbc_mailster_user_roles', self::DEFAULT_USER_MEMBER_ROLES );
 		$roles = \is_array( $roles ) ? $roles : array( $roles );
 		$roles = array_filter( array_map( fn( $role ): string => \sanitize_key( (string) $role ), $roles ) );
 
@@ -69,13 +72,13 @@ final class MailsterIntegration {
 
 		$logger = Plugin::instance()->logger();
 
-		$group_id = self::find_group_id( self::group_name() );
+		$group_id = self::find_group_id( self::mailstr_group_name() );
 		if ( 0 === $group_id ) {
-			$logger->error( 'WP Mailster group not found, skipping member sync: ' . self::group_name() );
+			$logger->error( 'WP Mailster group not found, skipping member sync: ' . self::mailstr_group_name() );
 			return 0;
 		}
 
-		$roles = self::member_roles();
+		$roles = self::user_roles();
 		if ( empty( $roles ) ) {
 			$logger->error( 'No member roles configured, skipping WP Mailster member sync.' );
 			return 0;
@@ -98,7 +101,7 @@ final class MailsterIntegration {
 		$existing_ids = self::get_group_core_user_ids( $group_id );
 		$missing_ids  = array_values( array_diff( $member_ids, $existing_ids ) );
 		if ( empty( $missing_ids ) ) {
-			$logger->info( 'All member-role users are already in the WP Mailster group: ' . self::group_name() );
+			$logger->info( 'All member-role users are already in the WP Mailster group: ' . self::mailstr_group_name() );
 			return 0;
 		}
 
@@ -123,7 +126,7 @@ final class MailsterIntegration {
 			++$added;
 		}
 
-		$logger->info( 'Added ' . $added . ' user(s) to the WP Mailster group: ' . self::group_name() );
+		$logger->info( 'Added ' . $added . ' user(s) to the WP Mailster group: ' . self::mailstr_group_name() );
 
 		return $added;
 	}
