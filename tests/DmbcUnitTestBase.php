@@ -58,6 +58,7 @@ abstract class DmbcUnitTestBase extends TestCase {
 			'cache'                     => array(),
 			'dashboard_widgets'         => array(),
 			'current_user'              => new WP_User(),
+			'current_post_id'           => 0,
 			'current_post_type'         => 'post',
 			'is_singular'               => false,
 			'is_post_type_archive'      => false,

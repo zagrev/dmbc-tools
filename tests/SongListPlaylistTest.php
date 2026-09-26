@@ -11,14 +11,15 @@ final class SongListPlaylistTest extends DmbcUnitTestBase {
 	 *
 	 * @covers \DmbcTools\SongListPlaylist::current_user_is_member
 	 */
-	public function test_current_user_is_member_matches_logged_in_member_roles(): void {
+	public function test_current_user_is_member_matches_logged_in_user_roles(): void {
 		$cases = array(
 			'logged out user with member role' => array( false, array( 'um_member' ), false ),
 			'logged in user with no roles'     => array( true, array(), false ),
 			'ultimate member role'            => array( true, array( 'um_member' ), true ),
 			'legacy member role'              => array( true, array( 'member' ), true ),
 			'ordinary subscriber role'        => array( true, array( 'subscriber' ), false ),
-			'mixed roles including member'    => array( true, array( 'subscriber', 'um_member' ), true ),
+			'um member role after another role' => array( true, array( 'subscriber', 'um_member' ), true ),
+			'mixed roles including legacy member' => array( true, array( 'subscriber', 'member' ), true ),
 		);
 
 		foreach ( $cases as $label => $case ) {

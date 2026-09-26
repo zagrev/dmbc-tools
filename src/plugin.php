@@ -21,6 +21,7 @@ require_once __DIR__ . '/songlist-playlist.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/deluxe-cc-transaction.php';
 require_once __DIR__ . '/acf-integration.php';
+require_once __DIR__ . '/mailster-integration.php';
 require_once __DIR__ . '/logger.php';
 
 use DmbcTools\SongListView;
@@ -123,7 +124,7 @@ final class Plugin {
 			// Application is running in a PHPUnit test environment.
 			$this->logger = new DmbcLogger( 'dmbc-tools', DmbcLogger::LEVEL_OFF );
 		} else {
-			$this->logger = new DmbcLogger( 'dmbc-tools' );
+			$this->logger = new DmbcLogger( 'dmbc-tools', DmbcLogger::LEVEL_INFO );
 		}
 	}
 
@@ -164,10 +165,14 @@ final class Plugin {
 		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
 		\add_action( self::MEMBER_UPDATE_CRON_HOOK, array( $this, 'send_member_update_digest' ) );
+		\add_action( MailsterIntegration::CRON_HOOK, array( MailsterIntegration::class, 'sync_members_to_group' ) );
 		\add_action( 'rest_api_init', array( $this, 'register_deluxe_cc_notification_route' ) );
 
 		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
 		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
+
+		\add_action( 'wp_ajax_run_member_updates', array( $this->settings, 'ajax_run_member_updates' ) );
+		\add_action( 'wp_ajax_run_member_groups_sync', array( $this->settings, 'ajax_run_member_groups_sync' ) );
 	}
 
 	// init -------------------------------------------------------------------------------.
@@ -184,12 +189,15 @@ final class Plugin {
 		$this->register_options();
 		$this->add_songlist_capabilities();
 		$this->schedule_member_update_digest();
+		$this->schedule_mailster_member_sync();
 		DeluxeCcTransaction::create_table();
 		AcfIntegration::register_acf_fields();
 
 		\add_action( 'wp_dashboard_setup', array( self::instance(), 'register_menu_slugs_dashboard_widget' ) );
 		\add_action( 'pre_get_posts', array( $this, 'order_songlist_archive_query' ) );
 		\add_filter( 'template_include', array( $this, 'dmbc_single_songlist_template' ) );
+		\add_filter( 'acf/format_value/name=telephone', array( $this, 'format_acf_phone_number' ) );
+		\add_filter( 'acf/format_value/key=field_6aa438ce4ed00', array( $this, 'format_acf_phone_number' ) );
 	}
 
 	/**
@@ -365,6 +373,7 @@ final class Plugin {
 	public function deactivate(): void {
 
 		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
+		\wp_clear_scheduled_hook( MailsterIntegration::CRON_HOOK );
 
 		\flush_rewrite_rules();
 	}
@@ -377,6 +386,17 @@ final class Plugin {
 	public function schedule_member_update_digest(): void {
 		if ( ! \wp_next_scheduled( self::MEMBER_UPDATE_CRON_HOOK ) ) {
 			\wp_schedule_event( \time(), 'daily', self::MEMBER_UPDATE_CRON_HOOK );
+		}
+	}
+
+	/**
+	 * Schedule the recurring synchronization of member-role users into the WP Mailster group.
+	 *
+	 * @return void
+	 */
+	public function schedule_mailster_member_sync(): void {
+		if ( ! \wp_next_scheduled( MailsterIntegration::CRON_HOOK ) ) {
+			\wp_schedule_event( \time(), 'daily', MailsterIntegration::CRON_HOOK );
 		}
 	}
 
@@ -884,7 +904,7 @@ final class Plugin {
 		\add_menu_page(
 			__( 'Ticket Sales', 'dmbc-tools' ),
 			__( 'Ticket Sales', 'dmbc-tools' ),
-			'read', // self::CAP_VIEW_SONGLISTS, // TODO Set new capability.
+			'read', // TODO Set new capability.
 			'dmbc-ticket-sales',
 			array( $this->ticket_view, 'render_ticket_table_page' ),
 			'dashicons-tickets-alt',
@@ -909,7 +929,8 @@ final class Plugin {
 	 */
 	public function render_songlist_view_page() {
 		$this->create_song_list_view();
-		$list_id = isset( $_REQUEST['song_list_id'] ) ? (int) \sanitize_text_field( \wp_unslash( $_REQUEST['song_list_id'] ) ) : 0;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$list_id = isset( $_GET['song_list_id'] ) ? (int) \sanitize_text_field( \wp_unslash( $_GET['song_list_id'] ) ) : 0;
 		$this->song_list_view->dmbc_render_song_list_view_page( $list_id );
 	}
 
@@ -1277,5 +1298,31 @@ final class Plugin {
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Format the ACF telephone field.
+	 *
+	 * @param mixed $value The value of the ACF field.
+	 * @return string The formatted phone number.
+	 */
+	public function format_acf_phone_number( $value ): string {
+		$this->logger->info( 'formatting phone number (' . $value . ')' );
+		// If the field is empty, return early.
+		if ( empty( $value ) ) {
+			return $value;
+		}
+
+		// Remove all non-numeric characters (spaces, dashes, extensions).
+		$numbers_only = preg_replace( '/[^0-9]/', '', $value );
+
+		// If it's a standard 10-digit US number, format it: (XXX) XXX-XXXX.
+		if ( strlen( $numbers_only ) === 10 ) {
+			$value = preg_replace( '/(\d{3})(\d{3})(\d{4})/', '($1) $2-$3', $numbers_only );
+		} elseif ( strlen( $numbers_only ) === 11 ) {
+			$value = preg_replace( '/(\d{1})(\d{3})(\d{3})(\d{4})/', '+$1 ($2) $3-$4', $numbers_only );
+		}
+		$this->logger->info( 'returning phone number (' . $value . ')' );
+		return $value;
 	}
 }

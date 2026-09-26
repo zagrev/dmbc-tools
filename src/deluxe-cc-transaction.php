@@ -254,19 +254,20 @@ class DeluxeCcTransaction {
 			$custom_fields = $transaction['CustomFields'] ?? array();
 			$first_name    = $this->get_custom_field( $custom_fields, 'CustomerFirstName' );
 			$last_name     = $this->get_custom_field( $custom_fields, 'CustomerLastName' );
-			// Create a new user.
-			$user_id = \wp_insert_user(
-				array(
-					'user_login'      => $user_email,
-					'user_email'      => $user_email,
-					'user_registered' => \wp_date( 'Y-m-d H:i:s.v', null, new DateTimeZone( 'UTC' ) ),
-					'display_name'    => $customer['Name'],
-					'first_name'      => $first_name,
-					'last_name'       => $last_name,
-					'user_pass'       => wp_generate_password(),
-					'user_status'     => 'approved',
-				)
+
+			$user_data = array(
+				'user_login'      => $user_email,
+				'user_email'      => $user_email,
+				'user_registered' => \wp_date( 'Y-m-d H:i:s.v', null, new DateTimeZone( 'UTC' ) ),
+				'display_name'    => $customer['Name'],
+				'first_name'      => $first_name,
+				'last_name'       => $last_name,
+				'user_pass'       => wp_generate_password(),
+				'user_status'     => 'approved',
 			);
+
+			// Create a new user.
+			$user_id = \wp_insert_user( $user_data );
 			if ( is_wp_error( $user_id ) ) {
 				throw new InvalidArgumentException( 'Failed to create user:  ' . esc_html( $user_id->get_error_message() ) );
 			}

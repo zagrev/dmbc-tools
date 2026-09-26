@@ -24,8 +24,8 @@ final class SongListPlaylist {
 	 * @return bool
 	 */
 	public static function current_user_is_member(): bool {
-		$current_user = \wp_get_current_user();
-		$user_roles   = is_array( $current_user->roles ?? null ) ? $current_user->roles : array();
+		$current_user = \wp_get_current_user() ?? null;
+		$user_roles   = \is_array( $current_user->roles ) ? $current_user->roles : array();
 
 		return \is_user_logged_in() && ( in_array( 'um_member', $user_roles, true ) || in_array( 'member', $user_roles, true ) );
 	}

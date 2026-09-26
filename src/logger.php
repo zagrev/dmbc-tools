@@ -153,7 +153,7 @@ final class DmbcLogger {
 			case self::LEVEL_INFO:
 				return 'Info';
 			case self::LEVEL_WARN:
-				return 'Warning';
+				return 'Warn';
 			case self::LEVEL_ERROR:
 				return 'Error';
 			default:
@@ -187,27 +187,30 @@ final class DmbcLogger {
 	 * @return void
 	 */
 	private function write_to_wordpress( array $entry ): void {
-		$message = sprintf(
+		$level_string = $entry['level'];
+		$message      = sprintf(
 			'[%s] [%s] %s',
 			$this->channel,
-			$entry['level'],
+			$level_string,
 			$entry['message']
 		);
 
 		if ( ! empty( $entry['context'] ) ) {
-			$message .= ' ' . wp_json_encode( $entry['context'] );
+			$message .= ' ' . \wp_json_encode( $entry['context'] );
 		}
 
 		if ( function_exists( 'wc_get_logger' ) ) {
 			try {
-				wc_get_logger()->log( $this->to_wc_level( $entry['level'] ), $message, array( 'source' => $this->channel ) );
+				\wc_get_logger()->log( $level_string, $message, array( 'source' => $this->channel ) );
 				return;
+			// phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 			} catch ( \Throwable $exception ) {
 				// Catch and ignore exceptions. Fall back to PHP error_log and WordPress debug logging.
 			}
 		}
 
 		if ( function_exists( '\error_log' ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 			\error_log( $message );
 		}
 	}
