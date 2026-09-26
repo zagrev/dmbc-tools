@@ -48,8 +48,6 @@ jobs:
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
-        with:
-          node-version: 22 # 1. Downgrade to Node 22 LTS to fix the silent wp-env crash bug
 
       - name: Set up PHP for Composer checks
         uses: shivammathur/setup-php@v2
