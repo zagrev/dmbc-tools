@@ -64,6 +64,7 @@ if ( ! class_exists( 'WP_Post' ) ) {
 		public string $post_excerpt = '';
 		public string $dmbc_song_list_rehearsal_date = '';
 		public string $post_status = '';
+		public string $post_date = '';
 
 		public function __construct( int $id ) {
 			$this->ID = $id;
@@ -72,17 +73,31 @@ if ( ! class_exists( 'WP_Post' ) ) {
 }
 
 if ( ! class_exists( 'WP_User' ) ) {
+	#[AllowDynamicProperties]
 	class WP_User {
 		public int $ID = 0;
 		public string $user_email = '';
 		public array $roles = array();
 		public array $caps = array();
+		public string $user_login = '';
 
-		public function __construct( int $id = 0, array $data = array() ) {
+		public function __construct( int $id = 0, array|string|object $data = array(), int $site_id = 0 ) {
 			$this->ID = $id;
-			foreach ( $data as $key => $value ) {
-				if ( property_exists( $this, $key ) ) {
-					$this->$key = $value;
+			if (is_array($data)) {
+				foreach ( $data as $key => $value ) {
+					if ( property_exists( $this, $key ) ) {
+						$this->$key = $value;
+					}
+				}
+			}
+			elseif (is_string($data)) {
+				$this->user_login = $data;
+			}
+			elseif (is_object($data)) {
+				foreach ( get_object_vars( $data ) as $key => $value ) {
+					if ( property_exists( $this, $key ) ) {
+						$this->$key = $value;
+					}
 				}
 			}
 		}
@@ -91,7 +106,7 @@ if ( ! class_exists( 'WP_User' ) ) {
 			$this->roles[] = $role;
 			$this->roles   = array_values( array_unique( $this->roles ) );
 		}
-
+	
 		public function remove_cap( string $cap ): void {
 			unset( $this->caps[ $cap ] );
 		}
@@ -962,6 +977,7 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 	class WP_List_Table {
 		public $items = [];
 		public $_columns = [];
+		public $_column_headers = [];
 
 		public function __construct( array $args = array() ) {}
 

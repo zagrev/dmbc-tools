@@ -446,7 +446,7 @@ final class PluginTest extends DmbcUnitTestBase {
 	public function test_render_user_capabilities_widget_lists_active_capabilities(): void {
 		$user             = new WP_User( 9 );
 		$user->user_login = 'member-one';
-		$user->roles      = array( 'um_member' );
+		$user->roles      = array( 'test_roles' );
 		$user->allcaps    = array(
 			Plugin::CAP_VIEW_MEMBER_UPDATES => true,
 			'disabled_capability'           => false,
@@ -458,7 +458,7 @@ final class PluginTest extends DmbcUnitTestBase {
 		$html = (string) ob_get_clean();
 
 		$this->assertStringContainsString( 'member-one', $html );
-		$this->assertStringContainsString( 'um_member', $html );
+		$this->assertStringContainsString( 'test_roles', $html );
 		$this->assertStringContainsString( Plugin::CAP_VIEW_MEMBER_UPDATES, $html );
 		$this->assertStringNotContainsString( 'disabled_capability', $html );
 	}
