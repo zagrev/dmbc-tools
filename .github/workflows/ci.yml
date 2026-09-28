@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
+      contents: read
+      code-quality: write
     outputs:
       run: ${{ steps.check.outputs.run }}
 
@@ -93,13 +95,12 @@ jobs:
         run: |
           wp-env run tests-cli --env-cwd=wp-content/plugins/dmbc-tools bash -e -c "XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-clover coverage.xml"
 
-      - name: Code Coverage Summary Report
-        uses: irongut/CodeCoverageSummary@v1.3.0
+      - name: Upload coverage to GitHub
+        uses: actions/upload-code-coverage@v1
         with:
-          filename: coverage.xml
-          badge: true
-          format: markdown
-          output: both
+          label: coverage
+          language: PHP
+          file: wp-content/plugins/dmbc-tools/coverage.xml
 
       # This step attaches the generated markdown to your Workflow Run summary
       - name: Write to Job Summary
