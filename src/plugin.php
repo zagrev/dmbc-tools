@@ -55,7 +55,7 @@ final class Plugin {
 	public const string SONGLIST_META_NONCE               = 'dmbc_songlist_meta_nonce';
 	public const string SONGLIST_POST_TYPE                = 'dmbc-songlist';
 	public const string SONGS_META_KEY                    = '_dmbc_songs';
-	public const string VERSION                           = '1.1.24';
+	public const string VERSION                           = '1.1.25';
 
 	/**
 	 *  The settings used by the plugin.
