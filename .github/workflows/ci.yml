@@ -104,7 +104,7 @@ jobs:
         with:
           label: coverage
           language: PHP
-          file: wp-content/plugins/dmbc-tools/coverage.xml
+          file: coverage.xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v7
