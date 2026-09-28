@@ -98,7 +98,7 @@ final class Plugin {
 	 * @var TicketView
 	 */
 	private TicketView $ticket_view;
-
+j
 	/**
 	 * The singleton instance of this plugin
 	 *

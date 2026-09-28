@@ -91,6 +91,7 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           files: ./coverage.xml
+        if: false
 
       - name: Stop WordPress test environment
         if: always()
