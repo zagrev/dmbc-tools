@@ -61,7 +61,7 @@ jobs:
         with:
           php-version:  ${{ matrix.php-version }}
           coverage: xdebug
-          tools: composer
+          tools: composer:cache
 
       - name: Install dependencies
         run: composer install --no-progress --prefer-dist --no-interaction
