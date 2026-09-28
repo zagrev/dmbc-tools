@@ -97,7 +97,6 @@ jobs:
 
       - name: Find coverage file
         run: |
-          ls -la wp-content/plugins/dmbc-tools/coverage.xml
           find "." -name "coverage.xml"
 
       - name: Upload coverage to GitHub
