@@ -33,29 +33,29 @@ use DmbcTools\AcfIntegration;
  */
 final class Plugin {
 
-	public const string CAP_EDIT_MEMBER_UPDATES           = 'dmbc_edit_member_updates';
-	public const string CAP_EDIT_SONGLIST                 = 'dmbc_edit_songlist';
-	public const string CAP_PUBLISH_MEMBER_UPDATES        = 'dmbc_publish_member_updates';
-	public const string CAP_VIEW_MEMBER_UPDATES           = 'dmbc_view_member_updates';
-	public const string CAP_VIEW_SONGLISTS                = 'dmbc_view_songlist';
-	public const string MEMBER_UPDATE_CRON_HOOK           = 'dmbc_send_member_update_digest';
-	public const string MEMBER_UPDATE_POST_TYPE           = 'dmbc-member-updates';
-	public const string MEMBER_UPDATE_RECIPIENT_META_KEY  = '_dmbc_member_update_recipient';
-	public const string MEMBER_UPDATE_SENT_META_KEY       = '_dmbc_member_update_sent_at';
-	public const string NOTES_META_KEY                    = '_dmbc_notes';
-	public const string OPTION_EMAIL_RECIPIENT            = 'member_update_recipient';
-	public const string OPTION_MAX_BCC_PER_EMAIL          = 'max_bcc_recipients_per_email';
-	public const string OPTION_REMOVE_DATA_ON_UNINSTALL   = 'remove_data_on_uninstall';
-	public const string OPTION_SONGLIST_DIRECTORY         = 'song_library_directory';
+	public const string CAP_EDIT_MEMBER_UPDATES = 'dmbc_edit_member_updates';
+	public const string CAP_EDIT_SONGLIST = 'dmbc_edit_songlist';
+	public const string CAP_PUBLISH_MEMBER_UPDATES = 'dmbc_publish_member_updates';
+	public const string CAP_VIEW_MEMBER_UPDATES = 'dmbc_view_member_updates';
+	public const string CAP_VIEW_SONGLISTS = 'dmbc_view_songlist';
+	public const string MEMBER_UPDATE_CRON_HOOK = 'dmbc_send_member_update_digest';
+	public const string MEMBER_UPDATE_POST_TYPE = 'dmbc-member-updates';
+	public const string MEMBER_UPDATE_RECIPIENT_META_KEY = '_dmbc_member_update_recipient';
+	public const string MEMBER_UPDATE_SENT_META_KEY = '_dmbc_member_update_sent_at';
+	public const string NOTES_META_KEY = '_dmbc_notes';
+	public const string OPTION_EMAIL_RECIPIENT = 'member_update_recipient';
+	public const string OPTION_MAX_BCC_PER_EMAIL = 'max_bcc_recipients_per_email';
+	public const string OPTION_REMOVE_DATA_ON_UNINSTALL = 'remove_data_on_uninstall';
+	public const string OPTION_SONGLIST_DIRECTORY = 'song_library_directory';
 	public const string OPTION_SONGLIST_EXCLUSION_REGEXES = 'song_library_exclusion_regexes';
-	public const string OPTION_SONGLIST_RECIPIENT_ROLES   = 'song_list_recipient_roles';
-	public const string OPTION_VERSION                    = 'dmbc_tools_version';
-	public const string PERFORMANCE_DATE_META_KEY         = '_dmbc_performance_date';
-	public const string PLAYLIST_META_KEY                 = '_dmbc_playlist';
-	public const string SONGLIST_META_NONCE               = 'dmbc_songlist_meta_nonce';
-	public const string SONGLIST_POST_TYPE                = 'dmbc-songlist';
-	public const string SONGS_META_KEY                    = '_dmbc_songs';
-	public const string VERSION                           = '1.1.28';
+	public const string OPTION_SONGLIST_RECIPIENT_ROLES = 'song_list_recipient_roles';
+	public const string OPTION_VERSION = 'dmbc_tools_version';
+	public const string PERFORMANCE_DATE_META_KEY = '_dmbc_performance_date';
+	public const string PLAYLIST_META_KEY = '_dmbc_playlist';
+	public const string SONGLIST_META_NONCE = 'dmbc_songlist_meta_nonce';
+	public const string SONGLIST_POST_TYPE = 'dmbc-songlist';
+	public const string SONGS_META_KEY = '_dmbc_songs';
+	public const string VERSION = '1.1.28';
 
 	/**
 	 *  The settings used by the plugin.
@@ -117,8 +117,8 @@ final class Plugin {
 	 * Private constructor to prevent direct instantiation.
 	 */
 	private function __construct() {
-		$this->settings              = new DmbcSettings();
-		$this->mailer                = new Mailer( $this->settings );
+		$this->settings = new DmbcSettings();
+		$this->mailer = new Mailer( $this->settings );
 		$this->deluxe_cc_transaction = new DeluxeCcTransaction();
 		if ( \defined( 'PHPUNIT_COMPOSER_INSTALL' ) || \defined( '__PHPUNIT_PHAR__' ) ) {
 			// Application is running in a PHPUnit test environment.
@@ -198,6 +198,28 @@ final class Plugin {
 		\add_filter( 'template_include', array( $this, 'dmbc_single_songlist_template' ) );
 		\add_filter( 'acf/format_value/name=telephone', array( $this, 'format_acf_phone_number' ) );
 		\add_filter( 'acf/format_value/key=field_6aa438ce4ed00', array( $this, 'format_acf_phone_number' ) );
+
+		\add_filter( 'acf/prepare_field/name=start_date', array( $this, 'bhs_data_make_read_only' ) );
+		\add_filter( 'acf/prepare_field/name=end_date', array( $this, 'bhs_data_make_read_only' ) );
+		\add_filter( 'acf/prepare_field/name=membership_number', array( $this, 'bhs_data_make_read_only' ) );
+		\add_filter( 'acf/prepare_field/name=person_of_note_referrals', array( $this, 'bhs_data_make_read_only' ) );
+		\add_filter( 'acf/prepare_field/name=membership_status', array( $this, 'bhs_data_make_read_only' ) );
+		\add_filter( 'acf/prepare_field/name=current_status', array( $this, 'bhs_data_make_read_only' ) );
+		\add_filter( 'acf/prepare_field/name=years_of_service', array( $this, 'bhs_data_make_read_only' ) );
+		\add_filter( 'acf/prepare_field/name=discount_level', array( $this, 'bhs_data_make_read_only' ) );
+	}
+
+	/**
+	 * Set field read only if the user cannot edit member updates.
+	 *
+	 * @return mixed The modified field array.
+	 * @param mixed $field The ACF field array.
+	 */
+	public function bhs_data_make_read_only( mixed $field ): mixed {
+		if ( ! current_user_can( self::CAP_EDIT_MEMBER_UPDATES ) ) {
+			$field['readonly'] = true;
+		}
+		return $field;
 	}
 
 	/**
@@ -355,9 +377,7 @@ final class Plugin {
 			'editor'        => $editor_capabilities,
 			'um_director'   => $editor_capabilities,
 			'um_member'     => array(
-				self::CAP_EDIT_MEMBER_UPDATES,
 				self::CAP_VIEW_MEMBER_UPDATES,
-				self::CAP_PUBLISH_MEMBER_UPDATES,
 				self::CAP_VIEW_SONGLISTS,
 			),
 		);
@@ -428,11 +448,11 @@ final class Plugin {
 			return;
 		}
 
-		$subject   = __( 'Member Updates', 'dmbc - tools' );
+		$subject = __( 'Member Updates', 'dmbc - tools' );
 		$post_list = '';
 		foreach ( $updates as $post ) {
-			$post_title   = \get_the_title( $post );
-			$raw_content  = \apply_filters( 'the_content', $post->post_content );
+			$post_title = \get_the_title( $post );
+			$raw_content = \apply_filters( 'the_content', $post->post_content );
 			$featured_img = \get_the_post_thumbnail_url( $post->ID, 'large' );
 
 			// 2. Inline standard styles to raw web HTML so email clients don't break them
@@ -454,7 +474,7 @@ final class Plugin {
         <tr>
             <td align='center'>
                 <table width='600' bgcolor='#ffffff' style='padding:40px; border-radius:8px;'>
-                    
+
                     <tr><td>{$post_list}</td></tr>
                 </table>
             </td>
@@ -514,14 +534,14 @@ final class Plugin {
 		);
 
 		foreach (
-		array(
-			self::OPTION_VERSION,
-			'song_library_directory',
-			'song_library_exclusion_regexes',
-			'song_list_recipient_roles',
-			self::OPTION_EMAIL_RECIPIENT,
-			self::OPTION_REMOVE_DATA_ON_UNINSTALL,
-		) as $option_name
+			array(
+				self::OPTION_VERSION,
+				'song_library_directory',
+				'song_library_exclusion_regexes',
+				'song_list_recipient_roles',
+				self::OPTION_EMAIL_RECIPIENT,
+				self::OPTION_REMOVE_DATA_ON_UNINSTALL,
+			) as $option_name
 		) {
 			\delete_option( $option_name );
 		}
@@ -552,7 +572,7 @@ final class Plugin {
 			\register_post_type(
 				self::SONGLIST_POST_TYPE,
 				array(
-					'labels'       => array(
+					'labels' => array(
 						'name'          => __( 'Song Lists', 'dmbc-tools' ),
 						'singular_name' => __( 'Song List', 'dmbc-tools' ),
 						'add_new_item'  => __( 'Add new Song List', 'dmbc-tools' ),
@@ -585,38 +605,38 @@ final class Plugin {
 		\register_post_type(
 			self::MEMBER_UPDATE_POST_TYPE,
 			array(
-				'labels'          => array(
-					'name'          => __( 'Member Updates', 'dmbc-tools' ),
+				'labels' => array(
+					'name' => __( 'Member Updates', 'dmbc-tools' ),
 					'singular_name' => __( 'Member Update', 'dmbc-tools' ),
-					'add_new_item'  => __( 'Add Member Update', 'dmbc-tools' ),
-					'edit_item'     => __( 'Edit Member Update', 'dmbc-tools' ),
+					'add_new_item' => __( 'Add Member Update', 'dmbc-tools' ),
+					'edit_item' => __( 'Edit Member Update', 'dmbc-tools' ),
 				),
-				'public'          => true,
-				'show_ui'         => true,
-				'show_in_menu'    => false,
-				'show_in_rest'    => true,
-				'has_archive'     => true,
-				'rewrite'         => array( 'slug' => 'member-updates' ),
-				'supports'        => array( 'title', 'editor' ),
+				'public' => true,
+				'show_ui' => true,
+				'show_in_menu' => false,
+				'show_in_rest' => true,
+				'has_archive' => true,
+				'rewrite' => array( 'slug' => 'member-updates' ),
+				'supports' => array( 'title', 'editor' ),
 				'capability_type' => 'post',
-				'map_meta_cap'    => false,
-				'capabilities'    => array(
-					'edit_post'              => self::CAP_EDIT_MEMBER_UPDATES,
-					'read_post'              => self::CAP_VIEW_MEMBER_UPDATES,
-					'delete_post'            => self::CAP_EDIT_MEMBER_UPDATES,
-					'edit_posts'             => self::CAP_EDIT_MEMBER_UPDATES,
-					'edit_others_posts'      => self::CAP_EDIT_MEMBER_UPDATES,
-					'edit_private_posts'     => self::CAP_EDIT_MEMBER_UPDATES,
-					'edit_published_posts'   => self::CAP_EDIT_MEMBER_UPDATES,
-					'publish_posts'          => self::CAP_PUBLISH_MEMBER_UPDATES,
-					'read_private_posts'     => self::CAP_VIEW_MEMBER_UPDATES,
-					'delete_posts'           => self::CAP_EDIT_MEMBER_UPDATES,
-					'delete_others_posts'    => self::CAP_EDIT_MEMBER_UPDATES,
-					'delete_private_posts'   => self::CAP_EDIT_MEMBER_UPDATES,
+				'map_meta_cap' => false,
+				'capabilities' => array(
+					'edit_post' => self::CAP_EDIT_MEMBER_UPDATES,
+					'read_post' => self::CAP_VIEW_MEMBER_UPDATES,
+					'delete_post' => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_posts' => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_others_posts' => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_private_posts' => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_published_posts' => self::CAP_EDIT_MEMBER_UPDATES,
+					'publish_posts' => self::CAP_PUBLISH_MEMBER_UPDATES,
+					'read_private_posts' => self::CAP_VIEW_MEMBER_UPDATES,
+					'delete_posts' => self::CAP_EDIT_MEMBER_UPDATES,
+					'delete_others_posts' => self::CAP_EDIT_MEMBER_UPDATES,
+					'delete_private_posts' => self::CAP_EDIT_MEMBER_UPDATES,
 					'delete_published_posts' => self::CAP_EDIT_MEMBER_UPDATES,
-					'create_posts'           => self::CAP_EDIT_MEMBER_UPDATES,
+					'create_posts' => self::CAP_EDIT_MEMBER_UPDATES,
 				),
-				'menu_icon'       => 'dashicons-megaphone',
+				'menu_icon' => 'dashicons-megaphone',
 			)
 		);
 
@@ -651,15 +671,15 @@ final class Plugin {
 		\wp_nonce_field( 'dmbc_save_songlist_meta', self::SONGLIST_META_NONCE );
 
 		$performance_date = \get_post_meta( $post->ID, self::PERFORMANCE_DATE_META_KEY, true );
-		$items            = SongList::normalize_items( \get_post_meta( $post->ID, self::SONGS_META_KEY, true ) );
-		$item_lines       = implode(
+		$items = SongList::normalize_items( \get_post_meta( $post->ID, self::SONGS_META_KEY, true ) );
+		$item_lines = implode(
 			"\n",
 			array_map(
 				fn( $item ) => SongList::TYPE_NOTE === $item['type'] ? 'note: ' . $item['value'] : $item['value'],
 				$items
 			)
 		);
-		$notes            = \get_post_meta( $post->ID, self::NOTES_META_KEY, true );
+		$notes = \get_post_meta( $post->ID, self::NOTES_META_KEY, true );
 		?>
 		<p>
 			<label
@@ -671,7 +691,8 @@ final class Plugin {
 			<label for="dmbc-songs"><strong><?php esc_html_e( 'Rehearsal items', 'dmbc-tools' ); ?></strong></label><br>
 			<textarea id="dmbc-songs" name="dmbc_songs" rows="10"
 				class="widefat"><?php echo esc_textarea( $item_lines ); ?></textarea>
-			<span class="description"><?php esc_html_e( 'One item per line. Prefix a line with "note:" to show it as plain text instead of a song link.', 'dmbc-tools' ); ?></span>
+			<span
+				class="description"><?php esc_html_e( 'One item per line. Prefix a line with "note:" to show it as plain text instead of a song link.', 'dmbc-tools' ); ?></span>
 		</p>
 		<p>
 			<label for="dmbc-notes"><strong><?php esc_html_e( 'Notes', 'dmbc-tools' ); ?></strong></label><br>
@@ -690,18 +711,18 @@ final class Plugin {
 	public function save_songlist_meta( int $post_id ): void {
 
 		if (
-		! isset( $_POST[ self::SONGLIST_META_NONCE ] ) ||
-		! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST[ self::SONGLIST_META_NONCE ] ) ), 'dmbc_save_songlist_meta' ) ||
-		( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) ||
-		! \current_user_can( 'edit_post', $post_id )
+			! isset( $_POST[ self::SONGLIST_META_NONCE ] ) ||
+			! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST[ self::SONGLIST_META_NONCE ] ) ), 'dmbc_save_songlist_meta' ) ||
+			( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) ||
+			! \current_user_can( 'edit_post', $post_id )
 		) {
 			return;
 		}
 
 		$fields = array(
 			'dmbc_performance_date' => self::PERFORMANCE_DATE_META_KEY,
-			'dmbc_songs'            => self::SONGS_META_KEY,
-			'dmbc_notes'            => self::NOTES_META_KEY,
+			'dmbc_songs' => self::SONGS_META_KEY,
+			'dmbc_notes' => self::NOTES_META_KEY,
 		);
 
 		foreach ( $fields as $field_name => $meta_key ) {
@@ -710,8 +731,8 @@ final class Plugin {
 			}
 
 			$value = 'dmbc_performance_date' === $field_name
-			? \sanitize_text_field( \wp_unslash( $_POST[ $field_name ] ) )
-			: \sanitize_textarea_field( \wp_unslash( $_POST[ $field_name ] ) );
+				? \sanitize_text_field( \wp_unslash( $_POST[ $field_name ] ) )
+				: \sanitize_textarea_field( \wp_unslash( $_POST[ $field_name ] ) );
 
 			if ( 'dmbc_songs' === $field_name ) {
 				$value = self::parse_rehearsal_item_lines( $value );
@@ -741,14 +762,14 @@ final class Plugin {
 				$note = trim( substr( $line, 5 ) );
 				if ( '' !== $note ) {
 					$items[] = array(
-						'type'  => SongList::TYPE_NOTE,
+						'type' => SongList::TYPE_NOTE,
 						'value' => $note,
 					);
 				}
 				continue;
 			}
 			$items[] = array(
-				'type'  => SongList::TYPE_SONG,
+				'type' => SongList::TYPE_SONG,
 				'value' => $line,
 			);
 		}
@@ -841,8 +862,8 @@ final class Plugin {
 		}
 
 		$legacy_caps = array( 'view-song-lists', 'edit_song_list' );
-		$role_names  = array_keys( \wp_roles()->get_names() );
-		$users       = \get_users();
+		$role_names = array_keys( \wp_roles()->get_names() );
+		$users = \get_users();
 
 		foreach ( $role_names as $role_name ) {
 			$role = \get_role( $role_name );
@@ -970,7 +991,7 @@ final class Plugin {
 					continue;
 				}
 
-				$parent_slug  = $menu_item[2];
+				$parent_slug = $menu_item[2];
 				$parent_title = wp_strip_all_tags( $menu_item[0] );
 
 				// If it's just a separator, skip it.
@@ -986,7 +1007,7 @@ final class Plugin {
 					foreach ( $submenu[ $parent_slug ] as $sub_item ) {
 						// $sub_item[0] is the sub title, $sub_item[2] is the sub slug
 						$sub_title = wp_strip_all_tags( $sub_item[0] );
-						$sub_slug  = $sub_item[2];
+						$sub_slug = $sub_item[2];
 
 						echo '<li class="slugs-sub-item">— ' . esc_html( $sub_title ) . ': <span class="slug-tag">' . esc_html( $sub_slug ) . '</span></li>';
 					}
@@ -1059,20 +1080,20 @@ final class Plugin {
 		$slugs = isset( $query['slug__in'] ) ? $query['slug__in'] : array();
 
 		$templates = array(
-			'single-songlist'       => array(
-				'file'  => 'single-songlist.html',
+			'single-songlist' => array(
+				'file' => 'single-songlist.html',
 				'title' => 'Single Songlist',
 			),
-			'single-dmbc-songlist'  => array(
-				'file'  => 'single-songlist.html',
+			'single-dmbc-songlist' => array(
+				'file' => 'single-songlist.html',
 				'title' => 'Single Songlist',
 			),
-			'archive-songlist'      => array(
-				'file'  => 'archive-songlist.html',
+			'archive-songlist' => array(
+				'file' => 'archive-songlist.html',
 				'title' => 'Songlist Archive',
 			),
 			'archive-dmbc-songlist' => array(
-				'file'  => 'archive-songlist.html',
+				'file' => 'archive-songlist.html',
 				'title' => 'Songlist Archive',
 			),
 		);
@@ -1083,17 +1104,17 @@ final class Plugin {
 				$template_file = plugin_dir_path( __FILE__ ) . 'templates/' . $templates[ $slug ]['file'];
 
 				if ( file_exists( $template_file ) ) {
-					$template        = new \WP_Block_Template();
-					$template->type  = 'wp_template';
+					$template = new \WP_Block_Template();
+					$template->type = 'wp_template';
 					$template->theme = get_stylesheet();
-					$template->slug  = $slug;
-					$template->id    = get_stylesheet() . '//' . $slug;
+					$template->slug = $slug;
+					$template->id = get_stylesheet() . '//' . $slug;
 					$template->title = $templates[ $slug ]['title'];
 					ob_start();
 					include $template_file;
-					$template->content   = (string) ob_get_clean();
-					$template->source    = 'plugin';
-					$template->status    = 'publish';
+					$template->content = (string) ob_get_clean();
+					$template->source = 'plugin';
+					$template->status = 'publish';
 					$template->is_custom = true;
 
 					// Return it inside an array as WordPress expects.
@@ -1123,20 +1144,20 @@ final class Plugin {
 		$slugs = isset( $query['slug__in'] ) ? $query['slug__in'] : array();
 
 		$templates = array(
-			'single-member-update'        => array(
-				'file'  => 'single-member-update.html',
+			'single-member-update' => array(
+				'file' => 'single-member-update.html',
 				'title' => 'Single Member Update',
 			),
-			'single-dmbc-member-updates'  => array(
-				'file'  => 'single-member-update.html',
+			'single-dmbc-member-updates' => array(
+				'file' => 'single-member-update.html',
 				'title' => 'Single Member Update',
 			),
-			'archive-member-update'       => array(
-				'file'  => 'archive-member-update.html',
+			'archive-member-update' => array(
+				'file' => 'archive-member-update.html',
 				'title' => 'Member Update Archive',
 			),
 			'archive-dmbc-member-updates' => array(
-				'file'  => 'archive-member-update.html',
+				'file' => 'archive-member-update.html',
 				'title' => 'Member Update Archive',
 			),
 		);
@@ -1147,17 +1168,17 @@ final class Plugin {
 				$template_file = plugin_dir_path( __FILE__ ) . 'templates/' . $templates[ $slug ]['file'];
 
 				if ( file_exists( $template_file ) ) {
-					$template        = new \WP_Block_Template();
-					$template->type  = 'wp_template';
+					$template = new \WP_Block_Template();
+					$template->type = 'wp_template';
 					$template->theme = get_stylesheet();
-					$template->slug  = $slug;
-					$template->id    = get_stylesheet() . '//' . $slug;
+					$template->slug = $slug;
+					$template->id = get_stylesheet() . '//' . $slug;
 					$template->title = $templates[ $slug ]['title'];
 					ob_start();
 					include $template_file;
-					$template->content   = (string) ob_get_clean();
-					$template->source    = 'plugin';
-					$template->status    = 'publish';
+					$template->content = (string) ob_get_clean();
+					$template->source = 'plugin';
+					$template->status = 'publish';
 					$template->is_custom = true;
 
 					// Return it inside an array as WordPress expects.
@@ -1208,7 +1229,8 @@ final class Plugin {
 				<?php if ( ! empty( $rehearsal_date ) ) : ?>
 					<p class="dmbc-songlist-date">
 						<?php \esc_html_e( 'Rehearsal date:', 'dmbc-tools' ); ?>
-						<time datetime="<?php echo \esc_attr( $rehearsal_date ); ?>"><?php echo \esc_html( $rehearsal_date ); ?></time>
+						<time
+							datetime="<?php echo \esc_attr( $rehearsal_date ); ?>"><?php echo \esc_html( $rehearsal_date ); ?></time>
 					</p>
 				<?php endif; ?>
 			</header>
@@ -1229,10 +1251,10 @@ final class Plugin {
 	 * @return string Song-list HTML.
 	 */
 	public static function render_songlist_post( int $songlist_id ): string {
-		$dmbc_is_member          = SongListPlaylist::current_user_is_member();
-		$items                   = SongList::normalize_items( \get_post_meta( $songlist_id, self::SONGS_META_KEY, true ) );
-		$notes                   = (string) \get_post_meta( $songlist_id, self::NOTES_META_KEY, true );
-		$download_groups         = $dmbc_is_member ? SongListPlaylist::get_download_groups( $items ) : array();
+		$dmbc_is_member = SongListPlaylist::current_user_is_member();
+		$items = SongList::normalize_items( \get_post_meta( $songlist_id, self::SONGS_META_KEY, true ) );
+		$notes = (string) \get_post_meta( $songlist_id, self::NOTES_META_KEY, true );
+		$download_groups = $dmbc_is_member ? SongListPlaylist::get_download_groups( $items ) : array();
 		$download_groups_by_song = array();
 
 		foreach ( $download_groups as $download_group ) {
@@ -1240,7 +1262,7 @@ final class Plugin {
 		}
 
 		$playlist_file_urls = $dmbc_is_member ? SongListPlaylist::get_or_update_playlist_from_download_groups( $songlist_id, $download_groups ) : array();
-		$playlist_filename  = \sanitize_file_name( \get_the_title( $songlist_id ) . '.m3u' );
+		$playlist_filename = \sanitize_file_name( \get_the_title( $songlist_id ) . '.m3u' );
 
 		ob_start();
 		?>
@@ -1252,8 +1274,8 @@ final class Plugin {
 							<li class="dmbc-songlist-note"><?php echo \esc_html( $item['value'] ); ?></li>
 						<?php else : ?>
 							<?php
-							$song_path      = \wp_normalize_path( (string) $item['value'] );
-							$song_url       = SongListPlaylist::get_song_folder_url( $song_path );
+							$song_path = \wp_normalize_path( (string) $item['value'] );
+							$song_url = SongListPlaylist::get_song_folder_url( $song_path );
 							$download_group = $download_groups_by_song[ $song_path ] ?? null;
 							?>
 							<li class="dmbc-songlist-song">
@@ -1261,11 +1283,13 @@ final class Plugin {
 									<details class="dmbc-songlist-song-details">
 										<summary class="dmbc-songlist-song-summary"><?php echo \esc_html( $song_path ); ?></summary>
 										<div class="dmbc-songlist-song-panel">
-											<a class="dmbc-songlist-folder-link" href="<?php echo \esc_url( $song_url ); ?>"><?php \esc_html_e( 'Open song folder', 'dmbc-tools' ); ?></a>
+											<a class="dmbc-songlist-folder-link"
+												href="<?php echo \esc_url( $song_url ); ?>"><?php \esc_html_e( 'Open song folder', 'dmbc-tools' ); ?></a>
 											<ul class="dmbc-songlist-download-files">
 												<?php foreach ( $download_group['files'] as $download_file ) : ?>
 													<li>
-														<a href="<?php echo \esc_url( $download_file['url'] ); ?>" download><?php echo \esc_html( $download_file['name'] ); ?></a>
+														<a href="<?php echo \esc_url( $download_file['url'] ); ?>"
+															download><?php echo \esc_html( $download_file['name'] ); ?></a>
 													</li>
 												<?php endforeach; ?>
 											</ul>
@@ -1290,7 +1314,8 @@ final class Plugin {
 
 			<?php if ( ! empty( $playlist_file_urls ) ) : ?>
 				<p class="dmbc-songlist-playlist">
-					<a class="dmbc-songlist-playlist-download" href="#" download="<?php echo \esc_attr( $playlist_filename ); ?>" data-playlist-urls="<?php echo \esc_attr( \wp_json_encode( $playlist_file_urls ) ); ?>">
+					<a class="dmbc-songlist-playlist-download" href="#" download="<?php echo \esc_attr( $playlist_filename ); ?>"
+						data-playlist-urls="<?php echo \esc_attr( \wp_json_encode( $playlist_file_urls ) ); ?>">
 						<?php \esc_html_e( 'Download playlist', 'dmbc-tools' ); ?>
 					</a>
 				</p>

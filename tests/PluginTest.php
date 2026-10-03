@@ -249,7 +249,6 @@ final class PluginTest extends DmbcUnitTestBase {
 
 		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_EDIT_MEMBER_UPDATES ) );
 		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_VIEW_MEMBER_UPDATES ) );
-		$this->assertTrue( $this->role_has_cap( 'um_member', Plugin::CAP_PUBLISH_MEMBER_UPDATES ) );
 		$this->assertFalse( $this->role_has_cap( 'um_member', Plugin::CAP_EDIT_SONGLIST ) );
 	}
 
