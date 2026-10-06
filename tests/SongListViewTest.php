@@ -255,6 +255,53 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$this->assertSame( 'Begin with warmups.', $this->get_stored_post_meta( 1, Plugin::NOTES_META_KEY ) );
 	}
 
+	public function test_song_list_email_matches_the_web_page_items_and_preserves_notes(): void {
+		$post = $this->make_post();
+		$GLOBALS['dmbc_test_state']['logged_in'] = false;
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array( 'user_email' => 'member@example.com', 'role' => 'um_member' ),
+		);
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'director@example.com' );
+		$this->set_post_meta(
+			$post->ID,
+			Plugin::SONGS_META_KEY,
+			array(
+				'Song A',
+				array( 'type' => 'note', 'value' => 'Ten-minute break <strong>rest</strong>' ),
+				array( 'type' => 'song', 'value' => 'Song B' ),
+			)
+		);
+
+		$recipients = $this->make_view()->send_song_list_to_roles( $post->ID, array( 'um_member' ) );
+		$this->assertSame( array( 'member@example.com' ), $recipients );
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$mail = $GLOBALS['dmbc_test_state']['mail_calls'][0];
+		$this->assertSame( 'director@example.com', $mail['recipients'] );
+		$this->assertSame( 'Rehearsal song list: 2026-09-02', $mail['subject'] );
+		$this->assertContains( 'Bcc: member@example.com', $mail['headers'] );
+		$this->assertContains( 'Content-Type: text/html; charset=UTF-8', $mail['headers'] );
+		$this->assertStringContainsString( 'September rehearsal for 2026-09-02', $mail['message'] );
+		$this->assertStringContainsString( 'Rehearsal items', $mail['message'] );
+		$this->assertStringContainsString( '>Song A</a>', $mail['message'] );
+		$this->assertStringContainsString( 'href="http://example.test/wp-content/', $mail['message'] );
+		$this->assertStringContainsString( 'Ten-minute break &lt;strong&gt;rest&lt;/strong&gt;', $mail['message'] );
+		$this->assertStringNotContainsString( 'Ten-minute break <strong>', $mail['message'] );
+		$this->assertStringContainsString( 'Start with warmups.', $mail['message'] );
+		$this->assertLessThan( strpos( $mail['message'], 'Ten-minute break' ), strpos( $mail['message'], '>Song A</a>' ) );
+		$this->assertLessThan( strpos( $mail['message'], '>Song B</a>' ), strpos( $mail['message'], 'Ten-minute break' ) );
+		$this->assertStringNotContainsString( 'Please log in', $mail['message'] );
+	}
+
+	public function test_song_list_email_renders_the_empty_list_message(): void {
+		$post = $this->make_post();
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array( 'user_email' => 'member@example.com', 'role' => 'um_member' ),
+		);
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'director@example.com' );
+		$this->make_view()->send_song_list_to_role( $post->ID, 'um_member' );
+		$this->assertStringContainsString( 'No songs selected for this list.', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+	}
+
 	public function test_send_methods_return_false_without_a_valid_song_list(): void {
 		$GLOBALS['dmbc_test_state']['users']     = array(
 			(object) array( 'user_email' => 'subscriber@example.com','role' => 'subscriber' ),
