@@ -397,9 +397,16 @@ class SongListView {
 			return array();
 		}
 
-		$rehearsal_date = \get_post_meta( $song_list_id, Plugin::PERFORMANCE_DATE_META_KEY, true );
-		$subject        = "Rehearsal song list: {$rehearsal_date}";
-		$message        = \apply_filters( 'the_content', $song_list->post_content );
+		$rehearsal_date    = \get_post_meta( $song_list_id, Plugin::PERFORMANCE_DATE_META_KEY, true );
+		$subject           = "Rehearsal song list: {$rehearsal_date}";
+		$song_list_title   = \get_the_title( $song_list );
+		$items             = SongList::normalize_items( \get_post_meta( $song_list_id, Plugin::SONGS_META_KEY, true ) );
+		$notes             = \apply_filters( 'the_content', $song_list->post_content );
+		$song_library_path = $this->convert_full_path_to_relative( WP_CONTENT_DIR, $this->settings->get_song_library_directory_path() );
+
+		ob_start();
+		require __DIR__ . '/templates/song-list-email.php';
+		$message = ob_get_clean();
 
 		return $this->mailer->send_email( $subject, $message, $roles );
 	}
