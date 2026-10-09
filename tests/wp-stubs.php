@@ -21,6 +21,7 @@ $GLOBALS['dmbc_test_state'] = array(
 	'last_get_posts_args'     => array(),
 	'mail_calls'              => array(),
 	'users'                   => array(),
+	'get_users_calls'           => array(),
 	'cron_events'             => array(), 
 	'next_post_id'            => 1, 
 	'roles'                   => array(),
@@ -322,6 +323,16 @@ if ( ! function_exists( 'esc_attr_e' ) ) {
 if ( ! function_exists( 'esc_attr' ) ) {
 	function esc_attr( $text ): string {
 		return htmlspecialchars( (string) $text, ENT_QUOTES );
+	}
+}
+
+if ( ! function_exists( 'selected' ) ) {
+	function selected( $selected, $current, bool $echo = true ): string {
+		$result = (string) $selected === (string) $current ? 'selected="selected"' : '';
+		if ( $echo && '' !== $result ) {
+			echo $result;
+		}
+		return $result;
 	}
 }
 
@@ -799,6 +810,7 @@ if ( ! function_exists( 'wpautop' ) ) {
 if ( ! function_exists( 'get_users' ) ) {
 	function get_users( array $args = array() ): array {
 		$GLOBALS['dmbc_test_state']['last_get_users_args'] = $args;
+		$GLOBALS['dmbc_test_state']['get_users_calls'][] = $args;
 		$users = $GLOBALS['dmbc_test_state']['users'];
 
 		if ( 'ID' === ( $args['fields'] ?? '' ) ) {

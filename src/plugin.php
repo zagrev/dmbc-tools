@@ -39,9 +39,12 @@ final class Plugin {
 	public const string CAP_VIEW_MEMBER_UPDATES = 'dmbc_view_member_updates';
 	public const string CAP_VIEW_SONGLISTS = 'dmbc_view_songlist';
 	public const string MEMBER_UPDATE_CRON_HOOK = 'dmbc_send_member_update_digest';
+	public const string MEMBER_UPDATE_ROLE_META_KEY = '_dmbc_member_update_role';
+	public const string MEMBER_UPDATE_META_NONCE = 'dmbc_member_update_meta_nonce';
 	public const string MEMBER_UPDATE_POST_TYPE = 'dmbc-member-updates';
 	public const string MEMBER_UPDATE_RECIPIENT_META_KEY = '_dmbc_member_update_recipient';
 	public const string MEMBER_UPDATE_SENT_META_KEY = '_dmbc_member_update_sent_at';
+	public const string DEFAULT_MEMBER_UPDATE_ROLE = 'um_member';
 	public const string NOTES_META_KEY = '_dmbc_notes';
 	public const string OPTION_EMAIL_RECIPIENT = 'member_update_recipient';
 	public const string OPTION_MAX_BCC_PER_EMAIL = 'max_bcc_recipients_per_email';
@@ -56,6 +59,7 @@ final class Plugin {
 	public const string SONGLIST_POST_TYPE = 'dmbc-songlist';
 	public const string SONGS_META_KEY = '_dmbc_songs';
 	public const string VERSION = '1.1.29';
+
 
 	/**
 	 *  The settings used by the plugin.
@@ -164,6 +168,8 @@ final class Plugin {
 
 		\add_action( 'add_meta_boxes', array( $this, 'add_songlist_meta_box' ) );
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
+		\add_action( 'add_meta_boxes', array( $this, 'add_member_update_meta_box' ) );
+		\add_action( 'save_post_' . self::MEMBER_UPDATE_POST_TYPE, array( $this, 'save_member_update_meta' ) );
 		\add_action( self::MEMBER_UPDATE_CRON_HOOK, array( $this, 'send_member_update_digest' ) );
 		\add_action( MailsterIntegration::CRON_HOOK, array( MailsterIntegration::class, 'sync_members_to_group' ) );
 		\add_action( 'rest_api_init', array( $this, 'register_deluxe_cc_notification_route' ) );
@@ -261,8 +267,8 @@ final class Plugin {
 			'dmbc',
 			'/deluxe_cc_notification',
 			array(
-				'methods'             => 'POST',
-				'callback'            => array( $this->deluxe_cc_transaction, 'handle_deluxe_cc_notification' ),
+				'methods' => 'POST',
+				'callback' => array( $this->deluxe_cc_transaction, 'handle_deluxe_cc_notification' ),
 				'permission_callback' => '__return_true',
 			)
 		);
@@ -374,9 +380,9 @@ final class Plugin {
 
 		return array(
 			'administrator' => $editor_capabilities,
-			'editor'        => $editor_capabilities,
-			'um_director'   => $editor_capabilities,
-			'um_member'     => array(
+			'editor' => $editor_capabilities,
+			'um_director' => $editor_capabilities,
+			'um_member' => array(
 				self::CAP_VIEW_MEMBER_UPDATES,
 				self::CAP_VIEW_SONGLISTS,
 			),
@@ -428,11 +434,11 @@ final class Plugin {
 	public function send_member_update_digest(): void {
 		$updates = \get_posts(
 			array(
-				'post_type'      => self::MEMBER_UPDATE_POST_TYPE,
-				'post_status'    => 'publish',
+				'post_type' => self::MEMBER_UPDATE_POST_TYPE,
+				'post_status' => 'publish',
 				'posts_per_page' => -1,
-				'orderby'        => 'modified',
-				'order'          => 'DESC',
+				'orderby' => 'modified',
+				'order' => 'DESC',
 			)
 		);
 		$updates = array_values(
@@ -448,25 +454,36 @@ final class Plugin {
 			return;
 		}
 
-		$subject = __( 'Member Updates', 'dmbc - tools' );
-		$post_list = '';
-		foreach ( $updates as $post ) {
-			$post_title = \get_the_title( $post );
-			$raw_content = \apply_filters( 'the_content', $post->post_content );
-			$featured_img = \get_the_post_thumbnail_url( $post->ID, 'large' );
-
-			// 2. Inline standard styles to raw web HTML so email clients don't break them
-			$email_content = str_replace( '<p>', '<p style="margin:0 0 16px 0; font-size:16px; line-height:1.6; color:#444444;">', $raw_content );
-			$email_content = str_replace( '<h2>', '<h2 style="margin:24px 0 12px 0; font-size:20px; color:#222222; font-family:Arial, sans-serif;">', $email_content );
-			$email_content = str_replace( '<a ', '<a style="color:#0073aa; text-decoration:underline;" ', $email_content );
-
-			$post_list .= "<tr><td><h1 style='font-size:28px; margin:0 0 20px 0;'>{$post_title}</h1></td></tr>";
-			$post_list .= ( $featured_img ? "<tr><td style='padding-bottom:25px;'><img src='{$featured_img}' width='100%' /></td></tr>" : '' );
-			$post_list .= "<tr><td>{$email_content}</td></tr>";
+		$updates_by_role = array();
+		foreach ( $updates as $update ) {
+			$role = \get_post_meta( $update->ID, self::MEMBER_UPDATE_ROLE_META_KEY, true );
+			if ( ! is_string( $role ) || '' === $role ) {
+				$role = self::DEFAULT_MEMBER_UPDATE_ROLE;
+			}
+			$role = \sanitize_key( $role );
+			if ( '' !== $role ) {
+				$updates_by_role[ $role ][] = $update;
+			}
 		}
 
-		// 3. Inject variables into your template string
-		$message = "
+		$subject = __( 'DMBC News', 'dmbc-tools' );
+		foreach ( $updates_by_role as $role => $role_updates ) {
+			$post_list = '';
+			foreach ( $role_updates as $post ) {
+				$post_title = \get_the_title( $post );
+				$raw_content = \apply_filters( 'the_content', $post->post_content );
+				$featured_img = \get_the_post_thumbnail_url( $post->ID, 'large' );
+
+				$email_content = str_replace( '<p>', '<p style="margin:0 0 16px 0; font-size:16px; line-height:1.6; color:#444444;">', $raw_content );
+				$email_content = str_replace( '<h2>', '<h2 style="margin:24px 0 12px 0; font-size:20px; color:#222222; font-family:Arial, sans-serif;">', $email_content );
+				$email_content = str_replace( '<a ', '<a style="color:#0073aa; text-decoration:underline;" ', $email_content );
+
+				$post_list .= "<tr><td><h1 style='font-size:28px; margin:0 0 20px 0;'>{$post_title}</h1></td></tr>";
+				$post_list .= ( $featured_img ? "<tr><td style='padding-bottom:25px;'><img src='{$featured_img}' width='100%' /></td></tr>" : '' );
+				$post_list .= "<tr><td>{$email_content}</td></tr>";
+			}
+
+			$message = "
 <!DOCTYPE html>
 <html>
 <body style='margin:0; padding:0; background-color:#f6f6f6; font-family:Arial, sans-serif;'>
@@ -483,15 +500,16 @@ final class Plugin {
 </body>
 </html>";
 
-		$recipients = $this->mailer->send_email( $subject, $message, array( 'um_member' ) );
-		if ( empty( $recipients ) ) {
-			return;
-		}
+			$recipients = $this->mailer->send_email( $subject, $message, array( $role ) );
+			if ( empty( $recipients ) ) {
+				continue;
+			}
 
-		$sent_at = \gmdate( 'Y-m-d H:i:s' );
-		foreach ( $updates as $update ) {
-			\update_post_meta( $update->ID, self::MEMBER_UPDATE_SENT_META_KEY, $sent_at );
-			\update_post_meta( $update->ID, self::MEMBER_UPDATE_RECIPIENT_META_KEY, $recipients );
+			$sent_at = \gmdate( 'Y-m-d H:i:s' );
+			foreach ( $role_updates as $update ) {
+				\update_post_meta( $update->ID, self::MEMBER_UPDATE_SENT_META_KEY, $sent_at );
+				\update_post_meta( $update->ID, self::MEMBER_UPDATE_RECIPIENT_META_KEY, $recipients );
+			}
 		}
 	}
 
@@ -513,10 +531,10 @@ final class Plugin {
 		foreach ( array( self::SONGLIST_POST_TYPE, self::MEMBER_UPDATE_POST_TYPE ) as $post_type ) {
 			$cpt_posts = get_posts(
 				array(
-					'post_type'   => $post_type,
+					'post_type' => $post_type,
 					'post_status' => 'any',
 					'numberposts' => -1,
-					'fields'      => 'ids', // Only fetch IDs to save memory.
+					'fields' => 'ids', // Only fetch IDs to save memory.
 				)
 			);
 
@@ -573,18 +591,18 @@ final class Plugin {
 				self::SONGLIST_POST_TYPE,
 				array(
 					'labels' => array(
-						'name'          => __( 'Song Lists', 'dmbc-tools' ),
+						'name' => __( 'Song Lists', 'dmbc-tools' ),
 						'singular_name' => __( 'Song List', 'dmbc-tools' ),
-						'add_new_item'  => __( 'Add new Song List', 'dmbc-tools' ),
-						'edit_item'     => __( 'Edit Song List', 'dmbc-tools' ),
+						'add_new_item' => __( 'Add new Song List', 'dmbc-tools' ),
+						'edit_item' => __( 'Edit Song List', 'dmbc-tools' ),
 					),
-					'public'       => true,
-					'show_ui'      => false,
+					'public' => true,
+					'show_ui' => false,
 					'show_in_rest' => true,
-					'has_archive'  => true,
-					'rewrite'      => array( 'slug' => 'songlists' ),
-					'supports'     => array( 'title' ),
-					'menu_icon'    => 'dashicons-playlist-audio',
+					'has_archive' => true,
+					'rewrite' => array( 'slug' => 'songlists' ),
+					'supports' => array( 'title' ),
+					'menu_icon' => 'dashicons-playlist-audio',
 				),
 			);
 		}
@@ -658,6 +676,82 @@ final class Plugin {
 			'normal',
 			'high',
 		);
+	}
+
+	/**
+	 * Adds the recipient role selector to member updates.
+	 *
+	 * @return void
+	 */
+	public function add_member_update_meta_box(): void {
+		\add_meta_box(
+			'dmbc-member-update-audience',
+			__( 'Member Update Audience', 'dmbc-tools' ),
+			array( $this, 'render_member_update_meta_box' ),
+			self::MEMBER_UPDATE_POST_TYPE,
+			'side',
+			'default'
+		);
+	}
+
+	/**
+	 * Renders the recipient role selector for a member update.
+	 *
+	 * @param \WP_Post $post The member update.
+	 * @return void
+	 */
+	public function render_member_update_meta_box( \WP_Post $post ): void {
+		\wp_nonce_field( 'dmbc_save_member_update_meta', self::MEMBER_UPDATE_META_NONCE );
+
+		$roles = \wp_roles()->roles;
+		$selected_role = \get_post_meta( $post->ID, self::MEMBER_UPDATE_ROLE_META_KEY, true );
+		if ( ! is_string( $selected_role ) || ( ! isset( $roles[ $selected_role ] ) && self::DEFAULT_MEMBER_UPDATE_ROLE !== $selected_role ) ) {
+			$selected_role = self::DEFAULT_MEMBER_UPDATE_ROLE;
+		}
+		?>
+		<p>
+			<label for="dmbc-member-update-role"><strong><?php esc_html_e( 'Send to group', 'dmbc-tools' ); ?></strong></label>
+			<select id="dmbc-member-update-role" name="dmbc_member_update_role" class="widefat">
+				<?php if ( ! isset( $roles[ self::DEFAULT_MEMBER_UPDATE_ROLE ] ) ) : ?>
+					<option value="<?php echo esc_attr( self::DEFAULT_MEMBER_UPDATE_ROLE ); ?>" <?php selected( $selected_role, self::DEFAULT_MEMBER_UPDATE_ROLE ); ?>>
+						<?php esc_html_e( 'Members', 'dmbc-tools' ); ?>
+					</option>
+				<?php endif; ?>
+				<?php foreach ( $roles as $role_slug => $role_data ) : ?>
+					<option value="<?php echo esc_attr( $role_slug ); ?>" <?php selected( $selected_role, $role_slug ); ?>>
+						<?php echo esc_html( translate_user_role( $role_data['name'] ) ); ?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+		</p>
+		<?php
+	}
+
+	/**
+	 * Saves the recipient role selected for a member update.
+	 *
+	 * @param int $post_id The member update ID.
+	 * @return void
+	 */
+	public function save_member_update_meta( int $post_id ): void {
+		if (
+			! isset( $_POST[ self::MEMBER_UPDATE_META_NONCE ] ) ||
+			! is_string( $_POST[ self::MEMBER_UPDATE_META_NONCE ] ) ||
+			! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST[ self::MEMBER_UPDATE_META_NONCE ] ) ), 'dmbc_save_member_update_meta' ) ||
+			( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) ||
+			! \current_user_can( 'edit_post', $post_id ) ||
+			! isset( $_POST['dmbc_member_update_role'] ) ||
+			! is_string( $_POST['dmbc_member_update_role'] )
+		) {
+			return;
+		}
+
+		$role = \sanitize_key( \wp_unslash( $_POST['dmbc_member_update_role'] ) );
+		if ( ! isset( \wp_roles()->roles[ $role ] ) && self::DEFAULT_MEMBER_UPDATE_ROLE !== $role ) {
+			return;
+		}
+
+		\update_post_meta( $post_id, self::MEMBER_UPDATE_ROLE_META_KEY, $role );
 	}
 
 	/**

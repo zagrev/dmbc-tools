@@ -42,6 +42,7 @@ abstract class DmbcUnitTestBase extends TestCase {
 			'last_get_posts_args'       => array(),
 			'mail_calls'                => array(),
 			'users'                     => array(),
+			'get_users_calls'           => array(),
 			'cron_events'               => array(),
 			'next_post_id'              => 1,
 			'roles'                     => array(),
