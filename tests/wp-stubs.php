@@ -6,34 +6,35 @@
  */
 
 $GLOBALS['dmbc_test_state'] = array(
-	'options'                 => array(),
-	'current_user_can'       => true,
-	'wp_roles'                => array(),
-	'nonce_valid'             => true,
-	'registered_settings'     => array(),
-	'settings_sections'       => array(),
-	'settings_fields'         => array(),
-	'actions'                 => array(),
-	'shortcodes'              => array(),
-	'post_meta'               => array(),
-	'posts'                   => array(),
-	'logged_in'               => true,
-	'last_get_posts_args'     => array(),
-	'mail_calls'              => array(),
-	'users'                   => array(),
-	'cron_events'             => array(), 
-	'next_post_id'            => 1, 
-	'roles'                   => array(),
-	'registered_post_types'   => array(),
-	'existing_post_types'     => array(),
-	'menu_pages'              => array(),
-	'submenu_pages'           => array(),
-	'wp_verify_nonce_result'  => true,
+	'options'                   => array(),
+	'current_user_can'          => true,
+	'wp_roles'                  => array(),
+	'nonce_valid'               => true,
+	'registered_settings'       => array(),
+	'settings_sections'         => array(),
+	'settings_fields'           => array(),
+	'actions'                   => array(),
+	'shortcodes'                => array(),
+	'post_meta'                 => array(),
+	'posts'                     => array(),
+	'logged_in'                 => true,
+	'last_get_posts_args'       => array(),
+	'mail_calls'                => array(),
+	'users'                     => array(),
+	'get_users_calls'           => array(),
+	'cron_events'               => array(),
+	'next_post_id'              => 1,
+	'roles'                     => array(),
+	'registered_post_types'     => array(),
+	'existing_post_types'       => array(),
+	'menu_pages'                => array(),
+	'submenu_pages'             => array(),
+	'wp_verify_nonce_result'    => true,
 	'flush_rewrite_rules_calls' => 0,
-	'rest_routes'             => array(),
-	'current_post_type'       => 'post',
-	'is_singular'             => false,
-	'is_post_type_archive'    => false,
+	'rest_routes'               => array(),
+	'current_post_type'         => 'post',
+	'is_singular'               => false,
+	'is_post_type_archive'      => false,
 );
 
 /** Simple stand-in for a WP_Role object, backed by the shared test state. */
@@ -57,14 +58,14 @@ if ( ! class_exists( 'WP_Post' ) ) {
 	/** Minimal stand-in for WP_Post, enough to satisfy the type hints used by the plugin. */
 	class WP_Post {
 		public int $ID;
-		public string $post_title = '';
-		public string $post_type = '';
-		public string $post_content = '';
-		public string $post_modified_gmt = '';
-		public string $post_excerpt = '';
+		public string $post_title                    = '';
+		public string $post_type                     = '';
+		public string $post_content                  = '';
+		public string $post_modified_gmt             = '';
+		public string $post_excerpt                  = '';
 		public string $dmbc_song_list_rehearsal_date = '';
-		public string $post_status = '';
-		public string $post_date = '';
+		public string $post_status                   = '';
+		public string $post_date                     = '';
 
 		public function __construct( int $id ) {
 			$this->ID = $id;
@@ -75,25 +76,23 @@ if ( ! class_exists( 'WP_Post' ) ) {
 if ( ! class_exists( 'WP_User' ) ) {
 	#[AllowDynamicProperties]
 	class WP_User {
-		public int $ID = 0;
+		public int $ID            = 0;
 		public string $user_email = '';
-		public array $roles = array();
-		public array $caps = array();
+		public array $roles       = array();
+		public array $caps        = array();
 		public string $user_login = '';
 
 		public function __construct( int $id = 0, array|string|object $data = array(), int $site_id = 0 ) {
 			$this->ID = $id;
-			if (is_array($data)) {
+			if ( is_array( $data ) ) {
 				foreach ( $data as $key => $value ) {
 					if ( property_exists( $this, $key ) ) {
 						$this->$key = $value;
 					}
 				}
-			}
-			elseif (is_string($data)) {
+			} elseif ( is_string( $data ) ) {
 				$this->user_login = $data;
-			}
-			elseif (is_object($data)) {
+			} elseif ( is_object( $data ) ) {
 				foreach ( get_object_vars( $data ) as $key => $value ) {
 					if ( property_exists( $this, $key ) ) {
 						$this->$key = $value;
@@ -106,7 +105,7 @@ if ( ! class_exists( 'WP_User' ) ) {
 			$this->roles[] = $role;
 			$this->roles   = array_values( array_unique( $this->roles ) );
 		}
-	
+
 		public function remove_cap( string $cap ): void {
 			unset( $this->caps[ $cap ] );
 		}
@@ -146,19 +145,32 @@ if ( ! class_exists( 'WP_REST_Response' ) ) {
 if ( ! class_exists( 'WP_Query' ) ) {
 	/** Minimal base stand-in for WP_Query. */
 	class WP_Query {
+		public function is_main_query(): bool {
+			return true;
+		}
+		public function is_post_type_archive( string $post_type = '' ): bool {
+			return true;
+		}
+		/**
+		 * Minimal stand-in for the set() method.
+		 *
+		 * @return void
+		 */
+		public function set($key, $value): void {
+		}
 	}
 }
 
 if ( ! class_exists( 'WP_Block_Template' ) ) {
 	class WP_Block_Template {
-		public string $type = '';
-		public string $theme = '';
-		public string $slug = '';
-		public string $id = '';
-		public string $title = '';
+		public string $type    = '';
+		public string $theme   = '';
+		public string $slug    = '';
+		public string $id      = '';
+		public string $title   = '';
 		public string $content = '';
-		public string $source = '';
-		public string $status = '';
+		public string $source  = '';
+		public string $status  = '';
 		public bool $is_custom = false;
 	}
 }
@@ -166,7 +178,7 @@ if ( ! class_exists( 'WP_Block_Template' ) ) {
 if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 	/** Minimal stand-in for $wpdb, recording insert() calls for assertions. */
 	class Dmbc_Test_Wpdb {
-		public string $prefix = 'wp_';
+		public string $prefix     = 'wp_';
 		public string $last_error = '';
 
 		public function get_charset_collate(): string {
@@ -199,8 +211,10 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 		}
 
 		public function prepare( string $query = '', ...$args ) {
-			$GLOBALS['dmbc_test_state']['wpdb_prepare'][] = compact( 'query', 'args'
-			 );
+			$GLOBALS['dmbc_test_state']['wpdb_prepare'][] = compact(
+				'query',
+				'args'
+			);
 			return $query;
 		}
 	}
@@ -325,6 +339,16 @@ if ( ! function_exists( 'esc_attr' ) ) {
 	}
 }
 
+if ( ! function_exists( 'selected' ) ) {
+	function selected( $selected, $current, bool $echo = true ): string {
+		$result = (string) $selected === (string) $current ? 'selected="selected"' : '';
+		if ( $echo && '' !== $result ) {
+			echo $result;
+		}
+		return $result;
+	}
+}
+
 if ( ! function_exists( 'esc_html' ) ) {
 	function esc_html( $text ): string {
 		return htmlspecialchars( (string) $text, ENT_QUOTES );
@@ -333,7 +357,7 @@ if ( ! function_exists( 'esc_html' ) ) {
 
 if ( ! function_exists( 'esc_textarea' ) ) {
 	function esc_textarea( $text ): string {
-		if (is_array($text)){
+		if ( is_array( $text ) ) {
 			$text = join( "\n", $text );
 		}
 		return htmlspecialchars( (string) $text, ENT_QUOTES );
@@ -375,7 +399,7 @@ if ( ! function_exists( 'is_admin' ) ) {
 }
 
 if ( ! function_exists( 'get_permalink' ) ) {
-	function get_permalink(): string {
+	function get_permalink( $post = null ): string {
 		return 'http://example.test/song-list';
 	}
 }
@@ -398,7 +422,7 @@ if ( ! function_exists( 'get_post_type' ) ) {
 if ( ! function_exists( 'get_post_status_object' ) ) {
 	function get_post_status_object( string|null $post_status ): stdClass|null {
 		$display_status = 'Unknown';
-		$labels = array(
+		$labels         = array(
 			'publish' => 'Published',
 			'draft'   => 'Draft',
 			'pending' => 'Pending',
@@ -498,7 +522,7 @@ if ( ! function_exists( 'wp_die' ) ) {
 }
 
 if ( ! function_exists( 'current_user_can' ) ) {
-	function current_user_can( string $capability ): bool {
+	function current_user_can( string $capability, int $post_id = 0 ): bool {
 		return (bool) $GLOBALS['dmbc_test_state']['current_user_can'];
 	}
 }
@@ -700,10 +724,10 @@ if ( ! function_exists( 'get_post' ) ) {
 
 if ( ! function_exists( 'wp_insert_post' ) ) {
 	function wp_insert_post( array $post_data, bool $wp_error = false ): int {
-		$post_id = $GLOBALS['dmbc_test_state']['next_post_id']++;
-		$post = new WP_Post( $post_id );
-		$post->post_title = $post_data['post_title'];
-		$post->post_type = $post_data['post_type'];
+		$post_id            = $GLOBALS['dmbc_test_state']['next_post_id']++;
+		$post               = new WP_Post( $post_id );
+		$post->post_title   = $post_data['post_title'];
+		$post->post_type    = $post_data['post_type'];
 		$post->post_content = $post_data['post_content'];
 		$GLOBALS['dmbc_test_state']['posts'][ $post_id ] = $post;
 		return $post_id;
@@ -799,6 +823,7 @@ if ( ! function_exists( 'wpautop' ) ) {
 if ( ! function_exists( 'get_users' ) ) {
 	function get_users( array $args = array() ): array {
 		$GLOBALS['dmbc_test_state']['last_get_users_args'] = $args;
+		$GLOBALS['dmbc_test_state']['get_users_calls'][]   = $args;
 		$users = $GLOBALS['dmbc_test_state']['users'];
 
 		if ( 'ID' === ( $args['fields'] ?? '' ) ) {
@@ -831,8 +856,8 @@ if ( ! function_exists( 'get_user_by' ) ) {
 
 if ( ! function_exists( 'wp_insert_user' ) ) {
 	function wp_insert_user( array $userdata ) {
-		$user_id = $GLOBALS['dmbc_test_state']['next_user_id']++;
-		$user    = new WP_User( $user_id, $userdata );
+		$user_id                               = $GLOBALS['dmbc_test_state']['next_user_id']++;
+		$user                                  = new WP_User( $user_id, $userdata );
 		$GLOBALS['dmbc_test_state']['users'][] = $user;
 		return $user_id;
 	}
@@ -894,6 +919,7 @@ if ( ! function_exists( 'wp_mail' ) ) {
 
 if ( ! function_exists( 'wp_verify_nonce' ) ) {
 	function wp_verify_nonce( string $nonce, $action = -1 ) {
+		$GLOBALS['dmbc_test_state']['wp_verify_nonce_calls'][] = compact( 'nonce', 'action' );
 		return $GLOBALS['dmbc_test_state']['wp_verify_nonce_result'];
 	}
 }
@@ -975,9 +1001,9 @@ if ( ! function_exists( 'get_the_post_thumbnail_url' ) ) {
 
 if ( ! class_exists( 'WP_List_Table' ) ) {
 	class WP_List_Table {
-		public $items = [];
-		public $_columns = [];
-		public $_column_headers = [];
+		public $items           = array();
+		public $_columns        = array();
+		public $_column_headers = array();
 
 		public function __construct( array $args = array() ) {}
 
@@ -985,15 +1011,14 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 			return $this->_columns;
 		}
 		public function row_actions( $item ) {
-			return 'action=';
+			return implode( ' | ', $item );
 		}
 		public function display() {
 			foreach ( $this->items as $item ) {
 				foreach ( $this->get_columns() as $column_name => $attributes ) {
 					if ( \method_exists( $this, 'column_' . $column_name ) ) {
 						echo \call_user_func( array( $this, 'column_' . $column_name ), $item );
-					}
-					else {
+					} else {
 						echo $this->column_default( $item, $column_name );
 					}
 				}
@@ -1008,34 +1033,58 @@ if ( ! class_exists( 'WP_List_Table' ) ) {
 		public function get_items() {
 			return $this->items;
 		}
-		// 		public function set_items( $items ) {
-// 			$this->items = $items;
-// 		}
+		// public function set_items( $items ) {
+		// $this->items = $items;
+		// }
 		public function get_pagenum() {
 			return 1;
 		}
-		// 		public function get_pagination_args() {
-// 			return [];
-// 		}
+		// public function get_pagination_args() {
+		// return [];
+		// }
 		public function set_pagination_args( $args ) {
 		}
-		// 	}
+		// }
 	}
 }
 
-if (! function_exists('map_deep')) {
-	function map_deep($value, $callback) {
-		if (is_array($value)) {
-			foreach ($value as $key => $item) {
-				$value[$key] = map_deep($item, $callback);
+if ( ! function_exists( 'map_deep' ) ) {
+	function map_deep( $value, $callback ) {
+		if ( is_array( $value ) ) {
+			foreach ( $value as $key => $item ) {
+				$value[ $key ] = map_deep( $item, $callback );
 			}
-		} elseif (is_object($value)) {
-			foreach ($value as $key => $item) {
-				$value->$key = map_deep($item, $callback);
+		} elseif ( is_object( $value ) ) {
+			foreach ( $value as $key => $item ) {
+				$value->$key = map_deep( $item, $callback );
 			}
 		} else {
-			$value = call_user_func($callback, $value);
+			$value = call_user_func( $callback, $value );
 		}
 		return $value;
 	}
-}	
+}
+
+if (! function_exists('wp_delete_post')) {
+	function wp_delete_post( $post_id, $force_delete = false ) {
+		$GLOBALS['dmbc_test_state']['wp_delete_post_calls'][] = compact( 'post_id', 'force_delete' );
+		return true;
+	}
+}
+if (!function_exists('wp_safe_redirect')) {
+	function wp_safe_redirect( $location, $status = 302 ) {
+		return true;
+	}
+}
+if (!function_exists('wp_update_post')) {
+	function wp_update_post( $post_data, $wp_error = false ) {
+		$post_id = (int) $post_data['ID'];
+		$post    = $GLOBALS['dmbc_test_state']['posts'][ $post_id ];
+		foreach ( $post_data as $key => $value ) {
+			if ( property_exists( $post, $key ) ) {
+				$post->$key = $value;
+			}
+		}
+		return $post_id;
+	}
+}

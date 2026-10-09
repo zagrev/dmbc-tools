@@ -572,10 +572,96 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertSame( 'updates@example.com', $GLOBALS['dmbc_test_state']['mail_calls'][0]['recipients'] );
 		$this->assertSame( array( 'Bcc: member@example.com', 'Content-Type: text/html; charset=UTF-8' ), $GLOBALS['dmbc_test_state']['mail_calls'][0]['headers'] );
 		$this->assertStringContainsString( 'Schedule change', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertSame( array( 'um_member' ), $GLOBALS['dmbc_test_state']['get_users_calls'][0]['role__in'] );
 		$this->assertNotEmpty( $this->get_stored_post_meta( 81, Plugin::MEMBER_UPDATE_SENT_META_KEY ) );
 
 		Plugin::instance()->send_member_update_digest();
 		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
+	}
+
+	/**
+	 * Updates with different audiences are sent only in their selected role's digest.
+	 *
+	 * @covers \DmbcTools\Plugin::send_member_update_digest
+	 */
+	public function test_member_update_digest_separates_updates_by_selected_role(): void {
+		$member_update = new \WP_Post( 82 );
+		$member_update->post_title = 'Member-only update';
+		$member_update->post_content = '<p>Member content.</p>';
+		$member_update->post_modified_gmt = '2026-09-04 12:00:00';
+
+		$editor_update = new \WP_Post( 83 );
+		$editor_update->post_title = 'Editor-only update';
+		$editor_update->post_content = '<p>Editor content.</p>';
+		$editor_update->post_modified_gmt = '2026-09-04 12:00:00';
+
+		$GLOBALS['dmbc_test_state']['posts'] = array(
+			82 => $member_update,
+			83 => $editor_update,
+		);
+		$this->set_post_meta( 83, Plugin::MEMBER_UPDATE_ROLE_META_KEY, 'editor' );
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array( 'user_email' => 'member@example.com' ),
+		);
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'updates@example.com' );
+
+		Plugin::instance()->send_member_update_digest();
+
+		$this->assertCount( 2, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertSame( array( 'um_member' ), $GLOBALS['dmbc_test_state']['get_users_calls'][0]['role__in'] );
+		$this->assertSame( array( 'editor' ), $GLOBALS['dmbc_test_state']['get_users_calls'][1]['role__in'] );
+		$this->assertStringContainsString( 'Member-only update', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertStringNotContainsString( 'Editor-only update', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertStringContainsString( 'Editor-only update', $GLOBALS['dmbc_test_state']['mail_calls'][1]['message'] );
+		$this->assertStringNotContainsString( 'Member-only update', $GLOBALS['dmbc_test_state']['mail_calls'][1]['message'] );
+	}
+
+	/**
+	 * Member update audience selector displays available roles and the default member group.
+	 *
+	 * @covers \DmbcTools\Plugin::render_member_update_meta_box
+	 */
+	public function test_render_member_update_meta_box_displays_role_selector(): void {
+		ob_start();
+		Plugin::instance()->render_member_update_meta_box( new \WP_Post( 84 ) );
+		$html = ob_get_clean();
+
+		$this->assertStringContainsString( 'name="dmbc_member_update_role"', $html );
+		$this->assertStringContainsString( 'value="um_member"', $html );
+		$this->assertStringContainsString( 'Members', $html );
+		$this->assertStringContainsString( 'value="editor"', $html );
+	}
+
+	/**
+	 * Saving a member update stores only a valid selected user role.
+	 *
+	 * @covers \DmbcTools\Plugin::save_member_update_meta
+	 */
+	public function test_save_member_update_meta_stores_a_valid_role(): void {
+		$_POST = array(
+			Plugin::MEMBER_UPDATE_META_NONCE => 'some-nonce',
+			'dmbc_member_update_role'        => 'editor',
+		);
+
+		Plugin::instance()->save_member_update_meta( 85 );
+
+		$this->assertSame( 'editor', $this->get_stored_post_meta( 85, Plugin::MEMBER_UPDATE_ROLE_META_KEY ) );
+	}
+
+	/**
+	 * Saving a member update ignores role slugs that are not registered.
+	 *
+	 * @covers \DmbcTools\Plugin::save_member_update_meta
+	 */
+	public function test_save_member_update_meta_rejects_an_unknown_role(): void {
+		$_POST = array(
+			Plugin::MEMBER_UPDATE_META_NONCE => 'some-nonce',
+			'dmbc_member_update_role'        => 'unknown-role',
+		);
+
+		Plugin::instance()->save_member_update_meta( 86 );
+
+		$this->assertNull( $this->get_stored_post_meta( 86, Plugin::MEMBER_UPDATE_ROLE_META_KEY ) );
 	}
 
 	/**

@@ -40,6 +40,7 @@ class MemberUpdateTable extends \WP_List_Table {
 	public function get_columns(): array {
 		return array(
 			'title'  => __( 'Title', 'dmbc-tools' ),
+			'audience' => __( 'Audience', 'dmbc-tools' ),
 			'date'   => __( 'Published', 'dmbc-tools' ),
 			'sent'   => __( 'Sent', 'dmbc-tools' ),
 			'status' => __( 'Status', 'dmbc-tools' ),
@@ -61,6 +62,30 @@ class MemberUpdateTable extends \WP_List_Table {
 			\admin_url( 'post.php' )
 		);
 		return sprintf( '<a href="%1$s"><strong>%2$s</strong></a>', \esc_url( $edit_url ), \esc_html( $item->post_title ) );
+	}
+
+	/**
+	 * Render the recipient role for the update.
+	 *
+	 * @param WP_Post $item The current update.
+	 * @return string
+	 */
+	public function column_audience( WP_Post $item ): string {
+		$role = \get_post_meta( $item->ID, Plugin::MEMBER_UPDATE_ROLE_META_KEY, true );
+		if ( ! is_string( $role ) || '' === $role ) {
+			$role = Plugin::DEFAULT_MEMBER_UPDATE_ROLE;
+		}
+
+		$roles = \wp_roles()->roles;
+		if ( isset( $roles[ $role ]['name'] ) ) {
+			$label = \translate_user_role( $roles[ $role ]['name'] );
+		} elseif ( Plugin::DEFAULT_MEMBER_UPDATE_ROLE === $role ) {
+			$label = __( 'Members', 'dmbc-tools' );
+		} else {
+			$label = $role;
+		}
+
+		return \esc_html( $label );
 	}
 
 	/**

@@ -68,18 +68,33 @@ class SongListTable extends \WP_List_Table {
 	public function column_rehearsal_date( WP_Post $item ) {
 		$actions = array();
 
-		$page = isset( $_REQUEST['page'] ) ? \sanitize_text_field( \wp_unslash( $_REQUEST['page'] ) ) : '';
+		$page = \is_admin() ? ( $GLOBALS['plugin_page'] ?? 'dmbc-songlists-menu' ) : '';
 
+		$request_nonce     = \wp_create_nonce( 'dmbc_song_list_request' );
 		$actions['view']   = '<a href="' . get_permalink( $item->ID ) . '">View</a>';
 		$actions['delete'] = sprintf(
-			'<a href="?page=%s&action=%s&song_list_id=%s">Delete</a>',
-			\esc_attr( $page ),
-			'delete',
-			$item->ID
+			'<a href="%s">Delete</a>',
+			\esc_url(
+				\add_query_arg(
+					array(
+						'page'         => $page,
+						'action'       => 'delete',
+						'song_list_id' => $item->ID,
+						'_wpnonce'     => $request_nonce,
+					),
+					'?'
+				)
+			)
 		);
 		// Return rehearsal date with row actions.
 		$base_url       = \is_admin() ? \admin_url( 'admin.php?page=dmbc-songlist-edit' ) : \get_permalink();
-		$view_url       = \add_query_arg( array( 'song_list_id' => $item->ID ), $base_url );
+		$view_url       = \add_query_arg(
+			array(
+				'song_list_id' => $item->ID,
+				'_wpnonce'     => $request_nonce,
+			),
+			$base_url
+		);
 		$rehearsal_date = \get_post_meta( $item->ID, Plugin::PERFORMANCE_DATE_META_KEY, true );
 		return sprintf( '<a href="%1$s">%2$s</a> %3$s', \esc_url( $view_url ), \esc_html( $rehearsal_date ), $this->row_actions( $actions ) );
 	}

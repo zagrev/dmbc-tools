@@ -69,7 +69,8 @@ class SongListView {
 	 * @return void
 	 */
 	public function dmbc_render_songlist_table_page(): void {
-		echo $this->generate_member_song_lists_table_page();
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo $this->render_song_list_table_page();
 	}
 
 	/**
@@ -80,8 +81,14 @@ class SongListView {
 	 */
 	public function dmbc_render_songlist_edit_page( $song_list_id = 0 ): void {
 		if ( 0 === (int) $song_list_id && isset( $_GET['song_list_id'] ) ) {
+			if ( ! isset( $_GET['_wpnonce'] ) || ! is_string( $_GET['_wpnonce'] )
+				|| ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_GET['_wpnonce'] ) ), 'dmbc_song_list_request' ) ) {
+				echo '<p>Invalid song list request.</p>';
+				return;
+			}
 			$song_list_id = \absint( \wp_unslash( $_GET['song_list_id'] ) );
 		}
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo $this->render_song_list_edit_page( $song_list_id );
 	}
 
@@ -105,6 +112,7 @@ class SongListView {
 	 * @return void
 	 */
 	public function dmbc_render_song_list_view_page( $song_list_id = 0, $date = null ): void {
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo $this->render_song_list_view_page( $song_list_id, $date );
 	}
 
@@ -114,6 +122,7 @@ class SongListView {
 	 * @return void
 	 */
 	public function dmbc_render_song_list_table_page(): void {
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo $this->render_song_list_table_page();
 	}
 
@@ -183,8 +192,14 @@ class SongListView {
 	 * @return bool|string
 	 */
 	public function dmbc_render_song_list_delete_page(): string {
+		if ( isset( $_GET['song_list_id'] ) ) {
+			if ( ! isset( $_GET['_wpnonce'] ) || ! is_string( $_GET['_wpnonce'] )
+				|| ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_GET['_wpnonce'] ) ), 'dmbc_song_list_request' ) ) {
+				return '<p>Invalid song list request.</p>';
+			}
+		}
 		$_GET['action'] = 'view';
-		$edit_id        = isset( $_GET['song_list_id'] ) ? intval( $_GET['song_list_id'] ) : 0;
+		$edit_id        = isset( $_GET['song_list_id'] ) ? \absint( \wp_unslash( $_GET['song_list_id'] ) ) : 0;
 		$view_page      = $this->render_song_list_view_page( $edit_id );
 
 		ob_start();
@@ -205,8 +220,8 @@ class SongListView {
 		}
 
 		if ( isset( $_GET['song_list_id'] ) ) {
-			$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
-			if ( ! wp_verify_nonce( $nonce, 'dmbc_song_list_request' ) ) {
+			if ( ! isset( $_GET['_wpnonce'] ) || ! is_string( $_GET['_wpnonce'] )
+				|| ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_GET['_wpnonce'] ) ), 'dmbc_song_list_request' ) ) {
 				return '<p>Invalid song list request.</p>';
 			}
 
@@ -276,6 +291,12 @@ class SongListView {
 	 * @return string
 	 */
 	public function dmbc_render_song_lists_admin_page(): string {
+		if ( isset( $_GET['song_list_id'] ) ) {
+			if ( ! isset( $_GET['_wpnonce'] ) || ! is_string( $_GET['_wpnonce'] )
+				|| ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_GET['_wpnonce'] ) ), 'dmbc_song_list_request' ) ) {
+				return '<p>Invalid song list request.</p>';
+			}
+		}
 		$edit_id = isset( $_GET['song_list_id'] ) ? \absint( \wp_unslash( $_GET['song_list_id'] ) ) : 0;
 		return $this->render_song_list_edit_page( $edit_id );
 	}
@@ -335,8 +356,13 @@ class SongListView {
 	 * @return void
 	 */
 	public function handle_delete_song_list_form() {
-		if ( ! isset( $_POST['dmbc_song_list_delete_nonce'] ) || ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST['dmbc_song_list_delete_nonce'] ) ), 'dmbc_delete_song_list' ) ) {
+		if ( ! isset( $_POST['dmbc_delete_song_list'] ) && ! isset( $_POST['dmbc_song_list_id'] ) && ! isset( $_POST['dmbc_song_list_delete_nonce'] ) ) {
 			return;
+		}
+
+		if ( ! isset( $_POST['dmbc_song_list_delete_nonce'] ) || ! is_string( $_POST['dmbc_song_list_delete_nonce'] )
+			|| ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST['dmbc_song_list_delete_nonce'] ) ), 'dmbc_delete_song_list' ) ) {
+			\wp_die( \esc_html__( 'Invalid song list request. Please reload the page and try again.', 'dmbc-extras' ), '', array( 'response' => 403 ) );
 		}
 
 		if ( ! isset( $_POST['dmbc_song_list_id'] ) ) {
@@ -432,16 +458,17 @@ class SongListView {
 	 */
 	public function handle_song_list_form(): void {
 		if ( isset( $_POST['dmbc_delete_song_list'] ) ) {
-			if ( ! isset( $_POST['dmbc_song_list_delete_nonce'] )
-				|| ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST['dmbc_song_list_delete_nonce'] ) ), 'dmbc_delete_song_list' ) ) {
-				return;
-			}
 			$this->handle_delete_song_list_form();
 			return;
 		}
 
-		if ( ! isset( $_POST['dmbc_song_list_nonce'] ) || ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST['dmbc_song_list_nonce'] ) ), 'dmbc_create_song_list' ) ) {
+		if ( ! isset( $_POST['dmbc_song_list_title'] ) && ! isset( $_POST['dmbc_song_list_id'] ) && ! isset( $_POST['dmbc_song_list_nonce'] ) ) {
 			return;
+		}
+
+		if ( ! isset( $_POST['dmbc_song_list_nonce'] ) || ! is_string( $_POST['dmbc_song_list_nonce'] )
+			|| ! \wp_verify_nonce( \sanitize_text_field( \wp_unslash( $_POST['dmbc_song_list_nonce'] ) ), 'dmbc_create_song_list' ) ) {
+			\wp_die( \esc_html__( 'Invalid song list request. Please reload the page and try again.', 'dmbc-extras' ), '', array( 'response' => 403 ) );
 		}
 
 		if ( ! \current_user_can( Plugin::CAP_EDIT_SONGLIST ) && ! \current_user_can( 'manage_options' ) ) {

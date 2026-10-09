@@ -76,6 +76,7 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$view = $this->make_view();
 
 		$this->assertStringContainsString( 'dmbc_song_list_title', $view->render_song_list_edit_page() );
+		$this->assertStringContainsString( 'name="dmbc_song_list_nonce"', $view->render_song_list_edit_page() );
 		$this->assertStringContainsString( 'dmbc_song_list_delete_nonce', $view->dmbc_render_song_list_delete_page() );
 		ob_start();
 		$view->dmbc_render_songlist_edit_page();
@@ -153,7 +154,10 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$this->make_directory_tree( $library, array( 'Song A' => array() ) );
 		$this->set_option( 'song_library_directory', $library );
 		$this->set_post_meta( $post->ID, Plugin::SONGS_META_KEY, array( 'Song A' ) );
-		$_GET = array( 'song_list_id' => (string) $post->ID );
+		$_GET = array(
+			'song_list_id' => (string) $post->ID,
+			'_wpnonce'     => 'valid',
+		);
 
 		ob_start();
 		$this->make_view()->dmbc_render_songlist_edit_page();
@@ -168,6 +172,7 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$view = $this->make_view();
 
 		$this->assertStringContainsString( 'Rehearsal Song Lists', $view->generate_member_song_lists_table_page() );
+		$this->assertStringContainsString( 'name="_wpnonce"', $view->generate_member_song_lists_table_page() );
 		$this->assertStringContainsString( 'Rehearsal Song Lists', $view->render_song_list_table_page() );
 		ob_start();
 		$view->dmbc_render_songlist_table_page();
@@ -202,6 +207,104 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$view->handle_delete_song_list_form();
 		$view->handle_song_list_form();
 		$this->assertSame( array(), $this->get_registered_actions( 'admin_notices' ) );
+	}
+
+	public function test_table_page_rejects_missing_and_malformed_nonces(): void {
+		$view = $this->make_view();
+		$_GET = array( 'song_list_id' => '21' );
+		$this->assertSame( '<p>Invalid song list request.</p>', $view->render_song_list_table_page() );
+		$_GET['_wpnonce'] = array( 'invalid' );
+		$this->assertSame( '<p>Invalid song list request.</p>', $view->render_song_list_table_page() );
+	}
+
+	public function test_admin_and_delete_page_entry_points_reject_missing_request_nonce(): void {
+		$_GET = array( 'song_list_id' => '21' );
+		$view = $this->make_view();
+
+		$this->assertSame( '<p>Invalid song list request.</p>', $view->dmbc_render_song_lists_admin_page() );
+		$this->assertSame( '<p>Invalid song list request.</p>', $view->dmbc_render_song_list_delete_page() );
+		ob_start();
+		$view->dmbc_render_songlist_edit_page();
+		$this->assertSame( '<p>Invalid song list request.</p>', (string) ob_get_clean() );
+	}
+
+	public function test_admin_table_callback_routes_a_valid_delete_request_to_confirmation(): void {
+		$this->make_post();
+		$_GET = array(
+			'song_list_id' => '21',
+			'action'       => 'delete',
+			'_wpnonce'     => 'valid',
+		);
+		ob_start();
+		$this->make_view()->dmbc_render_songlist_table_page();
+		$html = (string) ob_get_clean();
+
+		$this->assertStringContainsString( 'id="dmbc_delete_song_list_form"', $html );
+		$this->assertStringContainsString( 'name="dmbc_song_list_delete_nonce"', $html );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['wp_delete_post_calls'] ?? array() );
+	}
+
+	public static function invalid_form_nonces(): array {
+		$cases = array();
+		foreach ( array( 'save', 'delete', 'direct-delete' ) as $handler ) {
+			foreach ( array( null, '', 'invalid', array( 'invalid' ) ) as $nonce ) {
+				$cases[] = array( $handler, $nonce );
+			}
+		}
+		return $cases;
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider( 'invalid_form_nonces' )]
+	public function test_form_handlers_reject_invalid_nonces_before_mutating_posts( string $handler, mixed $nonce ): void {
+		$view = $this->make_view();
+		$post = $this->make_post();
+		$_POST = array( 'dmbc_song_list_id' => (string) $post->ID );
+		$nonce_name = 'dmbc_song_list_nonce';
+		if ( 'save' === $handler ) {
+			$_POST['dmbc_song_list_title'] = 'Changed title';
+		} else {
+			$_POST['dmbc_delete_song_list'] = 'Delete';
+			$nonce_name = 'dmbc_song_list_delete_nonce';
+		}
+		if ( null !== $nonce ) {
+			$_POST[ $nonce_name ] = $nonce;
+		}
+		$this->set_wp_verify_nonce_result( false );
+
+		try {
+			if ( 'direct-delete' === $handler ) {
+				$view->handle_delete_song_list_form();
+			} else {
+				$view->handle_song_list_form();
+			}
+			$this->fail( 'An invalid nonce must abort the song list submission.' );
+		} catch ( Dmbc_Test_Wp_Die_Exception $exception ) {
+			$this->assertStringContainsString( 'Invalid song list request.', $exception->getMessage() );
+		}
+
+		$this->assertSame( 'September rehearsal', $post->post_title );
+		$this->assertSame( array(), $this->get_registered_actions( 'admin_notices' ) );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['wp_delete_post_calls'] ?? array() );
+	}
+
+	public function test_delete_handler_verifies_the_delete_nonce_once(): void {
+		$_POST = array(
+			'dmbc_delete_song_list'       => 'Delete',
+			'dmbc_song_list_id'           => '21',
+			'dmbc_song_list_delete_nonce' => 'valid-delete-nonce',
+		);
+		$this->make_view()->handle_song_list_form();
+
+		$this->assertSame(
+			array( array( 'nonce' => 'valid-delete-nonce', 'action' => 'dmbc_delete_song_list' ) ),
+			$GLOBALS['dmbc_test_state']['wp_verify_nonce_calls']
+		);
+		$this->assertCount( 1, $this->get_registered_actions( 'admin_notices' ) );
+		$this->assertSame(
+			array( array( 'post_id' => 21, 'force_delete' => true ) ),
+			$GLOBALS['dmbc_test_state']['wp_delete_post_calls']
+		);
 	}
 
 	public function test_handle_song_list_form_stores_a_new_post_and_its_metadata(): void {
@@ -253,6 +356,16 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		);
 		$this->assertSame( '2026-09-09', $this->get_stored_post_meta( 1, Plugin::PERFORMANCE_DATE_META_KEY ) );
 		$this->assertSame( 'Begin with warmups.', $this->get_stored_post_meta( 1, Plugin::NOTES_META_KEY ) );
+		$this->assertSame(
+			array( array( 'nonce' => 'valid-nonce', 'action' => 'dmbc_create_song_list' ) ),
+			$GLOBALS['dmbc_test_state']['wp_verify_nonce_calls']
+		);
+
+		$_POST['dmbc_song_list_id']    = '1';
+		$_POST['dmbc_song_list_title'] = 'Updated rehearsal';
+		$this->make_view()->handle_song_list_form();
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['posts'] );
+		$this->assertSame( 'Updated rehearsal', $GLOBALS['dmbc_test_state']['posts'][1]->post_title );
 	}
 
 	public function test_song_list_email_matches_the_web_page_items_and_preserves_notes(): void {

@@ -15,10 +15,11 @@ final class MemberUpdateTableTest extends DmbcUnitTestBase {
 
 		$this->assertSame(
 			array(
-				'title'  => 'Title',
-				'date'   => 'Published',
-				'sent'   => 'Sent',
-				'status' => 'Status',
+				'title'    => 'Title',
+				'audience' => 'Audience',
+				'date'     => 'Published',
+				'sent'     => 'Sent',
+				'status'   => 'Status',
 			),
 			$table->get_columns()
 		);
@@ -27,5 +28,25 @@ final class MemberUpdateTableTest extends DmbcUnitTestBase {
 		$this->assertSame( '', $table->column_sent( $post ) );
 		$this->set_post_meta( $post->ID, Plugin::MEMBER_UPDATE_SENT_META_KEY, '2026-09-04 11:00:00' );
 		$this->assertSame( '2026-09-04 11:00:00', $table->column_sent( $post ) );
+	}
+
+	public function test_audience_column_shows_saved_role_name(): void {
+		$post = new \WP_Post( 19 );
+		$this->set_wp_roles(
+			array(
+				'um_member' => array( 'name' => 'Chorus Member' ),
+				'editor'    => array( 'name' => 'Editor' ),
+			)
+		);
+		$this->set_post_meta( $post->ID, Plugin::MEMBER_UPDATE_ROLE_META_KEY, 'editor' );
+
+		$this->assertSame( 'Editor', ( new MemberUpdateTable() )->column_audience( $post ) );
+	}
+
+	public function test_audience_column_defaults_to_members_for_existing_updates(): void {
+		$post = new \WP_Post( 20 );
+		$this->set_wp_roles( array( 'editor' => array( 'name' => 'Editor' ) ) );
+
+		$this->assertSame( 'Members', ( new MemberUpdateTable() )->column_audience( $post ) );
 	}
 }
