@@ -145,6 +145,19 @@ if ( ! class_exists( 'WP_REST_Response' ) ) {
 if ( ! class_exists( 'WP_Query' ) ) {
 	/** Minimal base stand-in for WP_Query. */
 	class WP_Query {
+		public function is_main_query(): bool {
+			return true;
+		}
+		public function is_post_type_archive( string $post_type = '' ): bool {
+			return true;
+		}
+		/**
+		 * Minimal stand-in for the set() method.
+		 *
+		 * @return void
+		 */
+		public function set($key, $value): void {
+		}
 	}
 }
 
@@ -509,7 +522,7 @@ if ( ! function_exists( 'wp_die' ) ) {
 }
 
 if ( ! function_exists( 'current_user_can' ) ) {
-	function current_user_can( string $capability ): bool {
+	function current_user_can( string $capability, int $post_id ): bool {
 		return (bool) $GLOBALS['dmbc_test_state']['current_user_can'];
 	}
 }
