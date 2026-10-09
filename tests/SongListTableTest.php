@@ -46,15 +46,24 @@ final class SongListTableTest extends DmbcUnitTestBase {
 		$this->assertStringContainsString( '2026-09-09', $table->column_rehearsal_date( $post ) );
 	}
 
-	public function test_column_rehearsal_date_includes_actions_for_a_valid_nonce(): void {
+	public function test_column_rehearsal_date_includes_nonces_in_edit_and_delete_links(): void {
 		$table    = new SongListTable();
 		$_REQUEST = array(
-			'_wpnonce' => 'nonce',
 			'page'     => 'dmbc-songlist-edit',
 		);
 		$output   = $table->column_rehearsal_date( $this->make_post() );
 
 		$this->assertStringContainsString( 'song_list_id=12', $output );
+		$this->assertSame( 2, substr_count( $output, '_wpnonce=test-nonce' ) );
+		$this->assertStringContainsString( 'action=delete', $output );
+	}
+
+	public function test_frontend_edit_and_delete_links_include_nonces(): void {
+		$GLOBALS['dmbc_test_state']['is_admin'] = false;
+		$output = ( new SongListTable() )->column_rehearsal_date( $this->make_post() );
+
+		$this->assertSame( 2, substr_count( $output, '_wpnonce=test-nonce' ) );
+		$this->assertStringContainsString( get_permalink(), $output );
 	}
 
 	public function test_prepare_items_queries_published_song_lists(): void {

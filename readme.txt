@@ -46,6 +46,10 @@ Each log call can include structured context values. The message may include pla
 
 When WooCommerce is active, log entries are forwarded through wc_get_logger(). Otherwise they fall back to PHP error_log() so they still appear in normal WordPress/PHP logs.
 
+== Rehearsal song list forms ==
+
+Song list forms and edit/delete links include WordPress nonces. Create, update, and delete submissions verify the corresponding nonce before changing data. Invalid or expired submission nonces return an error; reload the page before trying again.
+
 == Changelog ==
 
 = 0.1.0 =

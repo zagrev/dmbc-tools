@@ -16,6 +16,7 @@ if ( ! \defined( 'ABSPATH' ) ) {
 <?php esc_html_e( 'Rehearsal Song Lists', 'dmbc-extras' ); ?>
 	</h1>
 	<form method="post">
+	<?php \wp_nonce_field( 'dmbc_song_list_request' ); ?>
 	<?php $song_list_table->display(); ?>
 	</form>
 </div>
