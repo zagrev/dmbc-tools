@@ -522,7 +522,7 @@ if ( ! function_exists( 'wp_die' ) ) {
 }
 
 if ( ! function_exists( 'current_user_can' ) ) {
-	function current_user_can( string $capability, int $post_id ): bool {
+	function current_user_can( string $capability, int $post_id = 0 ): bool {
 		return (bool) $GLOBALS['dmbc_test_state']['current_user_can'];
 	}
 }
