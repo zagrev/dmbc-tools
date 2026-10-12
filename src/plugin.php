@@ -53,6 +53,8 @@ final class Plugin {
 	public const string OPTION_SONGLIST_EXCLUSION_REGEXES = 'song_library_exclusion_regexes';
 	public const string OPTION_SONGLIST_RECIPIENT_ROLES   = 'song_list_recipient_roles';
 	public const string OPTION_VERSION                    = 'dmbc_tools_version';
+	public const string OPTION_TICKET_EMAIL_TEMPLATE      = 'dmbc_ticket_email_template_post_id';
+	public const string OPTION_DONATION_EMAIL_TEMPLATE    = 'dmbc_donation_email_template_post_id';
 	public const string PERFORMANCE_DATE_META_KEY         = '_dmbc_performance_date';
 	public const string PLAYLIST_META_KEY                 = '_dmbc_playlist';
 	public const string SONGLIST_META_NONCE               = 'dmbc_songlist_meta_nonce';
@@ -342,6 +344,8 @@ final class Plugin {
 	public function register_options(): void {
 
 		\add_option( self::OPTION_VERSION, self::VERSION );
+		\add_option( self::OPTION_TICKET_EMAIL_TEMPLATE, 0 );
+		\add_option( self::OPTION_DONATION_EMAIL_TEMPLATE, 0 );
 		\update_option( self::OPTION_VERSION, self::VERSION ); // in case it already exists.
 
 		\add_option( self::OPTION_SONGLIST_DIRECTORY, 'dmbc-song-library' );
@@ -573,6 +577,8 @@ final class Plugin {
 		foreach (
 			array(
 				self::OPTION_VERSION,
+				self::OPTION_TICKET_EMAIL_TEMPLATE,
+				self::OPTION_DONATION_EMAIL_TEMPLATE,
 				'song_library_directory',
 				'song_library_exclusion_regexes',
 				'song_list_recipient_roles',

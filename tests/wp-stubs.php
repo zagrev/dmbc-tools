@@ -577,13 +577,20 @@ if ( ! function_exists( 'add_settings_section' ) ) {
 }
 
 if ( ! function_exists( 'add_settings_field' ) ) {
-	function add_settings_field( string $id, string $title, $callback, string $page, string $section ): void {
+	function add_settings_field( string $id, string $title, $callback, string $page, string $section, array $args = array() ): void {
 		$GLOBALS['dmbc_test_state']['settings_fields'][ $id ] = array(
 			'title'    => $title,
 			'callback' => $callback,
+			'args'     => $args,
 			'page'     => $page,
 			'section'  => $section,
 		);
+	}
+
+	if ( ! function_exists( 'add_settings_error' ) ) {
+		function add_settings_error( string $setting, string $code, string $message, string $type = 'error' ): void {
+			$GLOBALS['dmbc_test_state']['settings_errors'][] = compact( 'setting', 'code', 'message', 'type' );
+		}
 	}
 }
 
