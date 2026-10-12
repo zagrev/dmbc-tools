@@ -748,9 +748,9 @@ if ( ! function_exists( 'clean_post_cache' ) ) {
 
 
 if ( ! function_exists( 'get_the_title' ) ) {
-	function get_the_title( $post ): string {
+	function get_the_title( $post = 0 ): string {
 		if ( is_int( $post ) ) {
-			$post = get_post( $post );
+			$post = get_post( $post ? $post : get_the_ID() );
 		}
 
 		if ( ! $post instanceof WP_Post ) {
