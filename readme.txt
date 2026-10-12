@@ -50,6 +50,10 @@ When WooCommerce is active, log entries are forwarded through wc_get_logger(). O
 
 Song list forms and edit/delete links include WordPress nonces. Create, update, and delete submissions verify the corresponding nonce before changing data. Invalid or expired submission nonces return an error; reload the page before trying again.
 
+== Permalink rules ==
+
+Activation registers the song list and member update post types, then refreshes WordPress rewrite rules so their archive and individual post URLs work immediately. Rewrite rules are not flushed on normal requests. For an already-active installation, deactivate and reactivate the plugin or save Settings > Permalinks to refresh the rules.
+
 == Changelog ==
 
 = 0.1.0 =

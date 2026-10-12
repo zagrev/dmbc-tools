@@ -160,6 +160,7 @@ final class Plugin {
 	 * @return void
 	 */
 	public function run(): void {
+		\register_activation_hook( dirname( __DIR__ ) . '/dmbc-tools.php', array( $this, 'activate' ) );
 		\add_action( 'init', array( $this, 'initialize' ) );
 		\add_action( 'admin_init', array( $this, 'handle_admin_init' ) );
 		\add_action( 'admin_menu', array( $this, 'register_admin' ) );
@@ -389,7 +390,18 @@ final class Plugin {
 		);
 	}
 
-	// Plugin deactivation and uninstall --------------------------------------------------.
+	// Plugin activation, deactivation and uninstall ---------------------------------------.
+
+	/**
+	 * Register custom post types before generating their permalink rules.
+	 *
+	 * @return void
+	 */
+	public function activate(): void {
+		$this->register_songlist_type();
+		$this->register_member_update_type();
+		\flush_rewrite_rules();
+	}
 
 	/**
 	 * Deactivate the plugin. Remove all the added hooks and filters.

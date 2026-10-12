@@ -284,6 +284,28 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Activation registers both archive routes before flushing rewrite rules.
+	 *
+	 * @covers \DmbcTools\Plugin::run
+	 * @covers \DmbcTools\Plugin::activate
+	 */
+	public function test_activation_hook_registers_post_types_before_flushing_rewrite_rules(): void {
+		$plugin = Plugin::instance();
+		$plugin->run();
+		$file = dirname( __DIR__ ) . '/dmbc-tools.php';
+		$callback = $GLOBALS['dmbc_test_state']['activation_hooks'][ $file ];
+		$this->assertSame( array( $plugin, 'activate' ), $callback );
+		$callback();
+
+		$this->assertSame( 1, $GLOBALS['dmbc_test_state']['flush_rewrite_rules_calls'] );
+		$registered = $GLOBALS['dmbc_test_state']['post_types_at_rewrite_flush'];
+		$this->assertTrue( $registered[ Plugin::SONGLIST_POST_TYPE ]['has_archive'] );
+		$this->assertSame( 'songlists', $registered[ Plugin::SONGLIST_POST_TYPE ]['rewrite']['slug'] );
+		$this->assertTrue( $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['has_archive'] );
+		$this->assertSame( 'member-updates', $registered[ Plugin::MEMBER_UPDATE_POST_TYPE ]['rewrite']['slug'] );
+	}
+
+	/**
 	 * Song-list shortcode renders the current song-list article for block templates.
 	 *
 	 * @covers \DmbcTools\Plugin::render_songlist_shortcode

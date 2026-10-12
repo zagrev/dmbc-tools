@@ -649,7 +649,9 @@ if ( ! function_exists( 'register_rest_route' ) ) {
 }
 
 if ( ! function_exists( 'register_activation_hook' ) ) {
-	function register_activation_hook( string $file, $callback ): void {}
+	function register_activation_hook( string $file, $callback ): void {
+		$GLOBALS['dmbc_test_state']['activation_hooks'][ $file ] = $callback;
+	}
 }
 
 if ( ! function_exists( 'register_deactivation_hook' ) ) {
@@ -936,6 +938,7 @@ if ( ! function_exists( 'get_role' ) ) {
 if ( ! function_exists( 'flush_rewrite_rules' ) ) {
 	function flush_rewrite_rules(): void {
 		++$GLOBALS['dmbc_test_state']['flush_rewrite_rules_calls'];
+		$GLOBALS['dmbc_test_state']['post_types_at_rewrite_flush'] = $GLOBALS['dmbc_test_state']['registered_post_types'];
 	}
 }
 
