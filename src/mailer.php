@@ -142,7 +142,7 @@ class Mailer {
 		// Replace non-repeating placeholders in the message with actual ticket data.
 		$message = str_replace(
 			array( '{{CustomerName}}', '{{PurchaseAmount}}', '{{PurchaseDate}}' ),
-			array( $ticket_data['name'] ?? '', $ticket_data['total'] ?? '', $ticket_data['tx_date'] ?? '' ),
+			array( $ticket_data['name'] ?? '', number_format( $ticket_data['total'] ?? '', 2 ), $ticket_data['tx_date'] ?? '' ),
 			$message
 		);
 

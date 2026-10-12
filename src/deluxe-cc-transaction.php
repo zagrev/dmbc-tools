@@ -139,14 +139,20 @@ class DeluxeCcTransaction {
 			throw new TransactionException( 'Transaction not approved.' );
 		}
 
-		if ( isset( $transaction['SubmissionMethod'] ) && str_contains( $transaction['SubmissionMethod'], 'Spaghetti' ) ) {
-			// Handle online submission method specific logic here.
-			$this->handle_ticket_purchase( $transaction );
-		} elseif ( isset( $transaction['SubmissionMethod'] ) && str_contains( $transaction['SubmissionMethod'], 'Donation' ) ) {
-			// Handle other submission method specific logic here.
-			$this->handle_donation( $transaction );
+		if ( isset( $transaction['SubmissionMethod'] ) ) {
+			$method = $transaction['SubmissionMethod'];
+			if ( str_contains( $method, 'Spaghetti' ) ) {
+				$this->handle_ticket_purchase( $transaction );
+			} elseif ( str_contains( $method, 'Donation' ) ) {
+				$this->handle_donation( $transaction );
+			} elseif ( str_contains( $method, 'Portal-Payments' ) ) {
+				$this->handle_donation( $transaction );
+			} else {
+				// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				throw new TransactionException( "Unknown submission method ({$method})" );
+			}
 		} else {
-			throw new TransactionException( 'Unknown submission method.' );
+				throw new TransactionException( 'No submission method provided in the transaction.' );
 		}
 	}
 
@@ -276,19 +282,19 @@ class DeluxeCcTransaction {
 		$email          = $transaction['Customer']['EmailAddress'] ?? null;
 		$parsed_date    = is_string( $date ) ? date_parse( $date ) : array();
 		if ( ! is_string( $transaction_id ) || '' === trim( $transaction_id ) || strlen( $transaction_id ) > 191
-			|| ! is_numeric( $amount ) || ! is_finite( (float) $amount ) || (float) $amount < 0.01 || (float) $amount > 99999999.99
-			|| empty( $parsed_date['year'] ) || empty( $parsed_date['month'] ) || empty( $parsed_date['day'] )
-			|| ! empty( $parsed_date['error_count'] ) || ! empty( $parsed_date['warning_count'] )
-			|| ! is_string( $email ) || ! \is_email( $email )
-			|| ( isset( $transaction['Customer']['Name'] ) && ! is_string( $transaction['Customer']['Name'] ) )
-			|| ( isset( $transaction['SaleItems'] ) && ! is_array( $transaction['SaleItems'] ) ) ) {
+		|| ! is_numeric( $amount ) || ! is_finite( (float) $amount ) || (float) $amount < 0.01 || (float) $amount > 99999999.99
+		|| empty( $parsed_date['year'] ) || empty( $parsed_date['month'] ) || empty( $parsed_date['day'] )
+		|| ! empty( $parsed_date['error_count'] ) || ! empty( $parsed_date['warning_count'] )
+		|| ! is_string( $email ) || ! \is_email( $email )
+		|| ( isset( $transaction['Customer']['Name'] ) && ! is_string( $transaction['Customer']['Name'] ) )
+		|| ( isset( $transaction['SaleItems'] ) && ! is_array( $transaction['SaleItems'] ) ) ) {
 			throw new TransactionException( 'Invalid donation transaction data.' );
 		}
 		foreach ( $transaction['SaleItems'] ?? array() as $item ) {
 			if ( ! is_array( $item )
-				|| ( isset( $item['Name'] ) && ! is_string( $item['Name'] ) )
-				|| ( isset( $item['Quantity'] ) && ! is_numeric( $item['Quantity'] ) )
-				|| ( isset( $item['Total'] ) && ! is_numeric( $item['Total'] ) ) ) {
+			|| ( isset( $item['Name'] ) && ! is_string( $item['Name'] ) )
+			|| ( isset( $item['Quantity'] ) && ! is_numeric( $item['Quantity'] ) )
+			|| ( isset( $item['Total'] ) && ! is_numeric( $item['Total'] ) ) ) {
 				throw new TransactionException( 'Invalid donation line item data.' );
 			}
 		}
