@@ -445,9 +445,9 @@ class DmbcSettings {
 	 */
 	public function render_max_bcc_per_email_field(): void {
 		?>
-		<input type="number" min="1" step="1" 
-			name="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" 
-			id="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" 
+		<input type="number" min="1" step="1"
+			name="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>"
+			id="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>"
 			value="<?php echo esc_attr( (string) $this->get_max_bcc_per_email() ); ?>" class="small-text" />
 		<p class="description">
 		<?php esc_html_e( 'The maximum number of addresses to bcc in a single email. Larger recipient lists are split across multiple emails. Certain email providers may have their own limits, such as a max of 50 using AWS SES.', 'dmbc-tools' ); ?>
@@ -557,6 +557,7 @@ class DmbcSettings {
 		$regexes = \is_array( $value ) ? $value : preg_split( '/\r\n|\r|\n/', (string) $value );
 		$regexes = \array_map( 'trim', $regexes ? $regexes : array() );
 
+		// phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
 		return array_values(
 			array_filter(
 				$regexes,
