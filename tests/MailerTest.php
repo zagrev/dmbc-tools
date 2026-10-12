@@ -8,6 +8,30 @@ use DmbcTools\Plugin;
  * Tests for the Mailer class.
  */
 final class MailerTest extends DmbcUnitTestBase {
+	public function test_both_confirmation_emails_use_the_selected_post(): void {
+		$post = new WP_Post( 73 );
+		$post->post_type = 'post';
+		$post->post_status = 'publish';
+		$post->post_title = 'Custom Confirmation';
+		$post->post_content = 'Thanks {{CustomerName}} for {{PurchaseAmount}}.';
+		$GLOBALS['dmbc_test_state']['posts'][73] = $post;
+		foreach ( array(
+			'Ticket Purchase Confirmation Email' => Plugin::OPTION_TICKET_EMAIL_TEMPLATE,
+			'Donation Confirmation Email' => Plugin::OPTION_DONATION_EMAIL_TEMPLATE,
+		) as $name => $option ) {
+			$this->set_option( $option, 73 );
+			$this->make_mailer()->send_email_using_template( $name, array( 'transaction_id' => 'tx-73', 'email' => 'customer@example.com', 'name' => 'Donor', 'total' => 50 ) );
+		}
+		$this->assertCount( 2, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		foreach ( $GLOBALS['dmbc_test_state']['mail_calls'] as $mail ) {
+			$this->assertSame( 'Custom Confirmation', $mail['subject'] );
+			$this->assertSame( 'Thanks Donor for 50.', $mail['message'] );
+		}
+		$post->post_status = 'draft';
+		$this->make_mailer()->send_email_using_template( 'Donation Confirmation Email', array( 'transaction_id' => 'tx-74', 'email' => 'customer@example.com' ) );
+		$this->assertCount( 2, $GLOBALS['dmbc_test_state']['mail_calls'] );
+	}
+
 
 	private function make_mailer(): Mailer {
 		return new Mailer( new DmbcSettings() );

@@ -58,6 +58,20 @@ Activation registers the song list and member update post types, then refreshes 
 
 Run composer install with development dependencies to install php-stubs/wordpress-stubs. The package supplies WordPress function, class, and constant declarations for IDE completion and static analysis, including template functions such as language_attributes() and wp_head(). Let the PHP language server index vendor/php-stubs/wordpress-stubs; reload the VS Code window if stale unknown-function warnings remain. These declarations must not be included or required at runtime.
 
+== Donations ==
+
+Under Settings > DMBC Tools > DMBC Tools notifications, administrators can select separate published posts for the ticket and donation confirmation templates. The selected post's title supplies the subject and its content supplies the email body. Default retains lookup by "Ticket Purchase Confirmation Email" or "Donation Confirmation Email". A deleted or unpublished selected post is logged as unavailable and no confirmation is sent until the setting is corrected.
+
+Approved Deluxe notifications whose SubmissionMethod contains "Donation" are recorded in the prefixed dmbc_donation table. Transaction IDs are unique; repeated notifications do not send another confirmation. Donor account creation and the donor role follow the existing ticket workflow.
+
+Administrators can view Donations at wp-admin/admin.php?page=dmbc-donations. The page shows date, donor name, email, amount, transaction ID, donation count, and total amount. Records are private to users with manage_options; no public donation listing is added.
+
+The Donations page defaults to the last 30 calendar days, including today according to the WordPress site date. Choose Last 90 days or Custom date range and apply the filter. Custom start and end dates are inclusive and filter the stored transaction date (tx_date), not the processing date. The displayed count and total cover only donations within the selected range.
+
+Create a WordPress post titled "Donation Confirmation Email" to enable confirmation emails. The existing mailer supports {{CustomerName}}, {{PurchaseAmount}}, {{PurchaseDate}}, and {{ItemList}}{{ItemName}} / {{ItemQuantity}} / {{ItemPrice}}{{/ItemList}}. Notifications without SaleItems receive a single Donation line item. The configured plugin email recipient is copied. Missing templates and delivery failures are logged; donations remain recorded.
+
+The donation table is created by the existing schema setup on init. The public Donate link and Deluxe payment form are unchanged.
+
 == Changelog ==
 
 = 0.1.0 =

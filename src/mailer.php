@@ -85,14 +85,28 @@ class Mailer {
 	 * @return void
 	 */
 	public function send_email_using_template( string $template_name, array $ticket_data ) {
-		$logger   = Plugin::instance()->logger();
-		$template = \get_posts(
-			array(
-				'title'       => $template_name,
-				'post_type'   => 'post',
-				'numberposts' => 1,
-			)
+		$logger           = Plugin::instance()->logger();
+		$template_options = array(
+			'Ticket Purchase Confirmation Email' => Plugin::OPTION_TICKET_EMAIL_TEMPLATE,
+			'Donation Confirmation Email'        => Plugin::OPTION_DONATION_EMAIL_TEMPLATE,
 		);
+		$template_id      = isset( $template_options[ $template_name ] ) ? (int) \get_option( $template_options[ $template_name ], 0 ) : 0;
+		if ( $template_id ) {
+			$template_post = \get_post( $template_id );
+			if ( ! $template_post || 'post' !== $template_post->post_type || 'publish' !== $template_post->post_status ) {
+				$logger->error( 'Configured email template post is unavailable: ' . $template_id . ' for transaction ' . ( $ticket_data['transaction_id'] ?? '' ) );
+				return;
+			}
+			$template = array( $template_post );
+		} else {
+			$template = \get_posts(
+				array(
+					'title'       => $template_name,
+					'post_type'   => 'post',
+					'numberposts' => 1,
+				)
+			);
+		}
 		if ( false === $template || empty( $template ) ) {
 			$logger->error( 'Email template not found: ' . $template_name . ' for transaction ' . ( $ticket_data['transaction_id'] ?? '' ) );
 			return;

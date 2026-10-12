@@ -715,6 +715,8 @@ final class PluginTest extends DmbcUnitTestBase {
 		$menu_pages = $GLOBALS['dmbc_test_state']['menu_pages'];
 		$this->assertArrayHasKey( 'dmbc-songlists-menu', $menu_pages );
 		$this->assertSame( Plugin::CAP_VIEW_SONGLISTS, $menu_pages['dmbc-songlists-menu']['capability'] );
+		$this->assertSame( 'manage_options', $menu_pages['dmbc-donations']['capability'] );
+		$this->assertSame( 'render_donation_table_page', $menu_pages['dmbc-donations']['callback'][1] );
 
 		$submenu_pages = $GLOBALS['dmbc_test_state']['submenu_pages'];
 		$this->assertArrayHasKey( 'dmbc-songlist-edit', $submenu_pages );

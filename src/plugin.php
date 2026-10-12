@@ -53,6 +53,8 @@ final class Plugin {
 	public const string OPTION_SONGLIST_EXCLUSION_REGEXES = 'song_library_exclusion_regexes';
 	public const string OPTION_SONGLIST_RECIPIENT_ROLES   = 'song_list_recipient_roles';
 	public const string OPTION_VERSION                    = 'dmbc_tools_version';
+	public const string OPTION_TICKET_EMAIL_TEMPLATE      = 'dmbc_ticket_email_template_post_id';
+	public const string OPTION_DONATION_EMAIL_TEMPLATE    = 'dmbc_donation_email_template_post_id';
 	public const string PERFORMANCE_DATE_META_KEY         = '_dmbc_performance_date';
 	public const string PLAYLIST_META_KEY                 = '_dmbc_playlist';
 	public const string SONGLIST_META_NONCE               = 'dmbc_songlist_meta_nonce';
@@ -102,6 +104,13 @@ final class Plugin {
 	 * @var TicketView
 	 */
 	private TicketView $ticket_view;
+
+	/**
+	 * The donation records view.
+	 *
+	 * @var DonationView
+	 */
+	private DonationView $donation_view;
 
 	/**
 	 * The singleton instance of this plugin
@@ -335,6 +344,8 @@ final class Plugin {
 	public function register_options(): void {
 
 		\add_option( self::OPTION_VERSION, self::VERSION );
+		\add_option( self::OPTION_TICKET_EMAIL_TEMPLATE, 0 );
+		\add_option( self::OPTION_DONATION_EMAIL_TEMPLATE, 0 );
 		\update_option( self::OPTION_VERSION, self::VERSION ); // in case it already exists.
 
 		\add_option( self::OPTION_SONGLIST_DIRECTORY, 'dmbc-song-library' );
@@ -566,6 +577,8 @@ final class Plugin {
 		foreach (
 			array(
 				self::OPTION_VERSION,
+				self::OPTION_TICKET_EMAIL_TEMPLATE,
+				self::OPTION_DONATION_EMAIL_TEMPLATE,
 				'song_library_directory',
 				'song_library_exclusion_regexes',
 				'song_list_recipient_roles',
@@ -956,6 +969,20 @@ final class Plugin {
 	}
 
 	/**
+	 * Create the donation records view.
+	 *
+	 * @return void
+	 */
+	public function create_donation_view(): void {
+		if ( ! isset( $this->donation_view ) ) {
+			$this->ensure_wp_list_table_available();
+			require_once __DIR__ . '/donation-table.php';
+			require_once __DIR__ . '/donation-view.php';
+			$this->donation_view = new DonationView();
+		}
+	}
+
+	/**
 	 * Unregister post types that we used to use but don't use anymore.
 	 *
 	 * @return void
@@ -998,6 +1025,7 @@ final class Plugin {
 		$this->create_song_list_view();
 		$this->create_member_update_view();
 		$this->create_ticket_view();
+		$this->create_donation_view();
 
 		\add_menu_page(
 			__( 'All Rehearsal Song Lists', 'dmbc-tools' ),
@@ -1036,6 +1064,16 @@ final class Plugin {
 			array( $this->ticket_view, 'render_ticket_table_page' ),
 			'dashicons-tickets-alt',
 			27
+		);
+
+		\add_menu_page(
+			__( 'Donations', 'dmbc-tools' ),
+			__( 'Donations', 'dmbc-tools' ),
+			'manage_options',
+			'dmbc-donations',
+			array( $this->donation_view, 'render_donation_table_page' ),
+			'dashicons-heart',
+			28
 		);
 
 		// add options page separately.

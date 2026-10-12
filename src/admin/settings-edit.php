@@ -149,12 +149,77 @@ class DmbcSettings {
 		);
 
 		// Tools section.
+		foreach ( array(
+			Plugin::OPTION_TICKET_EMAIL_TEMPLATE   => __( 'Ticket email template post', 'dmbc-tools' ),
+			Plugin::OPTION_DONATION_EMAIL_TEMPLATE => __( 'Donation email template post', 'dmbc-tools' ),
+		) as $option => $label ) {
+			\register_setting(
+				'settings_group',
+				$option,
+				array(
+					'type'              => 'integer',
+					'default'           => 0,
+					'sanitize_callback' => function ( $value ) use ( $option ): int {
+						$id = is_scalar( $value ) ? filter_var( $value, FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 0 ) ) ) : false;
+						$post = $id ? \get_post( $id ) : null;
+						if ( false === $id || ( $id && ( ! $post || 'post' !== $post->post_type || 'publish' !== $post->post_status ) ) ) {
+							\add_settings_error( $option, 'invalid_template_post', __( 'Please select a published post for the email template.', 'dmbc-tools' ) );
+							return (int) \get_option( $option, 0 );
+						}
+						return $id;
+					},
+				)
+			);
+			\add_settings_field(
+				$option,
+				$label,
+				array( $this, 'render_email_template_post_field' ),
+				'settings',
+				'notifications_section',
+				array(
+					'option'    => $option,
+					'label_for' => $option,
+				)
+			);
+		}
+
 		add_settings_section(
 			'tools_section',
 			__( 'Tools', 'dmbc-tools' ),
 			array( $this, 'render_tools_section' ),
 			'settings'
 		);
+	}
+
+	/**
+	 * Render a published-post selector for a confirmation email.
+	 *
+	 * @param array $args Settings field arguments.
+	 * @return void
+	 */
+	public function render_email_template_post_field( array $args ): void {
+		$option      = $args['option'];
+		$selected_id = (int) \get_option( $option, 0 );
+		$posts       = \get_posts(
+			array(
+				'post_type'   => 'post',
+				'post_status' => 'publish',
+				'numberposts' => -1,
+				'orderby'     => 'title',
+				'order'       => 'ASC',
+			)
+		);
+		echo '<select id="' . \esc_attr( $option ) . '" name="' . \esc_attr( $option ) . '">';
+		echo '<option value="0">' . \esc_html__( 'Default (look up the existing template title)', 'dmbc-tools' ) . '</option>';
+		$found = 0 === $selected_id;
+		foreach ( $posts as $post ) {
+			$found = $found || $selected_id === $post->ID;
+			echo '<option value="' . \esc_attr( (string) $post->ID ) . '" ' . \selected( $selected_id, $post->ID, false ) . '>' . \esc_html( $post->post_title . ' (#' . $post->ID . ')' ) . '</option>';
+		}
+		if ( ! $found ) {
+			echo '<option value="' . \esc_attr( (string) $selected_id ) . '" selected>' . \esc_html__( 'Selected template is unavailable. Choose a published post.', 'dmbc-tools' ) . '</option>';
+		}
+		echo '</select><p class="description">' . \esc_html__( 'The post title becomes the email subject and its content formats the email. Default uses Ticket Purchase Confirmation Email or Donation Confirmation Email.', 'dmbc-tools' ) . '</p>';
 	}
 
 		/** Render the song library directory field. */

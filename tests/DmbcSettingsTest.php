@@ -13,6 +13,31 @@ final class DmbcSettingsTest extends DmbcUnitTestBase {
 		return new DmbcSettings();
 	}
 
+	public function test_email_template_selectors_register_validate_and_render_posts(): void {
+		$settings = $this->make_settings();
+		$settings->register_settings();
+		$post = new WP_Post( 73 );
+		$post->post_type = 'post';
+		$post->post_status = 'publish';
+		$post->post_title = 'Custom <Template>';
+		$GLOBALS['dmbc_test_state']['posts'][73] = $post;
+		foreach ( array( Plugin::OPTION_TICKET_EMAIL_TEMPLATE, Plugin::OPTION_DONATION_EMAIL_TEMPLATE ) as $option ) {
+			$this->set_option( $option, 73 );
+			$callback = $GLOBALS['dmbc_test_state']['registered_settings'][ $option ]['args']['sanitize_callback'];
+			$this->assertSame( 73, $callback( '73' ) );
+			$this->assertSame( 0, $callback( '0' ) );
+			$this->assertSame( 73, $callback( '999' ) );
+			$this->assertSame( 73, $callback( array( 73 ) ) );
+			ob_start();
+			$settings->render_email_template_post_field( array( 'option' => $option ) );
+			$html = (string) ob_get_clean();
+			$this->assertStringContainsString( 'name="' . $option . '"', $html );
+			$this->assertStringContainsString( 'value="73" selected="selected"', $html );
+			$this->assertStringContainsString( 'Custom &lt;Template&gt;', $html );
+		}
+		$this->assertCount( 4, $GLOBALS['dmbc_test_state']['settings_errors'] );
+	}
+
 	// -- sanitize_song_library_directory -------------------------------------------------
 
 	/**
