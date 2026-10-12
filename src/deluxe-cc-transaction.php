@@ -45,6 +45,13 @@ class DeluxeCcTransaction {
 	public const string TICKET_TABLE_NAME = 'dmbc_ticket';
 
 	/**
+	 * The table recording approved donations.
+	 *
+	 * @var string
+	 */
+	public const string DONATION_TABLE_NAME = 'dmbc_donation';
+
+	/**
 	 * Creates the database table that records Deluxe credit card transaction notifications.
 	 *
 	 * @return void
@@ -63,6 +70,20 @@ class DeluxeCcTransaction {
 			received_at DATETIME(3) NOT NULL,
 			processing_result TEXT NOT NULL,
 			PRIMARY KEY  (id)
+		) {$charset_collate};";
+
+		$donation_table = $wpdb->prefix . self::DONATION_TABLE_NAME;
+		$sql[]          = "CREATE TABLE {$donation_table} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			transaction_id varchar(191) NOT NULL,
+			tx_date DATETIME NOT NULL,
+			processed_at DATETIME(3) NOT NULL,
+			email TEXT,
+			total decimal(10,2) NOT NULL,
+			name TEXT NOT NULL,
+			items TEXT NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY unique_transaction_id (transaction_id)
 		) {$charset_collate};";
 
 		$table_name2 = $wpdb->prefix . self::TICKET_TABLE_NAME;
@@ -161,11 +182,23 @@ class DeluxeCcTransaction {
 	 * @return array The recorded ticket purchase data.
 	 */
 	public function log_ticket_purchase( array $transaction ): array {
+		return $this->log_transaction( $transaction, self::TICKET_TABLE_NAME );
+	}
+
+	/**
+	 * Record a transaction using the shared ticket/donation data shape.
+	 *
+	 * @param array  $transaction The transaction payload.
+	 * @param string $table_name The destination table suffix.
+	 * @return array The recorded data used by confirmation emails.
+	 * @throws TransactionException If the insert fails.
+	 */
+	private function log_transaction( array $transaction, string $table_name ): array {
 		global $wpdb;
 
 		$logger = Plugin::instance()->logger();
 
-		$logger->info( 'Handling the ticket purchase. Transaction ID: ' . $transaction[ self::FIELD_TX_ID ] );
+		$logger->info( 'Recording transaction in ' . $table_name . '. Transaction ID: ' . $transaction[ self::FIELD_TX_ID ] );
 
 		// Record the ticket purchase (types of tickets, counts, update total?).
 		$transaction_id = $transaction[ self::FIELD_TX_ID ];
@@ -175,7 +208,7 @@ class DeluxeCcTransaction {
 		$customer_email = $transaction['Customer']['EmailAddress'];
 
 		$items = array();
-		foreach ( $transaction['SaleItems'] as $ticket ) {
+		foreach ( $transaction['SaleItems'] ?? array() as $ticket ) {
 			$ticket_type  = $ticket['Name'] ?? '';
 			$ticket_count = $ticket['Quantity'] ?? 0;
 			$ticket_total = $ticket['Total'] ?? 0;
@@ -184,6 +217,14 @@ class DeluxeCcTransaction {
 				'type'  => $ticket_type,
 				'count' => $ticket_count,
 				'total' => $ticket_total,
+			);
+		}
+
+		if ( self::DONATION_TABLE_NAME === $table_name && empty( $items ) ) {
+			$items[] = array(
+				'type'  => __( 'Donation', 'dmbc-tools' ),
+				'count' => 1,
+				'total' => $amount,
 			);
 		}
 
@@ -198,7 +239,7 @@ class DeluxeCcTransaction {
 		);
 
 		$result = $wpdb->insert(
-			$wpdb->prefix . self::TICKET_TABLE_NAME,
+			$wpdb->prefix . $table_name,
 			$data,
 			array( '%s', '%s', '%s', '%s', '%s', '%s', '%f' )
 		);
@@ -223,9 +264,40 @@ class DeluxeCcTransaction {
 	 *
 	 * @param array<string, mixed> $transaction The donation transaction payload.
 	 * @return void
+	 * @throws TransactionException If the donation is invalid or cannot be recorded.
 	 */
 	public function handle_donation( array $transaction ): void {
-		// TODO Implement the donation handling logic here.
+		if ( 'APPROVED' !== ( $transaction['Status'] ?? '' ) ) {
+			throw new TransactionException( 'Transaction not approved.' );
+		}
+		$transaction_id = $transaction[ self::FIELD_TX_ID ] ?? null;
+		$amount         = $transaction['TransactionAmount'] ?? null;
+		$date           = $transaction['DateTime'] ?? null;
+		$email          = $transaction['Customer']['EmailAddress'] ?? null;
+		$parsed_date    = is_string( $date ) ? date_parse( $date ) : array();
+		if ( ! is_string( $transaction_id ) || '' === trim( $transaction_id ) || strlen( $transaction_id ) > 191
+			|| ! is_numeric( $amount ) || ! is_finite( (float) $amount ) || (float) $amount < 0.01 || (float) $amount > 99999999.99
+			|| empty( $parsed_date['year'] ) || empty( $parsed_date['month'] ) || empty( $parsed_date['day'] )
+			|| ! empty( $parsed_date['error_count'] ) || ! empty( $parsed_date['warning_count'] )
+			|| ! is_string( $email ) || ! \is_email( $email )
+			|| ( isset( $transaction['Customer']['Name'] ) && ! is_string( $transaction['Customer']['Name'] ) )
+			|| ( isset( $transaction['SaleItems'] ) && ! is_array( $transaction['SaleItems'] ) ) ) {
+			throw new TransactionException( 'Invalid donation transaction data.' );
+		}
+		foreach ( $transaction['SaleItems'] ?? array() as $item ) {
+			if ( ! is_array( $item )
+				|| ( isset( $item['Name'] ) && ! is_string( $item['Name'] ) )
+				|| ( isset( $item['Quantity'] ) && ! is_numeric( $item['Quantity'] ) )
+				|| ( isset( $item['Total'] ) && ! is_numeric( $item['Total'] ) ) ) {
+				throw new TransactionException( 'Invalid donation line item data.' );
+			}
+		}
+
+		$transaction['TransactionAmount'] = round( (float) $amount, 2 );
+		$transaction['DateTime']          = ( new \DateTimeImmutable( $date ) )->format( 'Y-m-d H:i:s' );
+
+		$data = $this->log_transaction( $transaction, self::DONATION_TABLE_NAME );
+		Plugin::instance()->send_email_using_template( 'Donation Confirmation Email', $data );
 	}
 
 	/**

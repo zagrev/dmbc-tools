@@ -104,6 +104,13 @@ final class Plugin {
 	private TicketView $ticket_view;
 
 	/**
+	 * The donation records view.
+	 *
+	 * @var DonationView
+	 */
+	private DonationView $donation_view;
+
+	/**
 	 * The singleton instance of this plugin
 	 *
 	 * @var self|null
@@ -956,6 +963,20 @@ final class Plugin {
 	}
 
 	/**
+	 * Create the donation records view.
+	 *
+	 * @return void
+	 */
+	public function create_donation_view(): void {
+		if ( ! isset( $this->donation_view ) ) {
+			$this->ensure_wp_list_table_available();
+			require_once __DIR__ . '/donation-table.php';
+			require_once __DIR__ . '/donation-view.php';
+			$this->donation_view = new DonationView();
+		}
+	}
+
+	/**
 	 * Unregister post types that we used to use but don't use anymore.
 	 *
 	 * @return void
@@ -998,6 +1019,7 @@ final class Plugin {
 		$this->create_song_list_view();
 		$this->create_member_update_view();
 		$this->create_ticket_view();
+		$this->create_donation_view();
 
 		\add_menu_page(
 			__( 'All Rehearsal Song Lists', 'dmbc-tools' ),
@@ -1036,6 +1058,16 @@ final class Plugin {
 			array( $this->ticket_view, 'render_ticket_table_page' ),
 			'dashicons-tickets-alt',
 			27
+		);
+
+		\add_menu_page(
+			__( 'Donations', 'dmbc-tools' ),
+			__( 'Donations', 'dmbc-tools' ),
+			'manage_options',
+			'dmbc-donations',
+			array( $this->donation_view, 'render_donation_table_page' ),
+			'dashicons-heart',
+			28
 		);
 
 		// add options page separately.

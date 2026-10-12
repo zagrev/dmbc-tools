@@ -187,6 +187,11 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 
 		public function insert( string $table, array $data, $format = null ) {
 			$GLOBALS['dmbc_test_state']['wpdb_inserts'][] = compact( 'table', 'data', 'format' );
+			if ( isset( $GLOBALS['dmbc_test_state']['wpdb_insert_errors'][ $table ] ) ) {
+				$this->last_error = $GLOBALS['dmbc_test_state']['wpdb_insert_errors'][ $table ];
+				return false;
+			}
+			$this->last_error = '';
 			return 1;
 		}
 
@@ -197,6 +202,7 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 
 		public function get_results( string $query = '', $output = OBJECT, $y = 0 ) {
 			$GLOBALS['dmbc_test_state']['wpdb_get_results'][] = compact( 'query' );
+			$this->last_error = $GLOBALS['dmbc_test_state']['wpdb_query_error'] ?? '';
 			return $GLOBALS['dmbc_test_state']['wpdb_results'] ?? array();
 		}
 
