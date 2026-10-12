@@ -35,14 +35,22 @@ final class DeluxeCcTransactionTest extends DmbcUnitTestBase {
 	public function test_create_table_runs_dbdelta(): void {
 		DeluxeCcTransaction::create_table();
 
-		$calls = $GLOBALS['dmbc_test_state']['dbdelta_calls'] ? $GLOBALS['dmbc_test_state']['dbdelta_calls'][0] : array() ;
-		$this->assertNotEmpty( $calls );
-		$this->assertSame(3, count( $calls ) );
-		$donation_sql = $calls[1];
-		$this->assertStringContainsString( 'wp_' . DeluxeCcTransaction::DONATION_TABLE_NAME, $donation_sql );
-		$this->assertStringContainsString( 'UNIQUE KEY unique_transaction_id (transaction_id)', $donation_sql );
-		$this->assertStringContainsString( 'wp_' . DeluxeCcTransaction::TICKET_TABLE_NAME, $calls[2] );
-		$this->assertStringContainsString( 'wp_' . DeluxeCcTransaction::NOTIFICATION_TABLE_NAME, $calls[0] );
+		$dbdelta_calls = $GLOBALS['dmbc_test_state']['dbdelta_calls'];
+		$this->assertCount( 1, $dbdelta_calls );
+
+		$schemas = $dbdelta_calls[0];
+		$this->assertCount( 3, $schemas );
+		$this->assertStringContainsString( 'wp_' . DeluxeCcTransaction::NOTIFICATION_TABLE_NAME, $schemas[0] );
+		$this->assertStringContainsString( 'wp_' . DeluxeCcTransaction::TICKET_TABLE_NAME, $schemas[2] );
+
+		$donation_schema = $schemas[1];
+		$this->assertStringContainsString( 'wp_' . DeluxeCcTransaction::DONATION_TABLE_NAME, $donation_schema );
+		$this->assertStringContainsString( 'transaction_id varchar(191) NOT NULL', $donation_schema );
+		$this->assertStringContainsString( 'tx_date DATETIME NOT NULL', $donation_schema );
+		$this->assertStringContainsString( 'email TEXT', $donation_schema );
+		$this->assertStringContainsString( 'total decimal(10,2) NOT NULL', $donation_schema );
+		$this->assertStringContainsString( 'items TEXT NOT NULL', $donation_schema );
+		$this->assertStringContainsString( 'UNIQUE KEY unique_transaction_id (transaction_id)', $donation_schema );
 	}
 
 	/**
