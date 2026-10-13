@@ -1,7 +1,8 @@
 <?xml version="1.0"?>
 <ruleset name="WordPress Project Rules">
     <description>Apply WordPress Coding Standards to this project.</description>
-    
+    <ini name="memory_limit" value="-1"/>
+
     <!-- Use the official WordPress standard -->
     <rule ref="WordPress" >
         <!-- Disable the class- file naming prefix requirement -->
@@ -11,12 +12,12 @@
     <rule ref="Generic.Files.LineEndings">
         <exclude name="Generic.Files.LineEndings.InvalidEOLChar"/>
     </rule>
-    
+
 
     <!-- Check PHP files -->
     <arg name="extensions" value="php" />
     <arg name="colors" />
-    
+
     <!-- Exclude third-party vendor directories -->
     <exclude-pattern>*/vendor/*</exclude-pattern>
     <exclude-pattern>*/node_modules/*</exclude-pattern>

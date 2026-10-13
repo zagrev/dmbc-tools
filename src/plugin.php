@@ -24,6 +24,8 @@ require_once __DIR__ . '/acf-integration.php';
 require_once __DIR__ . '/mailster-integration.php';
 require_once __DIR__ . '/logger.php';
 require_once __DIR__ . '/member-update-email.php';
+require_once __DIR__ . '/mailserver-proxy.php';
+require_once __DIR__ . '/mailserver-view.php';
 
 use DmbcTools\SongListView;
 use DmbcTools\DmbcSettings;
@@ -56,12 +58,13 @@ final class Plugin {
 	public const string OPTION_VERSION                    = 'dmbc_tools_version';
 	public const string OPTION_TICKET_EMAIL_TEMPLATE      = 'dmbc_ticket_email_template_post_id';
 	public const string OPTION_DONATION_EMAIL_TEMPLATE    = 'dmbc_donation_email_template_post_id';
+	public const string OPTION_MAILSERVER_API_URL         = 'dmbc_mailserver_api_url';
 	public const string PERFORMANCE_DATE_META_KEY         = '_dmbc_performance_date';
 	public const string PLAYLIST_META_KEY                 = '_dmbc_playlist';
 	public const string SONGLIST_META_NONCE               = 'dmbc_songlist_meta_nonce';
 	public const string SONGLIST_POST_TYPE                = 'dmbc-songlist';
 	public const string SONGS_META_KEY                    = '_dmbc_songs';
-	public const string VERSION                           = '1.1.32';
+	public const string VERSION                           = '1.2.0';
 
 
 	/**
@@ -114,6 +117,20 @@ final class Plugin {
 	private DonationView $donation_view;
 
 	/**
+	 * The REST pass-through to the Docker Mailserver GUI.
+	 *
+	 * @var MailserverProxy
+	 */
+	private MailserverProxy $mailserver_proxy;
+
+	/**
+	 * The mail server admin page.
+	 *
+	 * @var MailserverView
+	 */
+	private MailserverView $mailserver_view;
+
+	/**
 	 * The singleton instance of this plugin
 	 *
 	 * @var self|null
@@ -134,6 +151,8 @@ final class Plugin {
 		$this->settings              = new DmbcSettings();
 		$this->mailer                = new Mailer( $this->settings );
 		$this->deluxe_cc_transaction = new DeluxeCcTransaction();
+		$this->mailserver_proxy      = new MailserverProxy();
+		$this->mailserver_view       = new MailserverView();
 		if ( \defined( 'PHPUNIT_COMPOSER_INSTALL' ) || \defined( '__PHPUNIT_PHAR__' ) ) {
 			// Application is running in a PHPUnit test environment.
 			$this->logger = new DmbcLogger( 'dmbc-tools', DmbcLogger::LEVEL_OFF );
@@ -184,6 +203,7 @@ final class Plugin {
 		\add_action( 'save_post_' . self::MEMBER_UPDATE_POST_TYPE, array( $this, 'send_member_update_email_on_save' ), 20, 2 );
 		\add_action( MailsterIntegration::CRON_HOOK, array( MailsterIntegration::class, 'sync_members_to_group' ) );
 		\add_action( 'rest_api_init', array( $this, 'register_deluxe_cc_notification_route' ) );
+		\add_action( 'rest_api_init', array( $this->mailserver_proxy, 'register_routes' ) );
 
 		\add_action( 'wp_dashboard_setup', array( $this, 'register_user_capabilities_dashboard_widget' ) );
 		\add_action( 'wp_ajax_dmbc_browse_directory', array( $this->settings, 'ajax_browse_directory' ) );
@@ -354,6 +374,7 @@ final class Plugin {
 		\add_option( self::OPTION_MAX_BCC_PER_EMAIL, '50' );
 		\add_option( self::OPTION_REMOVE_DATA_ON_UNINSTALL, false );
 		\add_option( self::OPTION_SONGLIST_RECIPIENT_ROLES, 'um_member' );
+		\add_option( self::OPTION_MAILSERVER_API_URL, MailserverProxy::DEFAULT_API_URL );
 	}
 
 	/**
@@ -573,6 +594,7 @@ final class Plugin {
 				'song_list_recipient_roles',
 				self::OPTION_EMAIL_RECIPIENT,
 				self::OPTION_REMOVE_DATA_ON_UNINSTALL,
+				self::OPTION_MAILSERVER_API_URL,
 			) as $option_name
 		) {
 			\delete_option( $option_name );
@@ -1063,6 +1085,16 @@ final class Plugin {
 			array( $this->donation_view, 'render_donation_table_page' ),
 			'dashicons-heart',
 			28
+		);
+
+		\add_menu_page(
+			__( 'Mail Server', 'dmbc-tools' ),
+			__( 'Mail Server', 'dmbc-tools' ),
+			MailserverProxy::CAPABILITY,
+			MailserverView::MENU_SLUG,
+			array( $this->mailserver_view, 'render_page' ),
+			'dashicons-email-alt',
+			29
 		);
 
 		// add options page separately.

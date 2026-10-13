@@ -38,6 +38,10 @@ jobs:
             fi
             IFS=. read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
             VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            # Honor a manual major/minor bump committed in the plugin header.
+            if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ] && [ "$(printf '%s\n%s\n' "$CURRENT_VERSION" "$LATEST_VERSION" | sort -V | tail -n 1)" = "$CURRENT_VERSION" ]; then
+              VERSION="$CURRENT_VERSION"
+            fi
 
             sed -i -E "s/^ \* Version: .*/ * Version: ${VERSION}/" dmbc-tools.php
             sed -i -E "s/(public const string VERSION[[:space:]]*=[[:space:]]*')[^']+('.*)/\1${VERSION}\2/" src/plugin.php
@@ -57,9 +61,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dmbc-tools.php src/plugin.php readme.txt
-          git commit -m "chore: release v${VERSION}"
-          git tag "v${VERSION}"
-          git push origin main "v${VERSION}"
+          if git diff --cached --quiet; then
+            echo "Version files already at v${VERSION}; tagging current commit."
+            if git ls-remote --exit-code --tags origin "v${VERSION}"; then
+              exit 0
+            fi
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+          else
+            git commit -m "chore: release v${VERSION}"
+            git tag "v${VERSION}"
+            git push origin main "v${VERSION}"
+          fi
 
       - name: Ensure manual release tag
         if: github.event_name == 'workflow_dispatch'

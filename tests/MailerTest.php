@@ -25,7 +25,7 @@ final class MailerTest extends DmbcUnitTestBase {
 		$this->assertCount( 2, $GLOBALS['dmbc_test_state']['mail_calls'] );
 		foreach ( $GLOBALS['dmbc_test_state']['mail_calls'] as $mail ) {
 			$this->assertSame( 'Custom Confirmation', $mail['subject'] );
-			$this->assertSame( 'Thanks Donor for 50.', $mail['message'] );
+			$this->assertSame( 'Thanks Donor for 50.00.', $mail['message'] );
 		}
 		$post->post_status = 'draft';
 		$this->make_mailer()->send_email_using_template( 'Donation Confirmation Email', array( 'transaction_id' => 'tx-74', 'email' => 'customer@example.com' ) );

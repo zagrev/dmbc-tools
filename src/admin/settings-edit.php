@@ -183,12 +183,71 @@ class DmbcSettings {
 			);
 		}
 
+		register_setting(
+			'settings_group',
+			Plugin::OPTION_MAILSERVER_API_URL,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_mailserver_api_url' ),
+				'default'           => MailserverProxy::DEFAULT_API_URL,
+			)
+		);
+		add_settings_section(
+			'mailserver_section',
+			__( 'Mail server', 'dmbc-tools' ),
+			'__return_empty_string',
+			'settings'
+		);
+		add_settings_field(
+			Plugin::OPTION_MAILSERVER_API_URL,
+			__( 'Docker Mailserver GUI API URL', 'dmbc-tools' ),
+			array( $this, 'render_mailserver_api_url_field' ),
+			'settings',
+			'mailserver_section',
+			array( 'label_for' => Plugin::OPTION_MAILSERVER_API_URL )
+		);
+
 		add_settings_section(
 			'tools_section',
 			__( 'Tools', 'dmbc-tools' ),
 			array( $this, 'render_tools_section' ),
 			'settings'
 		);
+	}
+
+	/**
+	 * Render the Docker Mailserver GUI API URL field.
+	 *
+	 * @return void
+	 */
+	public function render_mailserver_api_url_field(): void {
+		$option = Plugin::OPTION_MAILSERVER_API_URL;
+		echo '<input type="url" class="regular-text" id="' . \esc_attr( $option ) . '" name="' . \esc_attr( $option ) . '" value="' . \esc_attr( MailserverProxy::get_api_url() ) . '" placeholder="' . \esc_attr( MailserverProxy::DEFAULT_API_URL ) . '" />';
+		echo '<p class="description">' . \esc_html__( 'Base URL of the Docker Mailserver GUI backend API, as reachable from this web server. The Mail Server admin page forwards its requests here.', 'dmbc-tools' ) . '</p>';
+	}
+
+	/**
+	 * Sanitize the Docker Mailserver GUI API URL, keeping the previous value when invalid.
+	 *
+	 * @param mixed $value The submitted value.
+	 * @return string
+	 */
+	public function sanitize_mailserver_api_url( $value ): string {
+		if ( ! is_string( $value ) ) {
+			\add_settings_error( Plugin::OPTION_MAILSERVER_API_URL, 'invalid_mailserver_api_url', __( 'Please enter a valid http(s) URL for the Docker Mailserver GUI API.', 'dmbc-tools' ) );
+			return MailserverProxy::get_api_url();
+		}
+		$url = trim( $value );
+		if ( '' === $url ) {
+			return MailserverProxy::DEFAULT_API_URL;
+		}
+		$scheme = strtolower( (string) \wp_parse_url( $url, PHP_URL_SCHEME ) );
+		$host   = (string) \wp_parse_url( $url, PHP_URL_HOST );
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || '' === $host || false === filter_var( $url, FILTER_VALIDATE_URL ) ) {
+			\add_settings_error( Plugin::OPTION_MAILSERVER_API_URL, 'invalid_mailserver_api_url', __( 'Please enter a valid http(s) URL for the Docker Mailserver GUI API.', 'dmbc-tools' ) );
+			return MailserverProxy::get_api_url();
+		}
+		return rtrim( $url, '/' );
 	}
 
 	/**
@@ -557,6 +616,7 @@ class DmbcSettings {
 		$regexes = \is_array( $value ) ? $value : preg_split( '/\r\n|\r|\n/', (string) $value );
 		$regexes = \array_map( 'trim', $regexes ? $regexes : array() );
 
+		// phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged
 		return array_values(
 			array_filter(
 				$regexes,

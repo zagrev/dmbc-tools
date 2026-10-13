@@ -113,9 +113,9 @@ if ( ! class_exists( 'WP_User' ) ) {
 }
 
 if ( ! class_exists( 'WP_REST_Request' ) ) {
-	/** Minimal stand-in for WP_REST_Request, backed by a settable JSON payload. */
+	/** Minimal stand-in for WP_REST_Request, backed by a settable JSON payload and URL parameters. */
 	class WP_REST_Request {
-		public function __construct( private array $json_params = array(), private string $body = '' ) {}
+		public function __construct( private array $json_params = array(), private string $body = '', private array $url_params = array() ) {}
 
 		public function get_json_params(): array {
 			return $this->json_params;
@@ -123,6 +123,29 @@ if ( ! class_exists( 'WP_REST_Request' ) ) {
 
 		public function get_body(): string {
 			return $this->body;
+		}
+
+		public function get_param( string $key ) {
+			return $this->url_params[ $key ] ?? $this->json_params[ $key ] ?? null;
+		}
+	}
+}
+
+if ( ! class_exists( 'WP_Error' ) ) {
+	/** Minimal stand-in for WP_Error. */
+	class WP_Error {
+		public function __construct( private string $code = '', private string $message = '', private $data = '' ) {}
+
+		public function get_error_code(): string {
+			return $this->code;
+		}
+
+		public function get_error_message(): string {
+			return $this->message;
+		}
+
+		public function get_error_data() {
+			return $this->data;
 		}
 	}
 }
@@ -751,7 +774,65 @@ if ( ! function_exists( 'wp_insert_post' ) ) {
 
 if ( ! function_exists( 'is_wp_error' ) ) {
 	function is_wp_error( $value ): bool {
-		return false;
+		return $value instanceof WP_Error;
+	}
+}
+
+if ( ! function_exists( 'wp_remote_request' ) ) {
+	/** Records the request and returns the queued response (or a default empty 200). */
+	function wp_remote_request( string $url, array $args = array() ) {
+		$GLOBALS['dmbc_test_state']['remote_requests'][] = compact( 'url', 'args' );
+		$queue = $GLOBALS['dmbc_test_state']['remote_responses'] ?? array();
+		if ( empty( $queue ) ) {
+			return array(
+				'response' => array( 'code' => 200 ),
+				'body'     => '',
+			);
+		}
+		return array_shift( $GLOBALS['dmbc_test_state']['remote_responses'] );
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_response_code' ) ) {
+	function wp_remote_retrieve_response_code( $response ) {
+		return is_array( $response ) ? ( $response['response']['code'] ?? '' ) : '';
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
+	function wp_remote_retrieve_body( $response ): string {
+		return is_array( $response ) ? (string) ( $response['body'] ?? '' ) : '';
+	}
+}
+
+if ( ! function_exists( 'wp_parse_url' ) ) {
+	function wp_parse_url( string $url, int $component = -1 ) {
+		return parse_url( $url, $component );
+	}
+}
+
+if ( ! function_exists( 'plugin_dir_url' ) ) {
+	function plugin_dir_url( string $file ): string {
+		return 'http://example.test/wp-content/plugins/dmbc-tools/src/';
+	}
+}
+
+if ( ! function_exists( 'wp_enqueue_style' ) ) {
+	function wp_enqueue_style( string $handle, string $src = '', array $deps = array(), $ver = false, string $media = 'all' ): void {
+		$GLOBALS['dmbc_test_state']['enqueued_styles'][ $handle ] = compact( 'src', 'deps' );
+	}
+}
+
+if ( ! function_exists( 'wp_enqueue_script' ) ) {
+	function wp_enqueue_script( string $handle, string $src = '', array $deps = array(), $ver = false, $args = array() ): void {
+		$GLOBALS['dmbc_test_state']['enqueued_scripts'][ $handle ] = compact( 'src', 'deps' );
+	}
+}
+
+if ( ! function_exists( 'wp_localize_script' ) ) {
+	function wp_localize_script( string $handle, string $object_name, array $l10n ): bool {
+		$GLOBALS['dmbc_test_state']['localized_scripts'][ $handle ][ $object_name ] = $l10n;
+		return true;
 	}
 }
 

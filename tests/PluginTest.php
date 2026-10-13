@@ -280,6 +280,8 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertContains( array( $plugin, 'send_member_update_email_on_save' ), $GLOBALS['dmbc_test_state']['actions'][ 'save_post_' . Plugin::MEMBER_UPDATE_POST_TYPE ] );
 		$this->assertArrayNotHasKey( Plugin::MEMBER_UPDATE_CRON_HOOK, $GLOBALS['dmbc_test_state']['actions'] );
 		$this->assertContains( array( $plugin, 'register_deluxe_cc_notification_route' ), $GLOBALS['dmbc_test_state']['actions']['rest_api_init'] );
+		$rest_callbacks = array_map( static fn( $callback ) => is_array( $callback ) ? $callback[1] : $callback, $GLOBALS['dmbc_test_state']['actions']['rest_api_init'] );
+		$this->assertContains( 'register_routes', $rest_callbacks );
 		$this->assertSame( array( $plugin, 'render_songlist_shortcode' ), $GLOBALS['dmbc_test_state']['shortcodes']['dmbc_songlist'] );
 		$this->assertSame( 0, $GLOBALS['dmbc_test_state']['flush_rewrite_rules_calls'] );
 	}
@@ -792,6 +794,8 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertSame( Plugin::CAP_VIEW_SONGLISTS, $menu_pages['dmbc-songlists-menu']['capability'] );
 		$this->assertSame( 'manage_options', $menu_pages['dmbc-donations']['capability'] );
 		$this->assertSame( 'render_donation_table_page', $menu_pages['dmbc-donations']['callback'][1] );
+		$this->assertSame( 'manage_options', $menu_pages['dmbc-mailserver']['capability'] );
+		$this->assertSame( 'render_page', $menu_pages['dmbc-mailserver']['callback'][1] );
 
 		$submenu_pages = $GLOBALS['dmbc_test_state']['submenu_pages'];
 		$this->assertArrayHasKey( 'dmbc-songlist-edit', $submenu_pages );

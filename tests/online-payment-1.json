@@ -1,0 +1,103 @@
+{
+	"EventType": "Transaction",
+	"TransactionType": "SALE",
+	"PaymentType": "CREDITCARD",
+	"AccessToken": "6e8e7089-c1cd-4a16-a351-65c456a5b433",
+	"DbaName": "DAYTON METRO CHAPTER BHS",
+	"Currency": "USD",
+	"MID": "6280780008056954",
+	"MerNo": "6280780008056954",
+	"TerminalId": "001",
+	"TransactionId": "e4fe53ca-0192-49db-a567-93af14789772",
+	"DateTime": "2026-10-10 20:29:24",
+	"TransactionAmount": "80.00",
+	"InvoiceNumber": "530865387991656053",
+	"CardType": "MASTERCARD",
+	"CardNumber": "525475******1181",
+	"CardExpiration": "**29",
+	"AchAccountNumber": "",
+	"AchRoutingNumber": "",
+	"AchAccountType": "",
+	"Discount": "0.00",
+	"ProcessingFee": "0.00",
+	"Tip": "0.00",
+	"Tax": "0.0",
+	"Surcharge": "0.00",
+	"BatchNumber": "282002",
+	"Status": "APPROVED",
+	"AuthCode": "97511Z",
+	"AuthResponse": "",
+	"AvsResponse": "",
+	"CvvResponse": "M",
+	"CustomerId": "",
+	"RecurringId": "",
+	"RecurringType": "",
+	"RecurringAmount": "0.00",
+	"RecurringStartDate": "",
+	"RecurringEndDate": "",
+	"RecurringDayDetail": "",
+	"RecurringMonthDetail": "",
+	"VaultId": "",
+	"VaultKey": "",
+	"Customer": {
+		"Name": "Mary Papp",
+		"Address": "",
+		"City": "",
+		"State": "",
+		"PostalCode": "",
+		"Country": "US",
+		"EmailAddress": "mary_papp1974@yahoo.com",
+		"Phone": "",
+		"CompanyName": ""
+	},
+	"Shipping": {
+		"Name": "",
+		"Address": "",
+		"City": "",
+		"State": "",
+		"PostalCode": "",
+		"Country": "",
+		"EmailAddress": "",
+		"Phone": "",
+		"CompanyName": ""
+	},
+	"Level2Data": {
+		"CustomerRefNo": "30865387991656053",
+		"Level2TaxAmount": "0.0",
+		"LocalTaxFlag": "2",
+		"PurchaseCard": "false",
+		"ShippingZip": "",
+		"TaxAmount": "0.0"
+	},
+	"CustomFields": [
+		{
+			"Name": "OrderNote",
+			"Value": "Basket winner - $80"
+		},
+		{
+			"Name": "DiscountPercentage",
+			"Value": "0"
+		},
+		{
+			"Name": "TotalDiscountAmount",
+			"Value": "0.00"
+		},
+		{
+			"Name": "IsDiscountPercentage",
+			"Value": "false"
+		},
+		{
+			"Name": "ActualAmount",
+			"Value": "80.00"
+		},
+		{
+			"Name": "OktaId",
+			"Value": "00uvzbondzJnpdBBW5d7"
+		},
+		{
+			"Name": "UserName",
+			"Value": "sbetts"
+		}
+	],
+	"SubmissionMethod": "Portal-Payments"
+}
