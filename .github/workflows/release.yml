@@ -61,9 +61,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dmbc-tools.php src/plugin.php readme.txt
-          git commit -m "chore: release v${VERSION}"
-          git tag "v${VERSION}"
-          git push origin main "v${VERSION}"
+          if git diff --cached --quiet; then
+            echo "Version files already at v${VERSION}; tagging current commit."
+            if git ls-remote --exit-code --tags origin "v${VERSION}"; then
+              exit 0
+            fi
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+          else
+            git commit -m "chore: release v${VERSION}"
+            git tag "v${VERSION}"
+            git push origin main "v${VERSION}"
+          fi
 
       - name: Ensure manual release tag
         if: github.event_name == 'workflow_dispatch'
