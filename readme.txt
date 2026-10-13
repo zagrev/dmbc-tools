@@ -5,7 +5,7 @@ Tags: dmbc, tools
 Requires at least: 6.0
 Requires PHP: 8.0
 Tested up to: 6.8
-Stable tag: 1.1.33
+Stable tag: 1.2.0
 License: CC BY-NC-ND
 License URI: https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.txt
 
@@ -73,6 +73,9 @@ Create a WordPress post titled "Donation Confirmation Email" to enable confirmat
 The donation table is created by the existing schema setup on init. The public Donate link and Deluxe payment form are unchanged.
 
 == Changelog ==
+
+= 1.2.0 =
+* Add Mail Server admin page that manages Docker Mailserver accounts and aliases through a REST proxy to the Docker Mailserver GUI API.
 
 = 0.1.0 =
 * Initial class-based plugin scaffold.

@@ -56,6 +56,8 @@ abstract class DmbcUnitTestBase extends TestCase {
 			'wpdb_inserts'              => array(),
 			'wpdb_results'              => array(),
 			'dbdelta_calls'             => array(),
+			'remote_requests'           => array(),
+			'remote_responses'          => array(),
 			'cache'                     => array(),
 			'dashboard_widgets'         => array(),
 			'current_user'              => new WP_User(),

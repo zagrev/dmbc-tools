@@ -38,6 +38,10 @@ jobs:
             fi
             IFS=. read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
             VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            # Honor a manual major/minor bump committed in the plugin header.
+            if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ] && [ "$(printf '%s\n%s\n' "$CURRENT_VERSION" "$LATEST_VERSION" | sort -V | tail -n 1)" = "$CURRENT_VERSION" ]; then
+              VERSION="$CURRENT_VERSION"
+            fi
 
             sed -i -E "s/^ \* Version: .*/ * Version: ${VERSION}/" dmbc-tools.php
             sed -i -E "s/(public const string VERSION[[:space:]]*=[[:space:]]*')[^']+('.*)/\1${VERSION}\2/" src/plugin.php
