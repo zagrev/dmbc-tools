@@ -23,6 +23,7 @@ require_once __DIR__ . '/deluxe-cc-transaction.php';
 require_once __DIR__ . '/acf-integration.php';
 require_once __DIR__ . '/mailster-integration.php';
 require_once __DIR__ . '/logger.php';
+require_once __DIR__ . '/member-update-email.php';
 require_once __DIR__ . '/mailserver-proxy.php';
 require_once __DIR__ . '/mailserver-view.php';
 
@@ -199,7 +200,7 @@ final class Plugin {
 		\add_action( 'save_post_' . self::SONGLIST_POST_TYPE, array( $this, 'save_songlist_meta' ) );
 		\add_action( 'add_meta_boxes', array( $this, 'add_member_update_meta_box' ) );
 		\add_action( 'save_post_' . self::MEMBER_UPDATE_POST_TYPE, array( $this, 'save_member_update_meta' ) );
-		\add_action( self::MEMBER_UPDATE_CRON_HOOK, array( $this, 'send_member_update_digest' ) );
+		\add_action( 'save_post_' . self::MEMBER_UPDATE_POST_TYPE, array( $this, 'send_member_update_email_on_save' ), 20, 2 );
 		\add_action( MailsterIntegration::CRON_HOOK, array( MailsterIntegration::class, 'sync_members_to_group' ) );
 		\add_action( 'rest_api_init', array( $this, 'register_deluxe_cc_notification_route' ) );
 		\add_action( 'rest_api_init', array( $this->mailserver_proxy, 'register_routes' ) );
@@ -224,7 +225,7 @@ final class Plugin {
 		$this->register_member_update_type();
 		$this->register_options();
 		$this->add_songlist_capabilities();
-		$this->schedule_member_update_digest();
+		\wp_clear_scheduled_hook( self::MEMBER_UPDATE_CRON_HOOK );
 		$this->schedule_mailster_member_sync();
 		DeluxeCcTransaction::create_table();
 		AcfIntegration::register_acf_fields();
@@ -449,17 +450,6 @@ final class Plugin {
 	}
 
 	/**
-	 * Schedule the recurring member update digest.
-	 *
-	 * @return void
-	 */
-	public function schedule_member_update_digest(): void {
-		if ( ! \wp_next_scheduled( self::MEMBER_UPDATE_CRON_HOOK ) ) {
-			\wp_schedule_event( \time(), 'daily', self::MEMBER_UPDATE_CRON_HOOK );
-		}
-	}
-
-	/**
 	 * Schedule the recurring synchronization of member-role users into the WP Mailster group.
 	 *
 	 * @return void
@@ -471,11 +461,11 @@ final class Plugin {
 	}
 
 	/**
-	 * Email all member updates that have changed since their last delivery.
+	 * Manually retry published member updates that have not been delivered.
 	 *
-	 * @return void
+	 * @return int the number of posts emailed
 	 */
-	public function send_member_update_digest(): void {
+	public function send_member_update_digest(): int {
 		$updates = \get_posts(
 			array(
 				'post_type'      => self::MEMBER_UPDATE_POST_TYPE,
@@ -495,66 +485,65 @@ final class Plugin {
 			)
 		);
 		if ( empty( $updates ) ) {
+			return 0;
+		}
+
+		$count = 0;
+		foreach ( $updates as $update ) {
+			if ( $this->send_member_update_email( $update ) ) {
+				++$count;
+			}
+		}
+
+		return $count;
+	}
+
+	/**
+	 * Send a published member update immediately after it is saved.
+	 *
+	 * @param int      $post_id The saved post ID.
+	 * @param \WP_Post $post    The saved post.
+	 * @return void
+	 */
+	public function send_member_update_email_on_save( int $post_id, \WP_Post $post ): void {
+		if (
+			$post_id !== $post->ID ||
+			self::MEMBER_UPDATE_POST_TYPE !== $post->post_type ||
+			'publish' !== $post->post_status ||
+			( \defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
+		) {
 			return;
 		}
 
-		$updates_by_role = array();
-		foreach ( $updates as $update ) {
-			$role = \get_post_meta( $update->ID, self::MEMBER_UPDATE_ROLE_META_KEY, true );
-			if ( ! is_string( $role ) || '' === $role ) {
-				$role = self::DEFAULT_MEMBER_UPDATE_ROLE;
-			}
-			$role = \sanitize_key( $role );
-			if ( '' !== $role ) {
-				$updates_by_role[ $role ][] = $update;
-			}
+		$this->send_member_update_email( $post );
+	}
+
+	/**
+	 * Send one member update to its selected audience and record delivery.
+	 *
+	 * @param \WP_Post $post The member update to send.
+	 * @return bool Whether the post was sent to at least one recipient.
+	 */
+	private function send_member_update_email( \WP_Post $post ): bool {
+		$role = \get_post_meta( $post->ID, self::MEMBER_UPDATE_ROLE_META_KEY, true );
+		if ( ! is_string( $role ) || '' === $role ) {
+			$role = self::DEFAULT_MEMBER_UPDATE_ROLE;
+		}
+		$role = \sanitize_key( $role );
+		if ( '' === $role ) {
+			return false;
 		}
 
-		$subject = __( 'DMBC News', 'dmbc-tools' );
-		foreach ( $updates_by_role as $role => $role_updates ) {
-			$post_list = '';
-			foreach ( $role_updates as $post ) {
-				$post_title   = \get_the_title( $post );
-				$raw_content  = \apply_filters( 'the_content', $post->post_content );
-				$featured_img = \get_the_post_thumbnail_url( $post->ID, 'large' );
-
-				$email_content = str_replace( '<p>', '<p style="margin:0 0 16px 0; font-size:16px; line-height:1.6; color:#444444;">', $raw_content );
-				$email_content = str_replace( '<h2>', '<h2 style="margin:24px 0 12px 0; font-size:20px; color:#222222; font-family:Arial, sans-serif;">', $email_content );
-				$email_content = str_replace( '<a ', '<a style="color:#0073aa; text-decoration:underline;" ', $email_content );
-
-				$post_list .= "<tr><td><h1 style='font-size:28px; margin:0 0 20px 0;'>{$post_title}</h1></td></tr>";
-				$post_list .= ( $featured_img ? "<tr><td style='padding-bottom:25px;'><img src='{$featured_img}' width='100%' /></td></tr>" : '' );
-				$post_list .= "<tr><td>{$email_content}</td></tr>";
-			}
-
-			$message = "
-<!DOCTYPE html>
-<html>
-<body style='margin:0; padding:0; background-color:#f6f6f6; font-family:Arial, sans-serif;'>
-    <table width='100%' bgcolor='#f6f6f6' style='padding:20px 0;'>
-        <tr>
-            <td align='center'>
-                <table width='600' bgcolor='#ffffff' style='padding:40px; border-radius:8px;'>
-
-                    <tr><td>{$post_list}</td></tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>";
-
-			$recipients = $this->mailer->send_email( $subject, $message, array( $role ) );
-			if ( empty( $recipients ) ) {
-				continue;
-			}
-
-			$sent_at = \gmdate( 'Y-m-d H:i:s' );
-			foreach ( $role_updates as $update ) {
-				\update_post_meta( $update->ID, self::MEMBER_UPDATE_SENT_META_KEY, $sent_at );
-				\update_post_meta( $update->ID, self::MEMBER_UPDATE_RECIPIENT_META_KEY, $recipients );
-			}
+		$message    = format_member_update_post( $post );
+		$recipients = $this->mailer->send_email( __( 'DMBC News', 'dmbc-tools' ), $message, array( $role ) );
+		if ( empty( $recipients ) ) {
+			return false;
 		}
+
+		\update_post_meta( $post->ID, self::MEMBER_UPDATE_SENT_META_KEY, \gmdate( 'Y-m-d H:i:s' ) );
+		\update_post_meta( $post->ID, self::MEMBER_UPDATE_RECIPIENT_META_KEY, $recipients );
+
+		return true;
 	}
 
 	/**

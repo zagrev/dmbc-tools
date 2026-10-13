@@ -855,6 +855,26 @@ if ( ! function_exists( 'get_the_title' ) ) {
 	}
 }
 
+if ( ! function_exists( 'get_the_date' ) ) {
+	function get_the_date( string $format = '', $post = null ): string {
+		if ( null === $post ) {
+			$post = get_post( get_the_ID() );
+		}
+		if ( ! $post instanceof WP_Post || '' === $post->post_date ) {
+			return '';
+		}
+
+		$timestamp = strtotime( $post->post_date );
+		return false === $timestamp ? '' : gmdate( '' !== $format ? $format : 'F j, Y', $timestamp );
+	}
+}
+
+if ( ! function_exists( 'wp_get_global_stylesheet' ) ) {
+	function wp_get_global_stylesheet( array $types = array() ): string {
+		return '.wp-block-paragraph{font-size:20px}';
+	}
+}
+
 if ( ! function_exists( 'get_the_ID' ) ) {
 	function get_the_ID(): int {
 		return $GLOBALS['dmbc_test_state']['current_post_id'] ?? 0;

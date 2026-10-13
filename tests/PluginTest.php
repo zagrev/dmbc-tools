@@ -277,7 +277,8 @@ final class PluginTest extends DmbcUnitTestBase {
 
 		$this->assertContains( array( $plugin, 'initialize' ), $GLOBALS['dmbc_test_state']['actions']['init'] );
 		$this->assertContains( array( $plugin, 'register_admin' ), $GLOBALS['dmbc_test_state']['actions']['admin_menu'] );
-		$this->assertContains( array( $plugin, 'send_member_update_digest' ), $GLOBALS['dmbc_test_state']['actions'][ Plugin::MEMBER_UPDATE_CRON_HOOK ] );
+		$this->assertContains( array( $plugin, 'send_member_update_email_on_save' ), $GLOBALS['dmbc_test_state']['actions'][ 'save_post_' . Plugin::MEMBER_UPDATE_POST_TYPE ] );
+		$this->assertArrayNotHasKey( Plugin::MEMBER_UPDATE_CRON_HOOK, $GLOBALS['dmbc_test_state']['actions'] );
 		$this->assertContains( array( $plugin, 'register_deluxe_cc_notification_route' ), $GLOBALS['dmbc_test_state']['actions']['rest_api_init'] );
 		$rest_callbacks = array_map( static fn( $callback ) => is_array( $callback ) ? $callback[1] : $callback, $GLOBALS['dmbc_test_state']['actions']['rest_api_init'] );
 		$this->assertContains( 'register_routes', $rest_callbacks );
@@ -420,13 +421,14 @@ final class PluginTest extends DmbcUnitTestBase {
 	 */
 	public function test_initialize_registers_content_and_runtime_hooks_without_flushing_rewrite_rules(): void {
 		$plugin = Plugin::instance();
+		$GLOBALS['dmbc_test_state']['cron_events'][ Plugin::MEMBER_UPDATE_CRON_HOOK ] = array( 'recurrence' => 'daily' );
 
 		$plugin->initialize();
 
 		$this->assertArrayHasKey( Plugin::SONGLIST_POST_TYPE, $GLOBALS['dmbc_test_state']['registered_post_types'] );
 		$this->assertArrayHasKey( Plugin::MEMBER_UPDATE_POST_TYPE, $GLOBALS['dmbc_test_state']['registered_post_types'] );
 		$this->assertSame( Plugin::VERSION, get_option( Plugin::OPTION_VERSION ) );
-		$this->assertArrayHasKey( Plugin::MEMBER_UPDATE_CRON_HOOK, $GLOBALS['dmbc_test_state']['cron_events'] );
+		$this->assertArrayNotHasKey( Plugin::MEMBER_UPDATE_CRON_HOOK, $GLOBALS['dmbc_test_state']['cron_events'] );
 		$this->assertContains( array( $plugin, 'order_songlist_archive_query' ), $GLOBALS['dmbc_test_state']['actions']['pre_get_posts'] );
 		$this->assertSame( 0, $GLOBALS['dmbc_test_state']['flush_rewrite_rules_calls'] );
 	}
@@ -557,19 +559,52 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
-	 * The member update digest is scheduled only once and cleared on deactivation.
+	 * Legacy member update digest events are cleared on deactivation.
 	 *
-	 * @covers \DmbcTools\Plugin::schedule_member_update_digest
 	 * @covers \DmbcTools\Plugin::deactivate
 	 */
-	public function test_member_update_digest_is_scheduled_once_and_cleared_on_deactivation(): void {
+	public function test_legacy_member_update_digest_is_cleared_on_deactivation(): void {
 		$plugin = Plugin::instance();
-		$plugin->schedule_member_update_digest();
-		$plugin->schedule_member_update_digest();
+		$GLOBALS['dmbc_test_state']['cron_events'][ Plugin::MEMBER_UPDATE_CRON_HOOK ] = array( 'recurrence' => 'daily' );
 
-		$this->assertSame( 'daily', $GLOBALS['dmbc_test_state']['cron_events'][ Plugin::MEMBER_UPDATE_CRON_HOOK ]['recurrence'] );
 		$plugin->deactivate();
+
 		$this->assertArrayNotHasKey( Plugin::MEMBER_UPDATE_CRON_HOOK, $GLOBALS['dmbc_test_state']['cron_events'] );
+	}
+
+	/**
+	 * Published member updates are sent when published and on later published saves, but not drafts.
+	 *
+	 * @covers \DmbcTools\Plugin::send_member_update_email_on_save
+	 */
+	public function test_member_update_email_is_sent_on_publish_and_published_edits(): void {
+		$update = new \WP_Post( 87 );
+		$update->post_type = Plugin::MEMBER_UPDATE_POST_TYPE;
+		$update->post_status = 'draft';
+		$update->post_title = 'New schedule';
+		$update->post_content = '<p>Practice starts at 7.</p>';
+		$update->post_modified_gmt = '2026-09-04 12:00:00';
+		$GLOBALS['dmbc_test_state']['posts'][87] = $update;
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array( 'user_email' => 'member@example.com' ),
+		);
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'updates@example.com' );
+		$plugin = Plugin::instance();
+
+		$plugin->send_member_update_email_on_save( 87, $update );
+		$this->assertCount( 0, $GLOBALS['dmbc_test_state']['mail_calls'] );
+
+		$update->post_status = 'publish';
+		$plugin->send_member_update_email_on_save( 87, $update );
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertNotEmpty( $this->get_stored_post_meta( 87, Plugin::MEMBER_UPDATE_SENT_META_KEY ) );
+
+		$update->post_content = '<p>Practice now starts at 7:30.</p>';
+		$update->post_modified_gmt = '2026-09-04 12:30:00';
+		$plugin->send_member_update_email_on_save( 87, $update );
+
+		$this->assertCount( 2, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertStringContainsString( 'Practice now starts at 7:30.', $GLOBALS['dmbc_test_state']['mail_calls'][1]['message'] );
 	}
 
 	/**
@@ -582,6 +617,7 @@ final class PluginTest extends DmbcUnitTestBase {
 		$update->post_type                       = Plugin::MEMBER_UPDATE_POST_TYPE;
 		$update->post_title                      = 'Schedule change';
 		$update->post_content                    = '<p>Practice starts at 7.</p>';
+		$update->post_date                        = '2026-09-04 12:00:00';
 		$update->post_modified_gmt               = '2026-09-04 12:00:00';
 		$GLOBALS['dmbc_test_state']['posts'][81] = $update;
 		$GLOBALS['dmbc_test_state']['users']     = array(
@@ -596,6 +632,10 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertSame( 'updates@example.com', $GLOBALS['dmbc_test_state']['mail_calls'][0]['recipients'] );
 		$this->assertSame( array( 'Bcc: member@example.com', 'Content-Type: text/html; charset=UTF-8' ), $GLOBALS['dmbc_test_state']['mail_calls'][0]['headers'] );
 		$this->assertStringContainsString( 'Schedule change', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertStringContainsString( '.wp-block-paragraph{font-size:20px}', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertStringContainsString( 'font-size:40px', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertStringContainsString( 'September 4, 2026', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertStringContainsString( '<p>Practice starts at 7.</p>', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
 		$this->assertSame( array( 'um_member' ), $GLOBALS['dmbc_test_state']['get_users_calls'][0]['role__in'] );
 		$this->assertNotEmpty( $this->get_stored_post_meta( 81, Plugin::MEMBER_UPDATE_SENT_META_KEY ) );
 
@@ -638,6 +678,41 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertStringNotContainsString( 'Editor-only update', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
 		$this->assertStringContainsString( 'Editor-only update', $GLOBALS['dmbc_test_state']['mail_calls'][1]['message'] );
 		$this->assertStringNotContainsString( 'Member-only update', $GLOBALS['dmbc_test_state']['mail_calls'][1]['message'] );
+	}
+
+	/**
+	 * Each member update is sent in its own formatted email.
+	 *
+	 * @covers \DmbcTools\Plugin::send_member_update_digest
+	 */
+	public function test_member_update_digest_sends_each_post_separately(): void {
+		$first_update = new \WP_Post( 85 );
+		$first_update->post_title = 'First update';
+		$first_update->post_content = '<p>First content.</p>';
+		$first_update->post_modified_gmt = '2026-09-04 12:00:00';
+
+		$second_update = new \WP_Post( 86 );
+		$second_update->post_title = 'Second update';
+		$second_update->post_content = '<p>Second content.</p>';
+		$second_update->post_modified_gmt = '2026-09-04 12:00:00';
+
+		$GLOBALS['dmbc_test_state']['posts'] = array(
+			85 => $first_update,
+			86 => $second_update,
+		);
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array( 'user_email' => 'member@example.com' ),
+		);
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'updates@example.com' );
+
+		$count = Plugin::instance()->send_member_update_digest();
+
+		$this->assertSame( 2, $count );
+		$this->assertCount( 2, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertStringContainsString( 'First update', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertStringNotContainsString( 'Second update', $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'] );
+		$this->assertStringContainsString( 'Second update', $GLOBALS['dmbc_test_state']['mail_calls'][1]['message'] );
+		$this->assertStringNotContainsString( 'First update', $GLOBALS['dmbc_test_state']['mail_calls'][1]['message'] );
 	}
 
 	/**
