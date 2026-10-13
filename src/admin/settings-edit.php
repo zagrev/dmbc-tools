@@ -445,9 +445,9 @@ class DmbcSettings {
 	 */
 	public function render_max_bcc_per_email_field(): void {
 		?>
-		<input type="number" min="1" step="1" 
-			name="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" 
-			id="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>" 
+		<input type="number" min="1" step="1"
+			name="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>"
+			id="<?php echo esc_attr( Plugin::OPTION_MAX_BCC_PER_EMAIL ); ?>"
 			value="<?php echo esc_attr( (string) $this->get_max_bcc_per_email() ); ?>" class="small-text" />
 		<p class="description">
 		<?php esc_html_e( 'The maximum number of addresses to bcc in a single email. Larger recipient lists are split across multiple emails. Certain email providers may have their own limits, such as a max of 50 using AWS SES.', 'dmbc-tools' ); ?>
@@ -737,13 +737,15 @@ class DmbcSettings {
 	 * @return void
 	 */
 	public function ajax_run_member_updates() {
+		Plugin::instance()->logger()->info( 'Running member updates via AJAX.' );
 		\check_ajax_referer( 'dmbc_run_member_updates', 'nonce' );
 
 		if ( ! \current_user_can( 'manage_options' ) ) {
 			\wp_send_json_error( array( 'message' => \__( 'You do not have permission to send out Member Updates.', 'dmbc-tools' ) ), 403 );
 		}
 
-		\wp_send_json_error( array( 'message' => \__( 'Not implemented.', 'dmbc-tools' ) ), 403 );
+		Plugin::instance()->send_member_update_digest();
+		\wp_send_json_success();
 	}
 
 	/**
