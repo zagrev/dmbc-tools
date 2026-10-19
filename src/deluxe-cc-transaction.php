@@ -127,12 +127,19 @@ class DeluxeCcTransaction {
 		// 4. If the transaction is a show purchase, record the purchase details to the db.
 		// 5. Send the email to the user.
 
-		$user              = $this->get_or_create_user( $transaction );
-		$processing_result = __( 'User retrieved or created successfully.', 'dmbc-tools' );
-		$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], '', $processing_result );
+		$submission_method = $transaction['SubmissionMethod'] ?? '';
+		$is_donation       = is_string( $submission_method )
+			&& ( str_contains( $submission_method, 'Donation' ) || str_contains( $submission_method, 'Portal-Payments' ) );
 
-		// Add the donor role to the user.
-		$user->add_role( 'donor' );
+		$customer_email = $transaction['Customer']['EmailAddress'] ?? '';
+		if ( ! $is_donation || ( is_string( $customer_email ) && '' !== trim( $customer_email ) ) ) {
+			$user              = $this->get_or_create_user( $transaction );
+			$processing_result = __( 'User retrieved or created successfully.', 'dmbc-tools' );
+			$this->log_cc_notification( $transaction[ self::FIELD_TX_ID ], '', $processing_result );
+
+			// Add the donor role to the user.
+			$user->add_role( 'donor' );
+		}
 
 		// We want to use the user info even if the transaction is not approved.
 		if ( 'APPROVED' !== $transaction['Status'] ) {
@@ -211,7 +218,7 @@ class DeluxeCcTransaction {
 		$amount         = $transaction['TransactionAmount'];
 		$tx_date        = $transaction['DateTime'];
 		$customer_name  = $transaction['Customer']['Name'] ?? '';
-		$customer_email = $transaction['Customer']['EmailAddress'];
+		$customer_email = $transaction['Customer']['EmailAddress'] ?? '';
 
 		$items = array();
 		foreach ( $transaction['SaleItems'] ?? array() as $ticket ) {
@@ -279,14 +286,16 @@ class DeluxeCcTransaction {
 		$transaction_id = $transaction[ self::FIELD_TX_ID ] ?? null;
 		$amount         = $transaction['TransactionAmount'] ?? null;
 		$date           = $transaction['DateTime'] ?? null;
-		$email          = $transaction['Customer']['EmailAddress'] ?? null;
+		$customer       = $transaction['Customer'] ?? array();
+		$email          = is_array( $customer ) ? ( $customer['EmailAddress'] ?? '' ) : null;
 		$parsed_date    = is_string( $date ) ? date_parse( $date ) : array();
 		if ( ! is_string( $transaction_id ) || '' === trim( $transaction_id ) || strlen( $transaction_id ) > 191
 		|| ! is_numeric( $amount ) || ! is_finite( (float) $amount ) || (float) $amount < 0.01 || (float) $amount > 99999999.99
 		|| empty( $parsed_date['year'] ) || empty( $parsed_date['month'] ) || empty( $parsed_date['day'] )
 		|| ! empty( $parsed_date['error_count'] ) || ! empty( $parsed_date['warning_count'] )
-		|| ! is_string( $email ) || ! \is_email( $email )
-		|| ( isset( $transaction['Customer']['Name'] ) && ! is_string( $transaction['Customer']['Name'] ) )
+		|| ! is_array( $customer )
+		|| ( null !== $email && '' !== $email && ( ! is_string( $email ) || ! \is_email( $email ) ) )
+		|| ( isset( $customer['Name'] ) && ! is_string( $customer['Name'] ) )
 		|| ( isset( $transaction['SaleItems'] ) && ! is_array( $transaction['SaleItems'] ) ) ) {
 			throw new TransactionException( 'Invalid donation transaction data.' );
 		}

@@ -66,6 +66,7 @@ final class DeluxeCcTransactionTest extends DmbcUnitTestBase {
 		$tables = array_map( fn( $insert ) => $insert['table'], $inserts );
 		$this->assertContains( 'wp_' . DeluxeCcTransaction::NOTIFICATION_TABLE_NAME, $tables );
 		$this->assertContains( 'wp_' . DeluxeCcTransaction::TICKET_TABLE_NAME, $tables );
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['users'] );
 	}
 
 	/**
@@ -127,12 +128,37 @@ final class DeluxeCcTransactionTest extends DmbcUnitTestBase {
 		$this->assertSame( 'customer@example.com', $data['email'] );
 		$this->assertSame( 42.50, $data['total'] );
 		$this->assertSame( array( array( 'type' => 'Donation', 'count' => 1, 'total' => 42.50 ) ), json_decode( $data['items'], true ) );
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['users'] );
 		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
 		$mail = $GLOBALS['dmbc_test_state']['mail_calls'][0];
 		$this->assertSame( 'Donation Confirmation Email', $mail['subject'] );
 		$this->assertSame( 'customer@example.com', $mail['recipients'] );
 		$this->assertStringContainsString( 'Thanks Test Customer for 42.5', $mail['message'] );
 		$this->assertStringContainsString( 'Donation: 1 / 42.5', $mail['message'] );
+	}
+
+	public function test_portal_payment_donation_creates_user_when_email_is_present(): void {
+		$payload = $this->make_valid_transaction();
+		$payload['SubmissionMethod'] = 'Portal-Payments';
+
+		( new DeluxeCcTransaction() )->handle_new_transaction( $payload );
+
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['users'] );
+		$donations = array_values( array_filter( $this->get_wpdb_inserts(), static fn( $insert ) => 'wp_' . DeluxeCcTransaction::DONATION_TABLE_NAME === $insert['table'] ) );
+		$this->assertCount( 1, $donations );
+	}
+
+	public function test_donation_without_email_is_recorded_without_creating_user(): void {
+		$payload = $this->make_valid_transaction();
+		$payload['SubmissionMethod'] = 'Online Donation';
+		unset( $payload['Customer']['EmailAddress'] );
+
+		( new DeluxeCcTransaction() )->handle_new_transaction( $payload );
+
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['users'] );
+		$donations = array_values( array_filter( $this->get_wpdb_inserts(), static fn( $insert ) => 'wp_' . DeluxeCcTransaction::DONATION_TABLE_NAME === $insert['table'] ) );
+		$this->assertCount( 1, $donations );
+		$this->assertSame( '', $donations[0]['data']['email'] );
 	}
 
 	public function test_donation_preserves_sale_items(): void {
