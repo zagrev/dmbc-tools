@@ -78,7 +78,7 @@ jobs:
         run: npm install --global @wordpress/env
 
       - name: Start WordPress test environment
-        run: wp-env start --xdebug=coverage --update
+        run: wp-env start --xdebug=coverage
 
       - name: Run PHPUnit in WordPress test container
         # 3. Wrapping the execution inside bash -c forces the inner container's shell to catch
