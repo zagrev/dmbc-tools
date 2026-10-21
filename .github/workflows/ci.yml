@@ -83,7 +83,7 @@ jobs:
           echo '{"phpVersion": "8.3"}' > .wp-env.override.json
 
       - name: Start WordPress test environment
-        run: wp-env start --xdebug=coverage
+        run: wp-env start --xdebug=coverage  --runtime=playground
 
       - name: Run PHPUnit in WordPress test container
         # 3. Wrapping the execution inside bash -c forces the inner container's shell to catch
