@@ -19,11 +19,10 @@ jobs:
     outputs:
       run: ${{ steps.check.outputs.run }}
 
-        
     strategy:
       matrix:
         # Define the exact PHP versions you want to test
-        php-version: ['8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+        php-version: ["8.0", "8.1", "8.2", "8.3", "8.4", "8.5"]
 
     steps:
       - name: Check for an open pull request
@@ -59,7 +58,7 @@ jobs:
       - name: Set up PHP for Composer checks
         uses: shivammathur/setup-php@v2
         with:
-          php-version:  ${{ matrix.php-version }}
+          php-version: ${{ matrix.php-version }}
           coverage: xdebug
           tools: composer:cache
 
@@ -79,8 +78,7 @@ jobs:
         run: npm install --global @wordpress/env
 
       - name: Start WordPress test environment
-        # 2. Pin to WordPress 7.1.0 temporarily until the 7.1.1 Git tag sync bug is resolved
-        run: wp-env start --xdebug=coverage --update --core="WordPress/WordPress#7.1.0"
+        run: wp-env start --xdebug=coverage --update
 
       - name: Run PHPUnit in WordPress test container
         # 3. Wrapping the execution inside bash -c forces the inner container's shell to catch
