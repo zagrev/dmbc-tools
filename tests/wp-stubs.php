@@ -223,6 +223,16 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 			return 1;
 		}
 
+		public function delete( string $table, array $where, $where_format = null ) {
+			$GLOBALS['dmbc_test_state']['wpdb_deletes'][] = compact( 'table', 'where', 'where_format' );
+			if ( isset( $GLOBALS['dmbc_test_state']['wpdb_delete_errors'][ $where['user_id'] ] ) ) {
+				$this->last_error = $GLOBALS['dmbc_test_state']['wpdb_delete_errors'][ $where['user_id'] ];
+				return false;
+			}
+			$this->last_error = '';
+			return 1;
+		}
+
 		public function get_results( string $query = '', $output = OBJECT, $y = 0 ) {
 			$GLOBALS['dmbc_test_state']['wpdb_get_results'][] = compact( 'query' );
 			$this->last_error = $GLOBALS['dmbc_test_state']['wpdb_query_error'] ?? '';
@@ -231,11 +241,13 @@ if ( ! class_exists( 'Dmbc_Test_Wpdb' ) ) {
 
 		public function get_var( string $query = '', $x = 0, $y = 0 ) {
 			$GLOBALS['dmbc_test_state']['wpdb_get_var'][] = compact( 'query' );
+			$this->last_error = '';
 			return $GLOBALS['dmbc_test_state']['wpdb_var'] ?? null;
 		}
 
 		public function get_col( string $query = '', $x = 0 ) {
 			$GLOBALS['dmbc_test_state']['wpdb_get_col'][] = compact( 'query' );
+			$this->last_error = $GLOBALS['dmbc_test_state']['wpdb_col_error'] ?? '';
 			return $GLOBALS['dmbc_test_state']['wpdb_col'] ?? array();
 		}
 

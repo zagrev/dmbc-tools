@@ -63,7 +63,7 @@ final class MailsterIntegration {
 	}
 
 	/**
-	 * Add every member-role user to the WP Mailster group, skipping those already in it.
+	 * Synchronize WordPress-linked group entries with the users holding member roles.
 	 *
 	 * @return int The number of users added to the group.
 	 */
@@ -93,16 +93,39 @@ final class MailsterIntegration {
 				)
 			)
 		);
-		if ( empty( $member_ids ) ) {
-			$logger->info( 'No users found with the member roles, nothing to sync to WP Mailster.' );
+		if ( '' !== $wpdb->last_error ) {
+			$logger->error( 'Failed to load member-role users for WP Mailster sync: ' . $wpdb->last_error );
 			return 0;
 		}
 
 		$existing_ids = self::get_group_core_user_ids( $group_id );
-		$missing_ids  = array_values( array_diff( $member_ids, $existing_ids ) );
-		if ( empty( $missing_ids ) ) {
-			$logger->info( 'All member-role users are already in the WP Mailster group: ' . self::mailstr_group_name() );
+		if ( '' !== $wpdb->last_error ) {
+			$logger->error( 'Failed to load WP Mailster group members: ' . $wpdb->last_error );
 			return 0;
+		}
+
+		$missing_ids = array_values( array_diff( $member_ids, $existing_ids ) );
+		$stale_ids   = array_values( array_diff( $existing_ids, $member_ids ) );
+
+		$removed = 0;
+		foreach ( $stale_ids as $user_id ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- WP Mailster has no group cache API; delete only this WordPress-linked membership.
+			$deleted = $wpdb->delete(
+				$wpdb->prefix . 'mailster_group_users',
+				array(
+					'group_id'     => $group_id,
+					'user_id'      => $user_id,
+					'is_core_user' => 1,
+				),
+				array( '%d', '%d', '%d' )
+			);
+
+			if ( false === $deleted ) {
+				$logger->error( 'Failed to remove user ' . $user_id . ' from WP Mailster group ' . $group_id . ': ' . $wpdb->last_error );
+				continue;
+			}
+
+			$removed += $deleted;
 		}
 
 		$added = 0;
@@ -127,6 +150,7 @@ final class MailsterIntegration {
 		}
 
 		$logger->info( 'Added ' . $added . ' user(s) to the WP Mailster group: ' . self::mailstr_group_name() );
+		$logger->info( 'Removed ' . $removed . ' user(s) from the WP Mailster group: ' . self::mailstr_group_name() );
 
 		return $added;
 	}
