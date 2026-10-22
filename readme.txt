@@ -54,6 +54,10 @@ Song list forms and edit/delete links include WordPress nonces. Create, update, 
 
 Activation registers the song list and member update post types, then refreshes WordPress rewrite rules so their archive and individual post URLs work immediately. Rewrite rules are not flushed on normal requests. For an already-active installation, deactivate and reactivate the plugin or save Settings > Permalinks to refresh the rules.
 
+== Mailster member group synchronization ==
+
+The scheduled member group sync and the Run Member Groups Sync tool add WordPress users with the um_member role to the WP Mailster "members" group and remove WordPress-linked entries whose users no longer hold that role. Cleanup also runs when no users hold the member role. Only membership in the configured group is removed: WordPress accounts, Mailster contacts, other groups, and manually added non-WordPress contacts are left unchanged. The existing group-name and member-role filters still apply. Addition and removal counts, along with database write failures, are logged.
+
 == Member Update layouts ==
 
 Individual Member Updates and the Member Updates archive use the active WordPress theme's header and footer template parts, including Site Editor customizations. The plugin supplies the update title, date, and content layout; header and footer parts are not tied to a particular theme.
