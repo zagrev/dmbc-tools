@@ -77,11 +77,6 @@ jobs:
       - name: Install wp-env
         run: npm install --global @wordpress/env
 
-      # Fix: Force wp-env to use a stable PHP runtime where Xdebug compiles cleanly
-      - name: Configure wp-env PHP version
-        run: |
-          echo '{"phpVersion": "8.3"}' > .wp-env.override.json
-
       - name: Start WordPress test environment
         run: wp-env start --xdebug=coverage
 
