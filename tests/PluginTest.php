@@ -238,6 +238,23 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Member-update layouts resolve header and footer parts from the active theme.
+	 *
+	 * @covers \DmbcTools\Plugin::register_member_update_templates
+	 */
+	public function test_member_update_templates_use_active_theme_header_and_footer(): void {
+		foreach ( array( 'single-dmbc-member-updates', 'archive-dmbc-member-updates', 'single-member-update', 'archive-member-update' ) as $slug ) {
+			$templates = Plugin::instance()->register_member_update_templates( array(), array( 'slug__in' => array( $slug ) ), 'wp_template' );
+
+			$this->assertCount( 1, $templates );
+			$this->assertSame( get_stylesheet(), $templates[0]->theme );
+			$this->assertStringContainsString( '<!-- wp:template-part {"slug":"header"} /-->', $templates[0]->content );
+			$this->assertStringContainsString( '<!-- wp:template-part {"slug":"footer"} /-->', $templates[0]->content );
+			$this->assertStringNotContainsString( '"theme":"dmbc-tools"', $templates[0]->content );
+		}
+	}
+
+	/**
 	 * Members can manage updates but do not receive song-list editing access.
 	 *
 	 * @covers \DmbcTools\Plugin::add_songlist_capabilities

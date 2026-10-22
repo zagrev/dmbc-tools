@@ -40,13 +40,13 @@
 	"VaultId": "",
 	"VaultKey": "",
 	"Customer": {
-		"Name": "Mary Papp",
+		"Name": "",
 		"Address": "",
 		"City": "",
 		"State": "",
 		"PostalCode": "",
 		"Country": "US",
-		"EmailAddress": "mary_papp1974@yahoo.com",
+		"EmailAddress": "",
 		"Phone": "",
 		"CompanyName": ""
 	},

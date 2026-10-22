@@ -54,6 +54,10 @@ Song list forms and edit/delete links include WordPress nonces. Create, update, 
 
 Activation registers the song list and member update post types, then refreshes WordPress rewrite rules so their archive and individual post URLs work immediately. Rewrite rules are not flushed on normal requests. For an already-active installation, deactivate and reactivate the plugin or save Settings > Permalinks to refresh the rules.
 
+== Member Update layouts ==
+
+Individual Member Updates and the Member Updates archive use the active WordPress theme's header and footer template parts, including Site Editor customizations. The plugin supplies the update title, date, and content layout; header and footer parts are not tied to a particular theme.
+
 == IDE development ==
 
 Run composer install with development dependencies to install php-stubs/wordpress-stubs. The package supplies WordPress function, class, and constant declarations for IDE completion and static analysis, including template functions such as language_attributes() and wp_head(). Let the PHP language server index vendor/php-stubs/wordpress-stubs; reload the VS Code window if stale unknown-function warnings remain. These declarations must not be included or required at runtime.
@@ -62,7 +66,7 @@ Run composer install with development dependencies to install php-stubs/wordpres
 
 Under Settings > DMBC Tools > DMBC Tools notifications, administrators can select separate published posts for the ticket and donation confirmation templates. The selected post's title supplies the subject and its content supplies the email body. Default retains lookup by "Ticket Purchase Confirmation Email" or "Donation Confirmation Email". A deleted or unpublished selected post is logged as unavailable and no confirmation is sent until the setting is corrected.
 
-Approved Deluxe notifications whose SubmissionMethod contains "Donation" are recorded in the prefixed dmbc_donation table. Transaction IDs are unique; repeated notifications do not send another confirmation. Donor account creation and the donor role follow the existing ticket workflow.
+Approved Deluxe notifications whose SubmissionMethod contains "Donation" are recorded in the prefixed dmbc_donation table. A donor account is created or retrieved when the donation includes an email address; donations without an email are still recorded without creating a user. Transaction IDs are unique; repeated notifications do not send another confirmation. Ticket purchases continue to create or retrieve a user and assign the donor role as before.
 
 Administrators can view Donations at wp-admin/admin.php?page=dmbc-donations. The page shows date, donor name, email, amount, transaction ID, donation count, and total amount. Records are private to users with manage_options; no public donation listing is added.
 
