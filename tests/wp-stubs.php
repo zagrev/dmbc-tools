@@ -184,6 +184,40 @@ if ( ! class_exists( 'WP_Query' ) ) {
 	}
 }
 
+if ( ! class_exists( 'UM' ) ) {
+	class UM {
+	}
+}
+
+/** Models unrestricted posts and any matching allowed group; explicit access overrides remain supported. */
+class Dmbc_Test_Um_Access {
+	public function has_post_access( int $post_id ): bool {
+		$GLOBALS['dmbc_test_state']['um_post_access_calls'][] = $post_id;
+
+		if ( isset( $GLOBALS['dmbc_test_state']['um_post_access'][ $post_id ] ) ) {
+			return $GLOBALS['dmbc_test_state']['um_post_access'][ $post_id ];
+		}
+
+		$allowed_groups = $GLOBALS['dmbc_test_state']['um_post_allowed_groups'][ $post_id ] ?? array();
+		$user_groups    = $GLOBALS['dmbc_test_state']['um_user_groups'] ?? array();
+
+		return empty( $allowed_groups ) || ! empty( array_intersect( $allowed_groups, $user_groups ) );
+	}
+}
+
+/** Minimal Ultimate Member facade mock. */
+class Dmbc_Test_Um {
+	public function access(): Dmbc_Test_Um_Access {
+		return new Dmbc_Test_Um_Access();
+	}
+}
+
+if ( ! function_exists( 'UM' ) ) {
+	function UM(): Dmbc_Test_Um {
+		return new Dmbc_Test_Um();
+	}
+}
+
 if ( ! class_exists( 'WP_Block_Template' ) ) {
 	class WP_Block_Template {
 		public string $type    = '';
