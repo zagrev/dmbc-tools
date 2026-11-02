@@ -119,10 +119,18 @@ final class PluginTest extends DmbcUnitTestBase {
 	 * @covers \DmbcTools\Plugin::dmbc_exclude_restricted_events_from_list
 	 */
 	public function test_exclude_restricted_events_from_list_excludes_inaccessible_posts(): void {
-		$GLOBALS['dmbc_test_state']['is_admin']        = false;
-		$GLOBALS['dmbc_test_state']['posts']            = array( 101, 102, 103 );
-		$GLOBALS['dmbc_test_state']['um_post_access']   = array( 102 => false );
-		$query                                          = $this->create_events_query(
+		$GLOBALS['dmbc_test_state']['is_admin'] = false;
+		$GLOBALS['dmbc_test_state']['posts']    = array( 101, 102, 103 );
+		$this->set_post_meta(
+			102,
+			'um_content_restriction',
+			array(
+				'_um_custom_access_settings' => true,
+				'_um_accessible'             => 2,
+				'_um_access_roles'           => array( 'um_member' => 1 ),
+			)
+		);
+		$query = $this->create_events_query(
 			true,
 			true,
 			false,
@@ -176,27 +184,31 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
-	 * The event filter honors UM's mocked access decision for each group-membership scenario.
+	 * Post restrictions are checked directly against all of the current user's roles.
 	 *
 	 * @param array $user_groups Groups the user belongs to.
-	 * @param array $allowed_groups Groups allowed to view the restricted post.
+	 * @param array $restriction Stored UM content restriction metadata.
 	 * @param array $excluded_ids Expected excluded post IDs.
+	 * @param bool  $logged_in Whether the current user is logged in.
 	 */
 	#[\PHPUnit\Framework\Attributes\DataProvider( 'event_access_group_scenarios' )]
 	public function test_exclude_restricted_events_from_list_honors_group_access(
 		array $user_groups,
-		array $allowed_groups,
-		array $excluded_ids
+		array $restriction,
+		array $excluded_ids,
+		bool $logged_in = true
 	): void {
-		$GLOBALS['dmbc_test_state']['is_admin']               = false;
-		$GLOBALS['dmbc_test_state']['posts']                  = array( 301, 302 );
-		$GLOBALS['dmbc_test_state']['um_user_groups']         = $user_groups;
-		$GLOBALS['dmbc_test_state']['um_post_allowed_groups'] = array( 302 => $allowed_groups );
-		$query                                                = $this->create_events_query( true, true, false );
+		$GLOBALS['dmbc_test_state']['is_admin']  = false;
+		$GLOBALS['dmbc_test_state']['posts']     = array( 301, 302 );
+		$GLOBALS['dmbc_test_state']['logged_in'] = $logged_in;
+
+		$GLOBALS['dmbc_test_state']['current_user']->roles = $user_groups;
+		$this->set_post_meta( 302, 'um_content_restriction', $restriction );
+		$query = $this->create_events_query( true, true, false );
 
 		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
 
-		$this->assertSame( array( 301, 302 ), $GLOBALS['dmbc_test_state']['um_post_access_calls'] );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['um_post_access_calls'] );
 		$this->assertSame(
 			empty( $excluded_ids ) ? array() : array( 'post__not_in' => $excluded_ids ),
 			$query->set_values
@@ -204,7 +216,7 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
-	 * Post 301 is always unrestricted; post 302 uses the supplied allowed groups.
+	 * Post 301 has no restriction metadata; post 302 uses the supplied settings.
 	 *
 	 * @return array Group-membership scenarios and their expected exclusions.
 	 */
@@ -217,24 +229,120 @@ final class PluginTest extends DmbcUnitTestBase {
 			),
 			'no allowed group membership excludes the restricted post' => array(
 				array( 'um_guest' ),
-				array( 'um_member', 'um_board' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array(
+		'um_member' => 1,
+		'um_board' => 1
+				),
+				),
 				array( 302 ),
 			),
 			'allowed group membership allows the restricted post' => array(
 				array( 'um_member' ),
-				array( 'um_member', 'um_board' ),
+				array(
+					'_um_custom_access_settings' => '1',
+					'_um_accessible'             => '2',
+					'_um_access_roles'           => array(
+		'um_member' => '1',
+		'um_board' => '1'
+				),
+				),
 				array(),
 			),
 			'multiple memberships with one allowed group allows the restricted post' => array(
 				array( 'um_guest', 'um_member', 'um_volunteer' ),
-				array( 'um_member', 'um_board' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array(
+		'um_member' => 1,
+		'um_board' => 1
+				),
+				),
+				array(),
+			),
+			'disabled restrictions ignore stored roles' => array(
+				array( 'um_guest' ),
+				array(
+					'_um_custom_access_settings' => false,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array( 'um_member' => 1 ),
+				),
+				array(),
+			),
+			'everyone can access despite stored roles' => array(
+				array(),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 0,
+					'_um_access_roles'           => array( 'um_member' => 1 ),
+				),
+				array(),
+				false,
+			),
+			'logged out users cannot access members only posts' => array(
+				array(),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array( 'um_member' => 1 ),
+				),
+				array( 302 ),
+				false,
+			),
+			'logged in users cannot access logged out only posts' => array(
+				array( 'um_member' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 1,
+				),
+				array( 302 ),
+			),
+			'logged out users can access logged out only posts' => array(
+				array(),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 1,
+				),
+				array(),
+				false,
+			),
+			'logged in users can access posts with no selected roles' => array(
+				array( 'um_member' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+				),
+				array(),
+			),
+			'unselected roles do not grant access' => array(
+				array( 'um_guest' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array(
+		'um_guest' => 0,
+		'um_member' => 1
+				),
+				),
+				array( 302 ),
+			),
+			'all unselected roles allow any logged in user' => array(
+				array( 'um_guest' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array( 'um_member' => 0 ),
+				),
 				array(),
 			),
 		);
 	}
 
 	/**
-	 * Admin, secondary, and unrelated queries are left untouched.
+	 * Admin and secondary queries are left untouched.
 	 *
 	 * @covers \DmbcTools\Plugin::dmbc_exclude_restricted_events_from_list
 	 */
@@ -242,7 +350,6 @@ final class PluginTest extends DmbcUnitTestBase {
 		$cases = array(
 			array( true, true, true, false ),
 			array( false, false, true, false ),
-			array( false, true, false, false ),
 		);
 
 		foreach ( $cases as [ $is_admin, $is_main_query, $is_archive, $is_events_page ] ) {

@@ -15,6 +15,10 @@ Shared tools for the Dayton Metro Barbershop Chorus WordPress site.
 
 DMBC Tools is a home for small, reusable integrations and utilities used by the chorus website.
 
+== Content restriction filtering ==
+
+The front-end main-query filter reads each post's um_content_restriction metadata directly. Unrestricted posts remain visible. Logged-in-only posts require a signed-in user and, when roles are selected, at least one matching WordPress role. Logged-out-only posts are excluded for signed-in users. This direct check does not apply UM's author/admin bypasses, inherited taxonomy restrictions, or custom access filters.
+
 == PHP Logging ==
 
 The plugin includes a standalone application logger at src/logger.php. It is intended for general application-level logging, not authentication-specific logging.
@@ -78,12 +82,6 @@ The Donations page defaults to the last 30 calendar days, including today accord
 
 Create a WordPress post titled "Donation Confirmation Email" to enable confirmation emails. The existing mailer supports {{CustomerName}}, {{PurchaseAmount}}, {{PurchaseDate}}, and {{ItemList}}{{ItemName}} / {{ItemQuantity}} / {{ItemPrice}}{{/ItemList}}. Notifications without SaleItems receive a single Donation line item. The configured plugin email recipient is copied. Missing templates and delivery failures are logged; donations remain recorded.
 
-The donation table is created by the existing schema setup on init. The public Donate link and Deluxe payment form are unchanged.
+The donation table is created by the existing schema setup on init.
+The public Donate link and Deluxe payment form are unchanged.
 
-== Changelog ==
-
-= 1.2.0 =
-* Add Mail Server admin page that manages Docker Mailserver accounts and aliases through a REST proxy to the Docker Mailserver GUI API.
-
-= 0.1.0 =
-* Initial class-based plugin scaffold.

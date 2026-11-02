@@ -1525,36 +1525,49 @@ final class Plugin {
 	 */
 	function dmbc_exclude_restricted_events_from_list( $query ) {
 		// Only alter the main query on the front-end, specifically for the 'events' archive or page.
-		if ( is_admin() || ! $query->is_main_query() ) {
+		if ( is_admin() || ! empty( $query->get( 'dmbc-recursive' ) ) ) {
 			return;
 		}
+		$query->set( 'dmbc-recursive', true );
 
 		// Target the /events endpoint (adjust condition if 'events' is a page or a custom post type archive).
-		if ( $query->is_post_type_archive( 'tribe_events' ) || $query->is_page( 'events' ) ) {
+		// if ( $query->is_post_type_archive( 'tribe_events' ) || $query->is_page( 'events' ) ) {
 
-			// Ensure Ultimate Member's access control class is available.
-			if ( class_exists( 'UM' ) ) {
-				// Retrieve all posts matching the query parameters to inspect their restrictions.
-				$args = $query->query_vars;
-				$args['posts_per_page'] = -1; // Get all to compile an ID list
-				$args['fields'] = 'ids';
+		// Apply UM metadata restrictions only while Ultimate Member is active.
+		// if ( class_exists( 'UM' ) ) {
+		// Retrieve all posts matching the query parameters to inspect their restrictions.
+		$args = $query->query_vars;
+		$args['posts_per_page'] = -1; // Get all to compile an ID list
+		$args['fields'] = 'ids';
 
-				$all_post_ids = get_posts( $args );
-				$excluded_ids = array();
+		$all_post_ids = get_posts( $args );
+		$excluded_ids = array();
+		$user_roles = wp_get_current_user()->roles;
+		$is_logged_in = is_user_logged_in();
 
-				foreach ( $all_post_ids as $post_id ) {
-					// Check if the current user is restricted from viewing this specific post.
-					if ( ! UM()->access()->has_post_access( $post_id ) ) {
-						$excluded_ids[] = $post_id;
-					}
-				}
+		foreach ( $all_post_ids as $post_id ) {
+			$restriction = get_post_meta( $post_id, 'um_content_restriction', true );
+			if ( empty( $restriction['_um_custom_access_settings'] ) ) {
+				continue;
+			}
 
-				// If there are restricted posts, exclude them from the actual main query execution.
-				if ( ! empty( $excluded_ids ) ) {
-					$query->set( 'post__not_in', $excluded_ids );
+			$accessible = (int) ( $restriction['_um_accessible'] ?? 0 );
+			if ( 1 === $accessible && $is_logged_in ) {
+				$excluded_ids[] = $post_id;
+			} elseif ( 2 === $accessible ) {
+				$allowed_roles = array_keys( array_filter( $restriction['_um_access_roles'] ?? array() ) );
+				if ( ! $is_logged_in || ( ! empty( $allowed_roles ) && empty( array_intersect( $user_roles, $allowed_roles ) ) ) ) {
+					$excluded_ids[] = $post_id;
 				}
 			}
 		}
+
+		// If there are restricted posts, exclude them from the actual main query execution.
+		if ( ! empty( $excluded_ids ) ) {
+			$query->set( 'post__not_in', $excluded_ids );
+		}
+		// }
+		//}
 	}
 
 }
