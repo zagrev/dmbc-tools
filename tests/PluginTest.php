@@ -8,6 +8,22 @@ use DmbcTools\DeluxeCcTransaction;
  */
 final class PluginTest extends DmbcUnitTestBase {
 
+	public function test_wp_query_mock_get_and_set_preserve_query_values(): void {
+		$query = new WP_Query();
+
+		$this->assertSame( '', $query->get( 'missing' ) );
+		$this->assertSame( array(), $query->get( 'missing', array() ) );
+
+		$query->set( 'post__not_in', array( 101, 102 ) );
+		$this->assertSame( array( 101, 102 ), $query->get( 'post__not_in' ) );
+		$this->assertSame( array( 101, 102 ), $query->query_vars['post__not_in'] );
+
+		foreach ( array( false, 0, '', array(), null ) as $value ) {
+			$query->set( 'value', $value );
+			$this->assertSame( $value ?? 'default', $query->get( 'value', 'default' ) );
+		}
+	}
+
 	/**
 	 * Method test_plugin_file_contains_expected_metadata() verifies that the plugin file contains the expected metadata.
 	 *
@@ -114,6 +130,318 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
+	 * Restricted events are looked up and excluded from the matching archive query.
+	 *
+	 * @covers \DmbcTools\Plugin::dmbc_exclude_restricted_events_from_list
+	 */
+	public function test_exclude_restricted_events_from_list_excludes_inaccessible_posts(): void {
+		$GLOBALS['dmbc_test_state']['is_admin'] = false;
+		$GLOBALS['dmbc_test_state']['posts']    = array( 101, 102, 103 );
+		$this->set_post_meta(
+			102,
+			'um_content_restriction',
+			array(
+				'_um_custom_access_settings' => true,
+				'_um_accessible'             => 2,
+				'_um_access_roles'           => array( 'um_member' => 1 ),
+			)
+		);
+		$query = $this->create_events_query(
+			true,
+			true,
+			false,
+			array(
+				'post_type'      => 'tribe_events',
+				'posts_per_page' => 10,
+				'orderby'        => 'date',
+			)
+		);
+
+		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
+
+		$this->assertSame(
+			array(
+				'post_type'      => 'tribe_events',
+				'posts_per_page' => -1,
+				'orderby'        => 'date',
+				'dmbc-recursive' => true,
+				'fields'         => 'ids',
+			),
+			$GLOBALS['dmbc_test_state']['last_get_posts_args']
+		);
+		$this->assertSame( array( 102 ), $query->get( 'post__not_in', array() ) );
+		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
+	}
+
+	/**
+	 * The events page is checked, but unrestricted posts do not modify the query.
+	 *
+	 * @covers \DmbcTools\Plugin::dmbc_exclude_restricted_events_from_list
+	 */
+	public function test_exclude_restricted_events_from_list_checks_events_page_without_empty_exclusion(): void {
+		$GLOBALS['dmbc_test_state']['is_admin'] = false;
+		$GLOBALS['dmbc_test_state']['posts']    = array( 201, 202 );
+		$query                                  = $this->create_events_query(
+			true,
+			false,
+			true,
+			array( 'pagename' => 'events' )
+		);
+
+		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
+
+		$this->assertSame(
+			array(
+				'pagename'       => 'events',
+				'dmbc-recursive' => true,
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+			),
+			$GLOBALS['dmbc_test_state']['last_get_posts_args']
+		);
+		$this->assertSame( array(), $query->get( 'post__not_in', array() ) );
+		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
+	}
+
+	/**
+	 * Post restrictions are checked directly against all of the current user's roles.
+	 *
+	 * @param array $user_groups Groups the user belongs to.
+	 * @param array $restriction Stored UM content restriction metadata.
+	 * @param array $excluded_ids Expected excluded post IDs.
+	 * @param bool  $logged_in Whether the current user is logged in.
+	 */
+	#[\PHPUnit\Framework\Attributes\DataProvider( 'event_access_group_scenarios' )]
+	public function test_exclude_restricted_events_from_list_honors_group_access(
+		array $user_groups,
+		array $restriction,
+		array $excluded_ids,
+		bool $logged_in = true
+	): void {
+		$GLOBALS['dmbc_test_state']['is_admin']  = false;
+		$GLOBALS['dmbc_test_state']['posts']     = array( 301, 302 );
+		$GLOBALS['dmbc_test_state']['logged_in'] = $logged_in;
+
+		$GLOBALS['dmbc_test_state']['current_user']->roles = $user_groups;
+		$this->set_post_meta( 302, 'um_content_restriction', $restriction );
+		$query = $this->create_events_query( true, true, false );
+
+		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
+
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['um_post_access_calls'] );
+		$this->assertSame(
+			$excluded_ids,
+			$query->get( 'post__not_in', array() )
+		);
+		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
+	}
+
+	/**
+	 * Post 301 has no restriction metadata; post 302 uses the supplied settings.
+	 *
+	 * @return array Group-membership scenarios and their expected exclusions.
+	 */
+	public static function event_access_group_scenarios(): array {
+		return array(
+			'no restrictions allows every post' => array(
+				array(),
+				array(),
+				array(),
+			),
+			'no allowed group membership excludes the restricted post' => array(
+				array( 'um_guest' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array(
+		'um_member' => 1,
+		'um_board' => 1
+				),
+				),
+				array( 302 ),
+			),
+			'allowed group membership allows the restricted post' => array(
+				array( 'um_member' ),
+				array(
+					'_um_custom_access_settings' => '1',
+					'_um_accessible'             => '2',
+					'_um_access_roles'           => array(
+		'um_member' => '1',
+		'um_board' => '1'
+				),
+				),
+				array(),
+			),
+			'multiple memberships with one allowed group allows the restricted post' => array(
+				array( 'um_guest', 'um_member', 'um_volunteer' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array(
+		'um_member' => 1,
+		'um_board' => 1
+				),
+				),
+				array(),
+			),
+			'disabled restrictions ignore stored roles' => array(
+				array( 'um_guest' ),
+				array(
+					'_um_custom_access_settings' => false,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array( 'um_member' => 1 ),
+				),
+				array(),
+			),
+			'everyone can access despite stored roles' => array(
+				array(),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 0,
+					'_um_access_roles'           => array( 'um_member' => 1 ),
+				),
+				array(),
+				false,
+			),
+			'logged out users cannot access members only posts' => array(
+				array(),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array( 'um_member' => 1 ),
+				),
+				array( 302 ),
+				false,
+			),
+			'logged in users cannot access logged out only posts' => array(
+				array( 'um_member' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 1,
+				),
+				array( 302 ),
+			),
+			'logged out users can access logged out only posts' => array(
+				array(),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 1,
+				),
+				array(),
+				false,
+			),
+			'logged in users can access posts with no selected roles' => array(
+				array( 'um_member' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+				),
+				array(),
+			),
+			'unselected roles do not grant access' => array(
+				array( 'um_guest' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array(
+		'um_guest' => 0,
+		'um_member' => 1
+				),
+				),
+				array( 302 ),
+			),
+			'all unselected roles allow any logged in user' => array(
+				array( 'um_guest' ),
+				array(
+					'_um_custom_access_settings' => true,
+					'_um_accessible'             => 2,
+					'_um_access_roles'           => array( 'um_member' => 0 ),
+				),
+				array(),
+			),
+		);
+	}
+
+	/**
+	 * Admin and recursive queries are left untouched.
+	 *
+	 * @covers \DmbcTools\Plugin::dmbc_exclude_restricted_events_from_list
+	 */
+	public function test_exclude_restricted_events_from_list_skips_admin_and_recursive_queries(): void {
+		$cases = array(
+			array( true, array() ),
+			array( false, array( 'dmbc-recursive' => true ) ),
+		);
+
+		foreach ( $cases as [ $is_admin, $query_vars ] ) {
+			$GLOBALS['dmbc_test_state']['is_admin'] = $is_admin;
+			$query                                = $this->create_events_query( true, true, false, $query_vars );
+
+			Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
+
+			$this->assertSame( array(), $GLOBALS['dmbc_test_state']['last_get_posts_args'] );
+			$this->assertSame( array(), $query->set_values );
+		}
+	}
+
+	public function test_exclude_restricted_events_from_list_does_not_process_the_same_query_twice(): void {
+		$GLOBALS['dmbc_test_state']['is_admin'] = false;
+		$query                                = $this->create_events_query( true, true, false );
+
+		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
+		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
+
+		$GLOBALS['dmbc_test_state']['last_get_posts_args'] = array();
+		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
+
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['last_get_posts_args'] );
+	}
+
+	/**
+	 * Create a WP_Query stand-in with configurable main-query and endpoint checks.
+	 *
+	 * @param bool  $is_main_query Whether this is the main query.
+	 * @param bool  $is_archive Whether this is the events archive.
+	 * @param bool  $is_events_page Whether this is the events page.
+	 * @param array $query_vars Query variables to expose.
+	 */
+	private function create_events_query(
+		bool $is_main_query,
+		bool $is_archive,
+		bool $is_events_page,
+		array $query_vars = array()
+	): WP_Query {
+		return new class( $is_main_query, $is_archive, $is_events_page, $query_vars ) extends WP_Query {
+			public array $set_values = array();
+
+			public function __construct(
+				private bool $main_query,
+				private bool $events_archive,
+				private bool $events_page,
+				public array $query_vars
+			) {
+			}
+
+			public function is_main_query(): bool {
+				return $this->main_query;
+			}
+
+			public function is_post_type_archive( string $post_type = '' ): bool {
+				return 'tribe_events' === $post_type && $this->events_archive;
+			}
+
+			public function is_page( string $page = '' ): bool {
+				return 'events' === $page && $this->events_page;
+			}
+
+			public function set( $key, $value ): void {
+				parent::set( $key, $value );
+				$this->set_values[ $key ] = $value;
+			}
+		};
+	}
+
+	/**
 	 * Legacy capability cleanup removes stale caps from roles and users and unregisters the old menu type.
 	 *
 	 * @covers \DmbcTools\Plugin::unregister_old_post_types
@@ -125,7 +453,11 @@ final class PluginTest extends DmbcUnitTestBase {
 			'view-song-lists' => true,
 			'edit_song_list'  => true,
 		);
-		$GLOBALS['dmbc_test_state']['users'][] = new WP_User( 7, array( 'caps' => array( 'view-song-lists' => true, 'edit_song_list' => true ) ) );
+		$GLOBALS['dmbc_test_state']['users'][] = new WP_User( 7, array(
+		'caps' => array(
+		'view-song-lists' => true,
+		'edit_song_list' => true
+		) ) );
 
 		Plugin::instance()->unregister_old_post_types();
 

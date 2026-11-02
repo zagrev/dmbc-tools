@@ -168,19 +168,55 @@ if ( ! class_exists( 'WP_REST_Response' ) ) {
 if ( ! class_exists( 'WP_Query' ) ) {
 	/** Minimal base stand-in for WP_Query. */
 	class WP_Query {
+		public array $query_vars = array();
+
 		public function is_main_query(): bool {
 			return true;
 		}
 		public function is_post_type_archive( string $post_type = '' ): bool {
 			return true;
 		}
-		/**
-		 * Minimal stand-in for the set() method.
-		 *
-		 * @return void
-		 */
-		public function set($key, $value): void {
+		public function get( $query_var, $default_value = '' ) {
+			return $this->query_vars[ $query_var ] ?? $default_value;
 		}
+
+		public function set( $query_var, $value ): void {
+			$this->query_vars[ $query_var ] = $value;
+		}
+	}
+}
+
+if ( ! class_exists( 'UM' ) ) {
+	class UM {
+	}
+}
+
+/** Models unrestricted posts and any matching allowed group; explicit access overrides remain supported. */
+class Dmbc_Test_Um_Access {
+	public function has_post_access( int $post_id ): bool {
+		$GLOBALS['dmbc_test_state']['um_post_access_calls'][] = $post_id;
+
+		if ( isset( $GLOBALS['dmbc_test_state']['um_post_access'][ $post_id ] ) ) {
+			return $GLOBALS['dmbc_test_state']['um_post_access'][ $post_id ];
+		}
+
+		$allowed_groups = $GLOBALS['dmbc_test_state']['um_post_allowed_groups'][ $post_id ] ?? array();
+		$user_groups    = $GLOBALS['dmbc_test_state']['um_user_groups'] ?? array();
+
+		return empty( $allowed_groups ) || ! empty( array_intersect( $allowed_groups, $user_groups ) );
+	}
+}
+
+/** Minimal Ultimate Member facade mock. */
+class Dmbc_Test_Um {
+	public function access(): Dmbc_Test_Um_Access {
+		return new Dmbc_Test_Um_Access();
+	}
+}
+
+if ( ! function_exists( 'UM' ) ) {
+	function UM(): Dmbc_Test_Um {
+		return new Dmbc_Test_Um();
 	}
 }
 
