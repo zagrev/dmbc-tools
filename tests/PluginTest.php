@@ -8,6 +8,22 @@ use DmbcTools\DeluxeCcTransaction;
  */
 final class PluginTest extends DmbcUnitTestBase {
 
+	public function test_wp_query_mock_get_and_set_preserve_query_values(): void {
+		$query = new WP_Query();
+
+		$this->assertSame( '', $query->get( 'missing' ) );
+		$this->assertSame( array(), $query->get( 'missing', array() ) );
+
+		$query->set( 'post__not_in', array( 101, 102 ) );
+		$this->assertSame( array( 101, 102 ), $query->get( 'post__not_in' ) );
+		$this->assertSame( array( 101, 102 ), $query->query_vars['post__not_in'] );
+
+		foreach ( array( false, 0, '', array(), null ) as $value ) {
+			$query->set( 'value', $value );
+			$this->assertSame( $value ?? 'default', $query->get( 'value', 'default' ) );
+		}
+	}
+
 	/**
 	 * Method test_plugin_file_contains_expected_metadata() verifies that the plugin file contains the expected metadata.
 	 *
@@ -148,11 +164,13 @@ final class PluginTest extends DmbcUnitTestBase {
 				'post_type'      => 'tribe_events',
 				'posts_per_page' => -1,
 				'orderby'        => 'date',
+				'dmbc-recursive' => true,
 				'fields'         => 'ids',
 			),
 			$GLOBALS['dmbc_test_state']['last_get_posts_args']
 		);
-		$this->assertSame( array( 'post__not_in' => array( 102 ) ), $query->set_values );
+		$this->assertSame( array( 102 ), $query->get( 'post__not_in', array() ) );
+		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
 	}
 
 	/**
@@ -175,12 +193,14 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertSame(
 			array(
 				'pagename'       => 'events',
+				'dmbc-recursive' => true,
 				'posts_per_page' => -1,
 				'fields'         => 'ids',
 			),
 			$GLOBALS['dmbc_test_state']['last_get_posts_args']
 		);
-		$this->assertSame( array(), $query->set_values );
+		$this->assertSame( array(), $query->get( 'post__not_in', array() ) );
+		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
 	}
 
 	/**
@@ -210,9 +230,10 @@ final class PluginTest extends DmbcUnitTestBase {
 
 		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['um_post_access_calls'] );
 		$this->assertSame(
-			empty( $excluded_ids ) ? array() : array( 'post__not_in' => $excluded_ids ),
-			$query->set_values
+			$excluded_ids,
+			$query->get( 'post__not_in', array() )
 		);
+		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
 	}
 
 	/**
@@ -342,25 +363,38 @@ final class PluginTest extends DmbcUnitTestBase {
 	}
 
 	/**
-	 * Admin and secondary queries are left untouched.
+	 * Admin and recursive queries are left untouched.
 	 *
 	 * @covers \DmbcTools\Plugin::dmbc_exclude_restricted_events_from_list
 	 */
-	public function test_exclude_restricted_events_from_list_skips_queries_outside_events_main_query(): void {
+	public function test_exclude_restricted_events_from_list_skips_admin_and_recursive_queries(): void {
 		$cases = array(
-			array( true, true, true, false ),
-			array( false, false, true, false ),
+			array( true, array() ),
+			array( false, array( 'dmbc-recursive' => true ) ),
 		);
 
-		foreach ( $cases as [ $is_admin, $is_main_query, $is_archive, $is_events_page ] ) {
+		foreach ( $cases as [ $is_admin, $query_vars ] ) {
 			$GLOBALS['dmbc_test_state']['is_admin'] = $is_admin;
-			$query                                  = $this->create_events_query( $is_main_query, $is_archive, $is_events_page );
+			$query                                = $this->create_events_query( true, true, false, $query_vars );
 
 			Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
 
 			$this->assertSame( array(), $GLOBALS['dmbc_test_state']['last_get_posts_args'] );
 			$this->assertSame( array(), $query->set_values );
 		}
+	}
+
+	public function test_exclude_restricted_events_from_list_does_not_process_the_same_query_twice(): void {
+		$GLOBALS['dmbc_test_state']['is_admin'] = false;
+		$query                                = $this->create_events_query( true, true, false );
+
+		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
+		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
+
+		$GLOBALS['dmbc_test_state']['last_get_posts_args'] = array();
+		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
+
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['last_get_posts_args'] );
 	}
 
 	/**
@@ -401,6 +435,7 @@ final class PluginTest extends DmbcUnitTestBase {
 			}
 
 			public function set( $key, $value ): void {
+				parent::set( $key, $value );
 				$this->set_values[ $key ] = $value;
 			}
 		};

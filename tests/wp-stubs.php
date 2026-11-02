@@ -168,18 +168,20 @@ if ( ! class_exists( 'WP_REST_Response' ) ) {
 if ( ! class_exists( 'WP_Query' ) ) {
 	/** Minimal base stand-in for WP_Query. */
 	class WP_Query {
+		public array $query_vars = array();
+
 		public function is_main_query(): bool {
 			return true;
 		}
 		public function is_post_type_archive( string $post_type = '' ): bool {
 			return true;
 		}
-		/**
-		 * Minimal stand-in for the set() method.
-		 *
-		 * @return void
-		 */
-		public function set($key, $value): void {
+		public function get( $query_var, $default_value = '' ) {
+			return $this->query_vars[ $query_var ] ?? $default_value;
+		}
+
+		public function set( $query_var, $value ): void {
+			$this->query_vars[ $query_var ] = $value;
 		}
 	}
 }
