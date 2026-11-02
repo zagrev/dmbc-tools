@@ -140,6 +140,10 @@ class SongListView {
 
 		// if no id and no date provided, find the rehearsal song list that has the lowest date and is greater than or equal to today.
 		$song_list = $song_list_id ? \get_post( $song_list_id ) : null;
+		if ( $song_list && 'draft' === $song_list->post_status
+			&& ! \current_user_can( Plugin::CAP_EDIT_SONGLIST ) && ! \current_user_can( 'manage_options' ) ) {
+			return '<p>Rehearsal Song List not found.</p>';
+		}
 		if ( ! $song_list && ! $date ) {
 			$upcoming_song_lists = \get_posts(
 				array(
@@ -246,6 +250,11 @@ class SongListView {
 	 */
 	public function render_song_list_edit_page( $edit_id = 0 ): string {
 		$edit_post      = $edit_id > 0 ? \get_post( $edit_id ) : null;
+		if ( $edit_post && 'draft' === $edit_post->post_status
+			&& ! \current_user_can( Plugin::CAP_EDIT_SONGLIST ) && ! \current_user_can( 'manage_options' ) ) {
+			return '<p>Rehearsal Song List not found.</p>';
+		}
+
 		$edit_title     = '';
 		$edit_items     = array();
 		$edit_notes     = '';
@@ -423,6 +432,11 @@ class SongListView {
 			return array();
 		}
 
+		if ( 'draft' === $song_list->post_status ) {
+			Plugin::instance()->logger()->error( 'DMBC SongListView: Cannot email a draft song list. Song list ID ' . $song_list_id );
+			return array();
+		}
+
 		$rehearsal_date    = \get_post_meta( $song_list_id, Plugin::PERFORMANCE_DATE_META_KEY, true );
 		$subject           = "Rehearsal song list: {$rehearsal_date}";
 		$song_list_title   = \get_the_title( $song_list );
@@ -473,6 +487,16 @@ class SongListView {
 
 		if ( ! \current_user_can( Plugin::CAP_EDIT_SONGLIST ) && ! \current_user_can( 'manage_options' ) ) {
 			return;
+		}
+
+		if ( isset( $_POST['dmbc_song_list_status'] ) && ! is_string( $_POST['dmbc_song_list_status'] ) ) {
+			\wp_die( \esc_html__( 'Invalid song list status. Please select Draft or Published.', 'dmbc-extras' ), '', array( 'response' => 400 ) );
+		}
+		$post_status = isset( $_POST['dmbc_song_list_status'] )
+			? \sanitize_key( \wp_unslash( $_POST['dmbc_song_list_status'] ) )
+			: 'publish';
+		if ( ! in_array( $post_status, array( 'draft', 'publish' ), true ) ) {
+			\wp_die( \esc_html__( 'Invalid song list status. Please select Draft or Published.', 'dmbc-extras' ), '', array( 'response' => 400 ) );
 		}
 
 		$title          = isset( $_POST['dmbc_song_list_title'] ) ? \sanitize_text_field( \wp_unslash( $_POST['dmbc_song_list_title'] ) ) : '';
@@ -539,7 +563,7 @@ class SongListView {
 			'post_type'    => Plugin::SONGLIST_POST_TYPE,
 			'post_title'   => $title,
 			'post_content' => $content,
-			'post_status'  => 'publish',
+			'post_status'  => $post_status,
 		);
 
 		$post_id = $song_list_id > 0 ? \wp_update_post( $post_data, true ) : \wp_insert_post( $post_data, true );
@@ -560,14 +584,35 @@ class SongListView {
 		\update_post_meta( $post_id, Plugin::NOTES_META_KEY, $content );
 
 		\clean_post_cache( $post_id );
-		$this->send_song_list_to_roles( $post_id );
+		if ( 'publish' === $post_status ) {
+			$this->send_song_list_to_roles( $post_id );
+		}
 
-		$action = $song_list_id > 0 ? __( 'Rehearsal song list updated successfully.', 'dmbc-extras' ) : __( 'Rehearsal song list created successfully.', 'dmbc-extras' );
+		$action = 'draft' === $post_status
+			? __( 'Rehearsal song list saved as a draft.', 'dmbc-extras' )
+			: ( $song_list_id > 0 ? __( 'Rehearsal song list updated successfully.', 'dmbc-extras' ) : __( 'Rehearsal song list created successfully.', 'dmbc-extras' ) );
 		\add_action(
 			'admin_notices',
 			function () use ( $action ) {
 				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $action ) . '</p></div>';
 			}
 		);
+
+		$redirect_url = \add_query_arg(
+			array( 'dmbc_song_list_saved' => $post_status ),
+			\admin_url( 'admin.php?page=dmbc-songlists-menu' )
+		);
+		if ( ! \wp_safe_redirect( $redirect_url, 303 ) ) {
+			Plugin::instance()->logger()->error( 'DMBC SongListView: Unable to redirect after saving song list ' . $post_id );
+			return;
+		}
+		$this->finish_song_list_redirect();
+	}
+
+	/**
+	 * Stop rendering the editor after a successful redirect.
+	 */
+	protected function finish_song_list_redirect(): void {
+		exit;
 	}
 } // End of SongListView class

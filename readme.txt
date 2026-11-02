@@ -52,6 +52,10 @@ When WooCommerce is active, log entries are forwarded through wc_get_logger(). O
 
 == Rehearsal song list forms ==
 
+Song-folder links on song list pages and in song list emails always end with a trailing slash, including links from previously saved lists.
+
+Song list editors can use Add New Song List above the song list table to open a blank list. Successful Publish Song List and Save Draft submissions return to the song list table with a confirmation message. The song list editor offers Publish Song List and Save Draft buttons. Save Draft creates or updates a draft; Publish Song List publishes the list and sends the normal song list email. Drafts appear with a Draft label in the song list table for editors, are not shown to other members, and do not send email. Drafts use the same title and rehearsal-item validation as published lists.
+
 Song list forms and edit/delete links include WordPress nonces. Create, update, and delete submissions verify the corresponding nonce before changing data. Invalid or expired submission nonces return an error; reload the page before trying again.
 
 == Permalink rules ==
@@ -84,4 +88,3 @@ Create a WordPress post titled "Donation Confirmation Email" to enable confirmat
 
 The donation table is created by the existing schema setup on init.
 The public Donate link and Deluxe payment form are unchanged.
-

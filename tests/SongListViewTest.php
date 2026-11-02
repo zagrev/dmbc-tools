@@ -10,7 +10,10 @@ use DmbcTools\SongListView;
 /** @covers \DmbcTools\SongListView */
 final class SongListViewTest extends DmbcUnitTestBase {
 	private function make_view(): SongListView {
-		return new SongListView( new DmbcSettings() );
+		return new class( new DmbcSettings() ) extends SongListView {
+			protected function finish_song_list_redirect(): void {
+			}
+		};
 	}
 
 	private function make_post( int $id = 21 ): \WP_Post {
@@ -148,6 +151,37 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$this->assertStringNotContainsString( '>Ten-minute break</a>', $html );
 	}
 
+	public function test_song_folder_links_have_one_trailing_slash_on_the_page_and_in_email(): void {
+		$post = $this->make_post();
+		$this->set_post_meta( $post->ID, Plugin::SONGS_META_KEY, array( 'Song A', 'Song B/' ) );
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array(
+				'user_email' => 'member@example.com',
+				'role'       => 'um_member',
+			),
+		);
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'director@example.com' );
+		$view = $this->make_view();
+		$html = $view->render_song_list_view_page( $post->ID );
+		$view->send_song_list_to_roles( $post->ID, array( 'um_member' ) );
+		$email = $GLOBALS['dmbc_test_state']['mail_calls'][0]['message'];
+
+		foreach ( array( $html, $email ) as $output ) {
+			preg_match_all( '/href="([^"]+)"/', $output, $matches );
+			$folder_links = array_values(
+				array_filter(
+					$matches[1],
+					static fn( string $url ): bool => str_contains( $url, 'Song A' ) || str_contains( $url, 'Song B' )
+				)
+			);
+			$this->assertCount( 2, $folder_links );
+			foreach ( $folder_links as $url ) {
+				$this->assertStringEndsWith( '/', $url );
+				$this->assertFalse( str_ends_with( $url, '//' ) );
+			}
+		}
+	}
+
 	public function test_admin_edit_page_loads_the_song_list_id_from_the_request(): void {
 		$post    = $this->make_post();
 		$library = $this->create_temp_directory();
@@ -180,6 +214,17 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		ob_start();
 		$view->dmbc_render_song_list_table_page();
 		$this->assertStringContainsString( 'Rehearsal Song Lists', (string) ob_get_clean() );
+	}
+
+	public function test_song_list_table_offers_new_list_button_only_to_editors(): void {
+		$view = $this->make_view();
+		$html = $view->generate_member_song_lists_table_page();
+
+		$this->assertStringContainsString( 'Add Song List', $html );
+		$this->assertStringContainsString( 'href="' . admin_url( 'admin.php?page=dmbc-songlist-edit' ) . '"', $html );
+
+		$this->set_current_user_can( false );
+		$this->assertStringNotContainsString( 'Add Song List', $view->generate_member_song_lists_table_page() );
 	}
 
 	public function test_table_page_rejects_invalid_nonce_and_admin_edit_route_renders_form(): void {
@@ -336,6 +381,7 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$this->assertArrayHasKey( 1, $GLOBALS['dmbc_test_state']['posts'] );
 		$this->assertSame( 'September rehearsal', $GLOBALS['dmbc_test_state']['posts'][1]->post_title );
 		$this->assertSame( Plugin::SONGLIST_POST_TYPE, $GLOBALS['dmbc_test_state']['posts'][1]->post_type );
+		$this->assertSame( 'publish', $GLOBALS['dmbc_test_state']['posts'][1]->post_status );
 		$this->assertSame( 'Begin with warmups.', $GLOBALS['dmbc_test_state']['posts'][1]->post_content );
 		$this->assertSame(
 			array(
@@ -366,6 +412,178 @@ final class SongListViewTest extends DmbcUnitTestBase {
 		$this->make_view()->handle_song_list_form();
 		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['posts'] );
 		$this->assertSame( 'Updated rehearsal', $GLOBALS['dmbc_test_state']['posts'][1]->post_title );
+	}
+
+	public function test_song_list_draft_can_be_created_updated_and_published(): void {
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array(
+				'user_email' => 'member@example.com',
+				'role'       => 'um_member',
+			),
+		);
+		$this->set_option( Plugin::OPTION_EMAIL_RECIPIENT, 'director@example.com' );
+		$_POST = array(
+			'dmbc_song_list_nonce'  => 'valid-nonce',
+			'dmbc_song_list_title'  => 'Draft rehearsal',
+			'dmbc_song_list_status' => 'draft',
+			'dmbc_performance_date' => '2026-11-09',
+			'dmbc_notes'            => 'Work in progress.',
+			'dmbc_rehearsal_items'  => array(
+				array(
+					'type'  => 'note',
+					'value' => 'Warmups',
+				),
+			),
+		);
+		$view = $this->make_view();
+		$view->handle_song_list_form();
+
+		$this->assertSame( 'draft', $GLOBALS['dmbc_test_state']['posts'][1]->post_status );
+		$this->assertSame( '2026-11-09', $this->get_stored_post_meta( 1, Plugin::PERFORMANCE_DATE_META_KEY ) );
+		$this->assertSame( 'Work in progress.', $this->get_stored_post_meta( 1, Plugin::NOTES_META_KEY ) );
+		$this->assertSame(
+			array(
+				array(
+					'type'  => 'note',
+					'value' => 'Warmups',
+				),
+			),
+			$this->get_stored_post_meta( 1, Plugin::SONGS_META_KEY )
+		);
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['mail_calls'] );
+		ob_start();
+		$this->invoke_registered_actions( 'admin_notices' );
+		$this->assertStringContainsString( 'saved as a draft', (string) ob_get_clean() );
+		$this->assertSame(
+			array(
+				array(
+					'location' => admin_url( 'admin.php?page=dmbc-songlists-menu&dmbc_song_list_saved=draft' ),
+					'status'   => 303,
+				),
+			),
+			$GLOBALS['dmbc_test_state']['redirects']
+		);
+
+		$_POST['dmbc_song_list_id']    = '1';
+		$_POST['dmbc_song_list_title'] = 'Updated draft';
+		$view->handle_song_list_form();
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['posts'] );
+		$this->assertSame( 'draft', $GLOBALS['dmbc_test_state']['posts'][1]->post_status );
+		$this->assertSame( 'Updated draft', $GLOBALS['dmbc_test_state']['posts'][1]->post_title );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['mail_calls'] );
+
+		$_POST['dmbc_song_list_status'] = 'publish';
+		$view->handle_song_list_form();
+		$this->assertSame( 'publish', $GLOBALS['dmbc_test_state']['posts'][1]->post_status );
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertSame(
+			array(
+				'location' => admin_url( 'admin.php?page=dmbc-songlists-menu&dmbc_song_list_saved=publish' ),
+				'status'   => 303,
+			),
+			$GLOBALS['dmbc_test_state']['redirects'][2]
+		);
+
+		$_POST['dmbc_song_list_status'] = 'draft';
+		$view->handle_song_list_form();
+		$this->assertSame( 'draft', $GLOBALS['dmbc_test_state']['posts'][1]->post_status );
+		$this->assertCount( 1, $GLOBALS['dmbc_test_state']['mail_calls'] );
+	}
+
+	public function test_song_list_editor_offers_publish_and_save_draft_buttons(): void {
+		$view = $this->make_view();
+		$post              = $this->make_post();
+		$post->post_status = 'draft';
+
+		foreach ( array( 0, $post->ID ) as $id ) {
+			$html = $view->render_song_list_edit_page( $id );
+			$this->assertStringContainsString( 'name="dmbc_song_list_status" value="publish"', $html );
+			$this->assertStringContainsString( '>Publish Song List</button>', $html );
+			$this->assertStringContainsString( 'name="dmbc_song_list_status" value="draft"', $html );
+			$this->assertStringContainsString( '>Save Draft</button>', $html );
+			$this->assertStringNotContainsString( 'id="dmbc-song-list-status"', $html );
+		}
+	}
+
+	public function test_song_list_table_displays_the_redirected_save_notice(): void {
+		$view = $this->make_view();
+		foreach ( array( 'draft' => 'saved as a draft', 'publish' => 'published successfully' ) as $status => $message ) {
+			$_GET['dmbc_song_list_saved'] = $status;
+			$this->assertStringContainsString( $message, $view->generate_member_song_lists_table_page() );
+		}
+
+		$_GET['dmbc_song_list_saved'] = 'invalid';
+		$this->assertStringNotContainsString( 'notice-success', $view->generate_member_song_lists_table_page() );
+	}
+
+	public function test_draft_view_is_available_only_to_song_list_editors_and_cannot_be_emailed(): void {
+		$post              = $this->make_post();
+		$post->post_status = 'draft';
+		$view              = $this->make_view();
+		$this->assertStringContainsString( 'September rehearsal', $view->render_song_list_view_page( $post->ID ) );
+
+		$this->set_current_user_can( false );
+		$this->assertSame( '<p>Rehearsal Song List not found.</p>', $view->render_song_list_view_page( $post->ID ) );
+		$this->assertSame( '<p>Rehearsal Song List not found.</p>', $view->render_song_list_edit_page( $post->ID ) );
+
+		$GLOBALS['dmbc_test_state']['users'] = array(
+			(object) array(
+				'user_email' => 'member@example.com',
+				'role'       => 'um_member',
+			),
+		);
+		$this->assertSame( array(), $view->send_song_list_to_roles( $post->ID ) );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['mail_calls'] );
+	}
+
+	public static function invalid_song_list_statuses(): array {
+		return array(
+			'array'   => array( array( 'draft' ) ),
+			'private' => array( 'private' ),
+			'empty'   => array( '' ),
+		);
+	}
+
+	#[\PHPUnit\Framework\Attributes\DataProvider( 'invalid_song_list_statuses' )]
+	public function test_song_list_form_rejects_invalid_status_without_saving( mixed $status ): void {
+		$_POST = array(
+			'dmbc_song_list_nonce'  => 'valid-nonce',
+			'dmbc_song_list_title'  => 'Invalid status',
+			'dmbc_song_list_status' => $status,
+		);
+		try {
+			$this->make_view()->handle_song_list_form();
+			$this->fail( 'Invalid status should be rejected.' );
+		} catch ( RuntimeException $error ) {
+			$this->assertStringContainsString( 'Invalid song list status', $error->getMessage() );
+		}
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['posts'] );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['mail_calls'] );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['redirects'] );
+	}
+
+	public function test_draft_save_requires_existing_song_list_validation_and_permission(): void {
+		$_POST = array(
+			'dmbc_song_list_nonce'  => 'valid-nonce',
+			'dmbc_song_list_title'  => 'Draft rehearsal',
+			'dmbc_song_list_status' => 'draft',
+		);
+		$view = $this->make_view();
+		$view->handle_song_list_form();
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['posts'] );
+		$this->assertCount( 1, $this->get_registered_actions( 'admin_notices' ) );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['redirects'] );
+
+		$_POST['dmbc_rehearsal_items'] = array(
+			array(
+				'type'  => 'note',
+				'value' => 'Warmups',
+			),
+		);
+		$this->set_current_user_can( false );
+		$view->handle_song_list_form();
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['posts'] );
+		$this->assertSame( array(), $GLOBALS['dmbc_test_state']['mail_calls'] );
 	}
 
 	public function test_song_list_email_matches_the_web_page_items_and_preserves_notes(): void {

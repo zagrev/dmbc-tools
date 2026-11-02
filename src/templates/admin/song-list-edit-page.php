@@ -126,7 +126,11 @@ $delete_button_attributes = $edit_id > 0 ? 'style="background-color:#d63638 !imp
 				</tr>
 			</tbody>
 		</table>
-	<?php \submit_button( $edit_id > 0 ? __( 'Update Song List', 'dmbc-extras' ) : __( 'Create Song List', 'dmbc-extras' ) ); ?>
+		<p class="submit">
+			<button type="submit" name="dmbc_song_list_status" value="publish" class="button button-primary"><?php \esc_html_e( 'Publish Song List', 'dmbc-extras' ); ?></button>
+			<button type="submit" name="dmbc_song_list_status" value="draft" class="button button-secondary"><?php \esc_html_e( 'Save Draft', 'dmbc-extras' ); ?></button>
+		</p>
+		<p class="description"><?php \esc_html_e( 'Drafts are visible only to song list editors and are not emailed until published.', 'dmbc-extras' ); ?></p>
 	</form>
 	<div style="display:flex; justify-content:flex-end; margin-top:16px;">
 		<form method="post" action="" id="dmbc_delete_song_list_form">

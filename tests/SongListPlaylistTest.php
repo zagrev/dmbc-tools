@@ -77,6 +77,17 @@ final class SongListPlaylistTest extends DmbcUnitTestBase {
 		$this->assertSame( $expected, $this->get_stored_post_meta( 55, Plugin::PLAYLIST_META_KEY ) );
 	}
 
+	public function test_song_folder_url_preserves_one_trailing_slash_after_encoding(): void {
+		$this->set_option( Plugin::OPTION_SONGLIST_DIRECTORY, 'dmbc-song-library' );
+
+		foreach ( array( 'Song A', 'Song A/', 'Song A\\' ) as $path ) {
+			$this->assertSame(
+				content_url( 'dmbc-song-library/Song%20A/' ),
+				SongListPlaylist::get_song_folder_url( $path )
+			);
+		}
+	}
+
 	public function test_get_or_update_playlist_accepts_absolute_library_and_windows_style_song_paths(): void {
 		$library = $this->create_temp_directory();
 		$this->make_directory_tree(
