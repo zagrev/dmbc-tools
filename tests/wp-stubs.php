@@ -416,6 +416,12 @@ if ( ! function_exists( 'esc_attr' ) ) {
 	}
 }
 
+if ( ! function_exists( 'trailingslashit' ) ) {
+	function trailingslashit( $value ): string {
+		return rtrim( (string) $value, '/\\' ) . '/';
+	}
+}
+
 if ( ! function_exists( 'selected' ) ) {
 	function selected( $selected, $current, bool $echo = true ): string {
 		$result = (string) $selected === (string) $current ? 'selected="selected"' : '';
@@ -815,6 +821,7 @@ if ( ! function_exists( 'wp_insert_post' ) ) {
 		$post->post_title   = $post_data['post_title'];
 		$post->post_type    = $post_data['post_type'];
 		$post->post_content = $post_data['post_content'];
+		$post->post_status  = $post_data['post_status'] ?? 'draft';
 		$GLOBALS['dmbc_test_state']['posts'][ $post_id ] = $post;
 		return $post_id;
 	}
@@ -1238,6 +1245,7 @@ if (! function_exists('wp_delete_post')) {
 }
 if (!function_exists('wp_safe_redirect')) {
 	function wp_safe_redirect( $location, $status = 302 ) {
+		$GLOBALS['dmbc_test_state']['redirects'][] = compact( 'location', 'status' );
 		return true;
 	}
 }

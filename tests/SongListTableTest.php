@@ -66,7 +66,7 @@ final class SongListTableTest extends DmbcUnitTestBase {
 		$this->assertStringContainsString( get_permalink(), $output );
 	}
 
-	public function test_prepare_items_queries_published_song_lists(): void {
+	public function test_prepare_items_includes_drafts_for_editors_only(): void {
 		$table                               = new SongListTable();
 		$post                                = $this->make_post();
 		$GLOBALS['dmbc_test_state']['posts'] = array( $post );
@@ -75,5 +75,16 @@ final class SongListTableTest extends DmbcUnitTestBase {
 
 		$this->assertSame( array( $post ), $table->get_items() );
 		$this->assertSame( Plugin::SONGLIST_POST_TYPE, $GLOBALS['dmbc_test_state']['last_get_posts_args']['post_type'] );
+		$this->assertSame( array( 'publish', 'draft' ), $GLOBALS['dmbc_test_state']['last_get_posts_args']['post_status'] );
+
+		$this->set_current_user_can( false );
+		$table->prepare_items();
+		$this->assertSame( 'publish', $GLOBALS['dmbc_test_state']['last_get_posts_args']['post_status'] );
+	}
+
+	public function test_draft_title_is_labelled(): void {
+		$post              = $this->make_post();
+		$post->post_status = 'draft';
+		$this->assertSame( 'September rehearsal - Draft', ( new SongListTable() )->column_name( $post ) );
 	}
 }

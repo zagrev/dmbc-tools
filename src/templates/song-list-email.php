@@ -27,7 +27,7 @@ if ( ! \defined( 'ABSPATH' ) ) {
 					<?php
 					$song_path     = $item['value'];
 					$song_url_path = DmbcTools\SongListView::convert_full_path_to_relative( WP_CONTENT_DIR, $song_path );
-					$song_url      = \content_url( "$song_library_path/$song_url_path" );
+					$song_url      = \trailingslashit( \content_url( "$song_library_path/$song_url_path" ) );
 					?>
 					<li style="margin-bottom: 8px;"><a href="<?php echo \esc_url( $song_url ); ?>" style="color: #2271b1; text-decoration: underline;"><?php echo \esc_html( $song_path ); ?></a></li>
 				<?php endif; ?>

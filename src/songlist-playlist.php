@@ -157,7 +157,7 @@ final class SongListPlaylist {
 			? self::relative_to_content( $song_path )
 			: trim( $song_library_path . '/' . ltrim( $song_path, '/' ), '/' );
 
-		return self::make_content_relative_url( rtrim( $song_url_path, '/' ) . '/' );
+		return \trailingslashit( self::make_content_relative_url( $song_url_path ) );
 	}
 
 	/**

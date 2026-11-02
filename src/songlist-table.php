@@ -56,7 +56,7 @@ class SongListTable extends \WP_List_Table {
 	 * @return string
 	 */
 	public function column_name( WP_Post $item ) {
-		return $item->post_title;
+		return $item->post_title . ( 'draft' === $item->post_status ? ' - ' . __( 'Draft', 'dmbc-extras' ) : '' );
 	}
 
 	/**
@@ -154,7 +154,9 @@ class SongListTable extends \WP_List_Table {
 		$song_lists = \get_posts(
 			array(
 				'post_type'   => Plugin::SONGLIST_POST_TYPE,
-				'post_status' => 'publish',
+				'post_status' => \current_user_can( Plugin::CAP_EDIT_SONGLIST ) || \current_user_can( 'manage_options' )
+					? array( 'publish', 'draft' )
+					: 'publish',
 				'numberposts' => -1,
 				'orderby'     => 'meta_value',
 				'order'       => 'DESC',

@@ -749,6 +749,12 @@ final class PluginTest extends DmbcUnitTestBase {
 		$this->assertStringContainsString( '02-learning-track.mp3', $html );
 		$this->assertStringContainsString( '03-tenor.mp3', $html );
 		$this->assertStringContainsString( 'Download playlist', $html );
+		$this->assertSame(
+			1,
+			preg_match( '/href="([^"]+)"[^>]*>Open song folder<\/a>/', $html, $folder_link )
+		);
+		$this->assertStringEndsWith( '/', $folder_link[1] );
+		$this->assertFalse( str_ends_with( $folder_link[1], '//' ) );
 	}
 
 	/**
