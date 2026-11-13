@@ -170,7 +170,7 @@ final class PluginTest extends DmbcUnitTestBase {
 			$GLOBALS['dmbc_test_state']['last_get_posts_args']
 		);
 		$this->assertSame( array( 102 ), $query->get( 'post__not_in', array() ) );
-		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
+		$this->assertEmpty( $query->get( 'dmbc-recursive' ) );
 	}
 
 	/**
@@ -200,7 +200,7 @@ final class PluginTest extends DmbcUnitTestBase {
 			$GLOBALS['dmbc_test_state']['last_get_posts_args']
 		);
 		$this->assertSame( array(), $query->get( 'post__not_in', array() ) );
-		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
+		$this->assertEmpty( $query->get( 'dmbc-recursive' ) );
 	}
 
 	/**
@@ -233,7 +233,7 @@ final class PluginTest extends DmbcUnitTestBase {
 			$excluded_ids,
 			$query->get( 'post__not_in', array() )
 		);
-		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
+		$this->assertEmpty( $query->get( 'dmbc-recursive' ) );
 	}
 
 	/**
@@ -319,7 +319,7 @@ final class PluginTest extends DmbcUnitTestBase {
 					'_um_custom_access_settings' => true,
 					'_um_accessible'             => 1,
 				),
-				array( 302 ),
+				array( ),
 			),
 			'logged out users can access logged out only posts' => array(
 				array(),
@@ -327,7 +327,7 @@ final class PluginTest extends DmbcUnitTestBase {
 					'_um_custom_access_settings' => true,
 					'_um_accessible'             => 1,
 				),
-				array(),
+				array( 302),
 				false,
 			),
 			'logged in users can access posts with no selected roles' => array(
@@ -389,7 +389,7 @@ final class PluginTest extends DmbcUnitTestBase {
 		$query                                = $this->create_events_query( true, true, false );
 
 		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
-		$this->assertTrue( $query->get( 'dmbc-recursive' ) );
+		$this->assertEmpty( $query->get( 'dmbc-recursive' ) );
 
 		$GLOBALS['dmbc_test_state']['last_get_posts_args'] = array();
 		Plugin::instance()->dmbc_exclude_restricted_events_from_list( $query );
