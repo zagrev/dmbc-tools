@@ -36,35 +36,35 @@ use DmbcTools\AcfIntegration;
  */
 final class Plugin {
 
-	public const string CAP_EDIT_MEMBER_UPDATES = 'dmbc_edit_member_updates';
-	public const string CAP_EDIT_SONGLIST = 'dmbc_edit_songlist';
-	public const string CAP_PUBLISH_MEMBER_UPDATES = 'dmbc_publish_member_updates';
-	public const string CAP_VIEW_MEMBER_UPDATES = 'dmbc_view_member_updates';
-	public const string CAP_VIEW_SONGLISTS = 'dmbc_view_songlist';
-	public const string MEMBER_UPDATE_CRON_HOOK = 'dmbc_send_member_update_digest';
-	public const string MEMBER_UPDATE_ROLE_META_KEY = '_dmbc_member_update_role';
-	public const string MEMBER_UPDATE_META_NONCE = 'dmbc_member_update_meta_nonce';
-	public const string MEMBER_UPDATE_POST_TYPE = 'dmbc-member-updates';
-	public const string MEMBER_UPDATE_RECIPIENT_META_KEY = '_dmbc_member_update_recipient';
-	public const string MEMBER_UPDATE_SENT_META_KEY = '_dmbc_member_update_sent_at';
-	public const string DEFAULT_MEMBER_UPDATE_ROLE = 'um_member';
-	public const string NOTES_META_KEY = '_dmbc_notes';
-	public const string OPTION_EMAIL_RECIPIENT = 'member_update_recipient';
-	public const string OPTION_MAX_BCC_PER_EMAIL = 'max_bcc_recipients_per_email';
-	public const string OPTION_REMOVE_DATA_ON_UNINSTALL = 'remove_data_on_uninstall';
-	public const string OPTION_SONGLIST_DIRECTORY = 'song_library_directory';
+	public const string CAP_EDIT_MEMBER_UPDATES           = 'dmbc_edit_member_updates';
+	public const string CAP_EDIT_SONGLIST                 = 'dmbc_edit_songlist';
+	public const string CAP_PUBLISH_MEMBER_UPDATES        = 'dmbc_publish_member_updates';
+	public const string CAP_VIEW_MEMBER_UPDATES           = 'dmbc_view_member_updates';
+	public const string CAP_VIEW_SONGLISTS                = 'dmbc_view_songlist';
+	public const string MEMBER_UPDATE_CRON_HOOK           = 'dmbc_send_member_update_digest';
+	public const string MEMBER_UPDATE_ROLE_META_KEY       = '_dmbc_member_update_role';
+	public const string MEMBER_UPDATE_META_NONCE          = 'dmbc_member_update_meta_nonce';
+	public const string MEMBER_UPDATE_POST_TYPE           = 'dmbc-member-updates';
+	public const string MEMBER_UPDATE_RECIPIENT_META_KEY  = '_dmbc_member_update_recipient';
+	public const string MEMBER_UPDATE_SENT_META_KEY       = '_dmbc_member_update_sent_at';
+	public const string DEFAULT_MEMBER_UPDATE_ROLE        = 'um_member';
+	public const string NOTES_META_KEY                    = '_dmbc_notes';
+	public const string OPTION_EMAIL_RECIPIENT            = 'member_update_recipient';
+	public const string OPTION_MAX_BCC_PER_EMAIL          = 'max_bcc_recipients_per_email';
+	public const string OPTION_REMOVE_DATA_ON_UNINSTALL   = 'remove_data_on_uninstall';
+	public const string OPTION_SONGLIST_DIRECTORY         = 'song_library_directory';
 	public const string OPTION_SONGLIST_EXCLUSION_REGEXES = 'song_library_exclusion_regexes';
-	public const string OPTION_SONGLIST_RECIPIENT_ROLES = 'song_list_recipient_roles';
-	public const string OPTION_VERSION = 'dmbc_tools_version';
-	public const string OPTION_TICKET_EMAIL_TEMPLATE = 'dmbc_ticket_email_template_post_id';
-	public const string OPTION_DONATION_EMAIL_TEMPLATE = 'dmbc_donation_email_template_post_id';
-	public const string OPTION_MAILSERVER_API_URL = 'dmbc_mailserver_api_url';
-	public const string PERFORMANCE_DATE_META_KEY = '_dmbc_performance_date';
-	public const string PLAYLIST_META_KEY = '_dmbc_playlist';
-	public const string SONGLIST_META_NONCE = 'dmbc_songlist_meta_nonce';
-	public const string SONGLIST_POST_TYPE = 'dmbc-songlist';
-	public const string SONGS_META_KEY = '_dmbc_songs';
-	public const string VERSION = '1.2.5';
+	public const string OPTION_SONGLIST_RECIPIENT_ROLES   = 'song_list_recipient_roles';
+	public const string OPTION_VERSION                    = 'dmbc_tools_version';
+	public const string OPTION_TICKET_EMAIL_TEMPLATE      = 'dmbc_ticket_email_template_post_id';
+	public const string OPTION_DONATION_EMAIL_TEMPLATE    = 'dmbc_donation_email_template_post_id';
+	public const string OPTION_MAILSERVER_API_URL         = 'dmbc_mailserver_api_url';
+	public const string PERFORMANCE_DATE_META_KEY         = '_dmbc_performance_date';
+	public const string PLAYLIST_META_KEY                 = '_dmbc_playlist';
+	public const string SONGLIST_META_NONCE               = 'dmbc_songlist_meta_nonce';
+	public const string SONGLIST_POST_TYPE                = 'dmbc-songlist';
+	public const string SONGS_META_KEY                    = '_dmbc_songs';
+	public const string VERSION                           = '1.2.5';
 
 
 	/**
@@ -148,11 +148,11 @@ final class Plugin {
 	 * Private constructor to prevent direct instantiation.
 	 */
 	private function __construct() {
-		$this->settings = new DmbcSettings();
-		$this->mailer = new Mailer( $this->settings );
+		$this->settings              = new DmbcSettings();
+		$this->mailer                = new Mailer( $this->settings );
 		$this->deluxe_cc_transaction = new DeluxeCcTransaction();
-		$this->mailserver_proxy = new MailserverProxy();
-		$this->mailserver_view = new MailserverView();
+		$this->mailserver_proxy      = new MailserverProxy();
+		$this->mailserver_view       = new MailserverView();
 		if ( \defined( 'PHPUNIT_COMPOSER_INSTALL' ) || \defined( '__PHPUNIT_PHAR__' ) ) {
 			// Application is running in a PHPUnit test environment.
 			$this->logger = new DmbcLogger( 'dmbc-tools', DmbcLogger::LEVEL_OFF );
@@ -300,8 +300,8 @@ final class Plugin {
 			'dmbc',
 			'/deluxe_cc_notification',
 			array(
-				'methods' => 'POST',
-				'callback' => array( $this->deluxe_cc_transaction, 'handle_deluxe_cc_notification' ),
+				'methods'             => 'POST',
+				'callback'            => array( $this->deluxe_cc_transaction, 'handle_deluxe_cc_notification' ),
 				'permission_callback' => '__return_true',
 			)
 		);
@@ -416,9 +416,9 @@ final class Plugin {
 
 		return array(
 			'administrator' => $editor_capabilities,
-			'editor' => $editor_capabilities,
-			'um_director' => $editor_capabilities,
-			'um_member' => array(
+			'editor'        => $editor_capabilities,
+			'um_director'   => $editor_capabilities,
+			'um_member'     => array(
 				self::CAP_VIEW_MEMBER_UPDATES,
 				self::CAP_VIEW_SONGLISTS,
 			),
@@ -470,11 +470,11 @@ final class Plugin {
 	public function send_member_update_digest(): int {
 		$updates = \get_posts(
 			array(
-				'post_type' => self::MEMBER_UPDATE_POST_TYPE,
-				'post_status' => 'publish',
+				'post_type'      => self::MEMBER_UPDATE_POST_TYPE,
+				'post_status'    => 'publish',
 				'posts_per_page' => -1,
-				'orderby' => 'modified',
-				'order' => 'DESC',
+				'orderby'        => 'modified',
+				'order'          => 'DESC',
 			)
 		);
 		$updates = array_values(
@@ -536,7 +536,7 @@ final class Plugin {
 			return false;
 		}
 
-		$message = format_member_update_post( $post );
+		$message    = format_member_update_post( $post );
 		$recipients = $this->mailer->send_email( __( 'DMBC News', 'dmbc-tools' ), $message, array( $role ) );
 		if ( empty( $recipients ) ) {
 			return false;
@@ -566,10 +566,10 @@ final class Plugin {
 		foreach ( array( self::SONGLIST_POST_TYPE, self::MEMBER_UPDATE_POST_TYPE ) as $post_type ) {
 			$cpt_posts = get_posts(
 				array(
-					'post_type' => $post_type,
+					'post_type'   => $post_type,
 					'post_status' => 'any',
 					'numberposts' => -1,
-					'fields' => 'ids', // Only fetch IDs to save memory.
+					'fields'      => 'ids', // Only fetch IDs to save memory.
 				)
 			);
 
@@ -628,19 +628,19 @@ final class Plugin {
 			\register_post_type(
 				self::SONGLIST_POST_TYPE,
 				array(
-					'labels' => array(
-						'name' => __( 'Song Lists', 'dmbc-tools' ),
+					'labels'       => array(
+						'name'          => __( 'Song Lists', 'dmbc-tools' ),
 						'singular_name' => __( 'Song List', 'dmbc-tools' ),
-						'add_new_item' => __( 'Add new Song List', 'dmbc-tools' ),
-						'edit_item' => __( 'Edit Song List', 'dmbc-tools' ),
+						'add_new_item'  => __( 'Add new Song List', 'dmbc-tools' ),
+						'edit_item'     => __( 'Edit Song List', 'dmbc-tools' ),
 					),
-					'public' => true,
-					'show_ui' => false,
+					'public'       => true,
+					'show_ui'      => false,
 					'show_in_rest' => true,
-					'has_archive' => true,
-					'rewrite' => array( 'slug' => 'songlists' ),
-					'supports' => array( 'title' ),
-					'menu_icon' => 'dashicons-playlist-audio',
+					'has_archive'  => true,
+					'rewrite'      => array( 'slug' => 'songlists' ),
+					'supports'     => array( 'title' ),
+					'menu_icon'    => 'dashicons-playlist-audio',
 				),
 			);
 		}
@@ -661,38 +661,38 @@ final class Plugin {
 		\register_post_type(
 			self::MEMBER_UPDATE_POST_TYPE,
 			array(
-				'labels' => array(
-					'name' => __( 'Member Updates', 'dmbc-tools' ),
+				'labels'          => array(
+					'name'          => __( 'Member Updates', 'dmbc-tools' ),
 					'singular_name' => __( 'Member Update', 'dmbc-tools' ),
-					'add_new_item' => __( 'Add Member Update', 'dmbc-tools' ),
-					'edit_item' => __( 'Edit Member Update', 'dmbc-tools' ),
+					'add_new_item'  => __( 'Add Member Update', 'dmbc-tools' ),
+					'edit_item'     => __( 'Edit Member Update', 'dmbc-tools' ),
 				),
-				'public' => true,
-				'show_ui' => true,
-				'show_in_menu' => false,
-				'show_in_rest' => true,
-				'has_archive' => true,
-				'rewrite' => array( 'slug' => 'member-updates' ),
-				'supports' => array( 'title', 'editor' ),
+				'public'          => true,
+				'show_ui'         => true,
+				'show_in_menu'    => false,
+				'show_in_rest'    => true,
+				'has_archive'     => true,
+				'rewrite'         => array( 'slug' => 'member-updates' ),
+				'supports'        => array( 'title', 'editor' ),
 				'capability_type' => 'post',
-				'map_meta_cap' => false,
-				'capabilities' => array(
-					'edit_post' => self::CAP_EDIT_MEMBER_UPDATES,
-					'read_post' => self::CAP_VIEW_MEMBER_UPDATES,
-					'delete_post' => self::CAP_EDIT_MEMBER_UPDATES,
-					'edit_posts' => self::CAP_EDIT_MEMBER_UPDATES,
-					'edit_others_posts' => self::CAP_EDIT_MEMBER_UPDATES,
-					'edit_private_posts' => self::CAP_EDIT_MEMBER_UPDATES,
-					'edit_published_posts' => self::CAP_EDIT_MEMBER_UPDATES,
-					'publish_posts' => self::CAP_PUBLISH_MEMBER_UPDATES,
-					'read_private_posts' => self::CAP_VIEW_MEMBER_UPDATES,
-					'delete_posts' => self::CAP_EDIT_MEMBER_UPDATES,
-					'delete_others_posts' => self::CAP_EDIT_MEMBER_UPDATES,
-					'delete_private_posts' => self::CAP_EDIT_MEMBER_UPDATES,
+				'map_meta_cap'    => false,
+				'capabilities'    => array(
+					'edit_post'              => self::CAP_EDIT_MEMBER_UPDATES,
+					'read_post'              => self::CAP_VIEW_MEMBER_UPDATES,
+					'delete_post'            => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_posts'             => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_others_posts'      => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_private_posts'     => self::CAP_EDIT_MEMBER_UPDATES,
+					'edit_published_posts'   => self::CAP_EDIT_MEMBER_UPDATES,
+					'publish_posts'          => self::CAP_PUBLISH_MEMBER_UPDATES,
+					'read_private_posts'     => self::CAP_VIEW_MEMBER_UPDATES,
+					'delete_posts'           => self::CAP_EDIT_MEMBER_UPDATES,
+					'delete_others_posts'    => self::CAP_EDIT_MEMBER_UPDATES,
+					'delete_private_posts'   => self::CAP_EDIT_MEMBER_UPDATES,
 					'delete_published_posts' => self::CAP_EDIT_MEMBER_UPDATES,
-					'create_posts' => self::CAP_EDIT_MEMBER_UPDATES,
+					'create_posts'           => self::CAP_EDIT_MEMBER_UPDATES,
 				),
-				'menu_icon' => 'dashicons-megaphone',
+				'menu_icon'       => 'dashicons-megaphone',
 			)
 		);
 
@@ -741,7 +741,7 @@ final class Plugin {
 	public function render_member_update_meta_box( \WP_Post $post ): void {
 		\wp_nonce_field( 'dmbc_save_member_update_meta', self::MEMBER_UPDATE_META_NONCE );
 
-		$roles = \wp_roles()->roles;
+		$roles         = \wp_roles()->roles;
 		$selected_role = \get_post_meta( $post->ID, self::MEMBER_UPDATE_ROLE_META_KEY, true );
 		if ( ! is_string( $selected_role ) || ( ! isset( $roles[ $selected_role ] ) && self::DEFAULT_MEMBER_UPDATE_ROLE !== $selected_role ) ) {
 			$selected_role = self::DEFAULT_MEMBER_UPDATE_ROLE;
@@ -803,15 +803,15 @@ final class Plugin {
 		\wp_nonce_field( 'dmbc_save_songlist_meta', self::SONGLIST_META_NONCE );
 
 		$performance_date = \get_post_meta( $post->ID, self::PERFORMANCE_DATE_META_KEY, true );
-		$items = SongList::normalize_items( \get_post_meta( $post->ID, self::SONGS_META_KEY, true ) );
-		$item_lines = implode(
+		$items            = SongList::normalize_items( \get_post_meta( $post->ID, self::SONGS_META_KEY, true ) );
+		$item_lines       = implode(
 			"\n",
 			array_map(
 				fn( $item ) => SongList::TYPE_NOTE === $item['type'] ? 'note: ' . $item['value'] : $item['value'],
 				$items
 			)
 		);
-		$notes = \get_post_meta( $post->ID, self::NOTES_META_KEY, true );
+		$notes            = \get_post_meta( $post->ID, self::NOTES_META_KEY, true );
 		?>
 		<p>
 			<label
@@ -853,8 +853,8 @@ final class Plugin {
 
 		$fields = array(
 			'dmbc_performance_date' => self::PERFORMANCE_DATE_META_KEY,
-			'dmbc_songs' => self::SONGS_META_KEY,
-			'dmbc_notes' => self::NOTES_META_KEY,
+			'dmbc_songs'            => self::SONGS_META_KEY,
+			'dmbc_notes'            => self::NOTES_META_KEY,
 		);
 
 		foreach ( $fields as $field_name => $meta_key ) {
@@ -894,14 +894,14 @@ final class Plugin {
 				$note = trim( substr( $line, 5 ) );
 				if ( '' !== $note ) {
 					$items[] = array(
-						'type' => SongList::TYPE_NOTE,
+						'type'  => SongList::TYPE_NOTE,
 						'value' => $note,
 					);
 				}
 				continue;
 			}
 			$items[] = array(
-				'type' => SongList::TYPE_SONG,
+				'type'  => SongList::TYPE_SONG,
 				'value' => $line,
 			);
 		}
@@ -1008,8 +1008,8 @@ final class Plugin {
 		}
 
 		$legacy_caps = array( 'view-song-lists', 'edit_song_list' );
-		$role_names = array_keys( \wp_roles()->get_names() );
-		$users = \get_users();
+		$role_names  = array_keys( \wp_roles()->get_names() );
+		$users       = \get_users();
 
 		foreach ( $role_names as $role_name ) {
 			$role = \get_role( $role_name );
@@ -1158,7 +1158,7 @@ final class Plugin {
 					continue;
 				}
 
-				$parent_slug = $menu_item[2];
+				$parent_slug  = $menu_item[2];
 				$parent_title = wp_strip_all_tags( $menu_item[0] );
 
 				// If it's just a separator, skip it.
@@ -1174,7 +1174,7 @@ final class Plugin {
 					foreach ( $submenu[ $parent_slug ] as $sub_item ) {
 						// $sub_item[0] is the sub title, $sub_item[2] is the sub slug
 						$sub_title = wp_strip_all_tags( $sub_item[0] );
-						$sub_slug = $sub_item[2];
+						$sub_slug  = $sub_item[2];
 
 						echo '<li class="slugs-sub-item">— ' . esc_html( $sub_title ) . ': <span class="slug-tag">' . esc_html( $sub_slug ) . '</span></li>';
 					}
@@ -1247,20 +1247,20 @@ final class Plugin {
 		$slugs = isset( $query['slug__in'] ) ? $query['slug__in'] : array();
 
 		$templates = array(
-			'single-songlist' => array(
-				'file' => 'single-songlist.html',
+			'single-songlist'       => array(
+				'file'  => 'single-songlist.html',
 				'title' => 'Single Songlist',
 			),
-			'single-dmbc-songlist' => array(
-				'file' => 'single-songlist.html',
+			'single-dmbc-songlist'  => array(
+				'file'  => 'single-songlist.html',
 				'title' => 'Single Songlist',
 			),
-			'archive-songlist' => array(
-				'file' => 'archive-songlist.html',
+			'archive-songlist'      => array(
+				'file'  => 'archive-songlist.html',
 				'title' => 'Songlist Archive',
 			),
 			'archive-dmbc-songlist' => array(
-				'file' => 'archive-songlist.html',
+				'file'  => 'archive-songlist.html',
 				'title' => 'Songlist Archive',
 			),
 		);
@@ -1271,17 +1271,17 @@ final class Plugin {
 				$template_file = plugin_dir_path( __FILE__ ) . 'templates/' . $templates[ $slug ]['file'];
 
 				if ( file_exists( $template_file ) ) {
-					$template = new \WP_Block_Template();
-					$template->type = 'wp_template';
+					$template        = new \WP_Block_Template();
+					$template->type  = 'wp_template';
 					$template->theme = get_stylesheet();
-					$template->slug = $slug;
-					$template->id = get_stylesheet() . '//' . $slug;
+					$template->slug  = $slug;
+					$template->id    = get_stylesheet() . '//' . $slug;
 					$template->title = $templates[ $slug ]['title'];
 					ob_start();
 					include $template_file;
-					$template->content = (string) ob_get_clean();
-					$template->source = 'plugin';
-					$template->status = 'publish';
+					$template->content   = (string) ob_get_clean();
+					$template->source    = 'plugin';
+					$template->status    = 'publish';
 					$template->is_custom = true;
 
 					// Return it inside an array as WordPress expects.
@@ -1311,20 +1311,20 @@ final class Plugin {
 		$slugs = isset( $query['slug__in'] ) ? $query['slug__in'] : array();
 
 		$templates = array(
-			'single-member-update' => array(
-				'file' => 'single-member-update.html',
+			'single-member-update'        => array(
+				'file'  => 'single-member-update.html',
 				'title' => 'Single Member Update',
 			),
-			'single-dmbc-member-updates' => array(
-				'file' => 'single-member-update.html',
+			'single-dmbc-member-updates'  => array(
+				'file'  => 'single-member-update.html',
 				'title' => 'Single Member Update',
 			),
-			'archive-member-update' => array(
-				'file' => 'archive-member-update.html',
+			'archive-member-update'       => array(
+				'file'  => 'archive-member-update.html',
 				'title' => 'Member Update Archive',
 			),
 			'archive-dmbc-member-updates' => array(
-				'file' => 'archive-member-update.html',
+				'file'  => 'archive-member-update.html',
 				'title' => 'Member Update Archive',
 			),
 		);
@@ -1335,17 +1335,17 @@ final class Plugin {
 				$template_file = plugin_dir_path( __FILE__ ) . 'templates/' . $templates[ $slug ]['file'];
 
 				if ( file_exists( $template_file ) ) {
-					$template = new \WP_Block_Template();
-					$template->type = 'wp_template';
+					$template        = new \WP_Block_Template();
+					$template->type  = 'wp_template';
 					$template->theme = get_stylesheet();
-					$template->slug = $slug;
-					$template->id = get_stylesheet() . '//' . $slug;
+					$template->slug  = $slug;
+					$template->id    = get_stylesheet() . '//' . $slug;
 					$template->title = $templates[ $slug ]['title'];
 					ob_start();
 					include $template_file;
-					$template->content = (string) ob_get_clean();
-					$template->source = 'plugin';
-					$template->status = 'publish';
+					$template->content   = (string) ob_get_clean();
+					$template->source    = 'plugin';
+					$template->status    = 'publish';
 					$template->is_custom = true;
 
 					// Return it inside an array as WordPress expects.
@@ -1418,10 +1418,10 @@ final class Plugin {
 	 * @return string Song-list HTML.
 	 */
 	public static function render_songlist_post( int $songlist_id ): string {
-		$dmbc_is_member = SongListPlaylist::current_user_is_member();
-		$items = SongList::normalize_items( \get_post_meta( $songlist_id, self::SONGS_META_KEY, true ) );
-		$notes = (string) \get_post_meta( $songlist_id, self::NOTES_META_KEY, true );
-		$download_groups = $dmbc_is_member ? SongListPlaylist::get_download_groups( $items ) : array();
+		$dmbc_is_member          = SongListPlaylist::current_user_is_member();
+		$items                   = SongList::normalize_items( \get_post_meta( $songlist_id, self::SONGS_META_KEY, true ) );
+		$notes                   = (string) \get_post_meta( $songlist_id, self::NOTES_META_KEY, true );
+		$download_groups         = $dmbc_is_member ? SongListPlaylist::get_download_groups( $items ) : array();
 		$download_groups_by_song = array();
 
 		foreach ( $download_groups as $download_group ) {
@@ -1429,7 +1429,7 @@ final class Plugin {
 		}
 
 		$playlist_file_urls = $dmbc_is_member ? SongListPlaylist::get_or_update_playlist_from_download_groups( $songlist_id, $download_groups ) : array();
-		$playlist_filename = \sanitize_file_name( \get_the_title( $songlist_id ) . '.m3u' );
+		$playlist_filename  = \sanitize_file_name( \get_the_title( $songlist_id ) . '.m3u' );
 
 		ob_start();
 		?>
@@ -1441,8 +1441,8 @@ final class Plugin {
 							<li class="dmbc-songlist-note"><?php echo \esc_html( $item['value'] ); ?></li>
 						<?php else : ?>
 							<?php
-							$song_path = \wp_normalize_path( (string) $item['value'] );
-							$song_url = SongListPlaylist::get_song_folder_url( $song_path );
+							$song_path      = \wp_normalize_path( (string) $item['value'] );
+							$song_url       = SongListPlaylist::get_song_folder_url( $song_path );
 							$download_group = $download_groups_by_song[ $song_path ] ?? null;
 							?>
 							<li class="dmbc-songlist-song">
@@ -1523,38 +1523,34 @@ final class Plugin {
 	 *
 	 * @param \WP_Query $query The current WordPress query object.
 	 */
-	function dmbc_exclude_restricted_events_from_list( $query ) {
-		// Only alter the main query on the front-end, specifically for the 'events' archive or page.
-		if ( is_admin() || ! empty( $query->get( 'dmbc-recursive' ) ) ) {
+	public function dmbc_exclude_restricted_events_from_list( $query ) {
+		if ( \is_admin() || ! empty( $query->get( 'dmbc-recursive' ) ) ) {
 			return;
 		}
 		$query->set( 'dmbc-recursive', true );
 
-		// Target the /events endpoint (adjust condition if 'events' is a page or a custom post type archive).
-		// if ( $query->is_post_type_archive( 'tribe_events' ) || $query->is_page( 'events' ) ) {
+		$args                   = $query->query_vars;
+		$args['posts_per_page'] = -1; // Get all to compile an ID list.
+		$args['fields']         = 'ids';
 
-		// Apply UM metadata restrictions only while Ultimate Member is active.
-		// if ( class_exists( 'UM' ) ) {
-		// Retrieve all posts matching the query parameters to inspect their restrictions.
-		$args = $query->query_vars;
-		$args['posts_per_page'] = -1; // Get all to compile an ID list
-		$args['fields'] = 'ids';
-
-		$all_post_ids = get_posts( $args );
+		$all_post_ids = \get_posts( $args );
 		$excluded_ids = array();
-		$user_roles = wp_get_current_user()->roles;
-		$is_logged_in = is_user_logged_in();
+		$user_roles   = \wp_get_current_user()->roles;
+		$is_logged_in = \is_user_logged_in();
 
 		foreach ( $all_post_ids as $post_id ) {
-			$restriction = get_post_meta( $post_id, 'um_content_restriction', true );
+			$restriction = \get_post_meta( $post_id, 'um_content_restriction', true );
 			if ( empty( $restriction['_um_custom_access_settings'] ) ) {
 				continue;
 			}
 
 			$accessible = (int) ( $restriction['_um_accessible'] ?? 0 );
-			if ( 1 === $accessible && $is_logged_in ) {
+			// If the post is accessible only to logged-in users and the current user is not logged in, exclude the post.
+			if ( 1 === $accessible && ! $is_logged_in ) {
 				$excluded_ids[] = $post_id;
-			} elseif ( 2 === $accessible ) {
+			}
+			// If the post is limited to certain roles, check if the current user has the required role.
+			elseif ( 2 === $accessible ) {
 				$allowed_roles = array_keys( array_filter( $restriction['_um_access_roles'] ?? array() ) );
 				if ( ! $is_logged_in || ( ! empty( $allowed_roles ) && empty( array_intersect( $user_roles, $allowed_roles ) ) ) ) {
 					$excluded_ids[] = $post_id;
@@ -1566,8 +1562,6 @@ final class Plugin {
 		if ( ! empty( $excluded_ids ) ) {
 			$query->set( 'post__not_in', $excluded_ids );
 		}
-		// }
-		//}
+		$query->set( 'dmbc-recursive', '' );
 	}
-
 }
